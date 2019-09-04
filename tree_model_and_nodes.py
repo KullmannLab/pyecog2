@@ -1,11 +1,19 @@
 import sys, os
 from PyQt5 import QtGui, QtCore, QtWidgets, uic
 import h5py
+import numpy as np
+
+from h5loader import H5File
 
 # rename module to be filetree model?
 # maybe split file into one that has nodes seperately
 
 class TreeModel(QtCore.QAbstractItemModel):
+    # hmmm not sure best but ets roll with it
+    # sends an array of data and their sampling freq in hz
+    # maybe memmap is better?
+    plot_node_signal = QtCore.pyqtSignal(np.ndarray, int)
+
     '''
     Naming convention (not right at the moment)
     lowerUpper is overidded modules
@@ -13,6 +21,7 @@ class TreeModel(QtCore.QAbstractItemModel):
     '''
     sortRole = QtCore.Qt.UserRole
     filterRole = QtCore.Qt.UserRole + 1 # not sure if this is best for cols?
+    prepare_for_plot_role = QtCore.Qt.UserRole + 2
 
     def __init__(self, root, parent=None):
         super(TreeModel, self).__init__(parent)
@@ -64,7 +73,8 @@ class TreeModel(QtCore.QAbstractItemModel):
         return 2
 
     def flags(self,index):
-        return QtCore.Qt.ItemIsEnabled| QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
+        return QtCore.Qt.ItemIsEnabled| QtCore.Qt.ItemIsSelectable #| QtCore.Qt.ItemIsEditable
+        # we dont want them to be editable (at the moment)
 
     def headerData(self, section, orientation,role):
         if role == QtCore.Qt.DisplayRole:
@@ -72,6 +82,8 @@ class TreeModel(QtCore.QAbstractItemModel):
                 return 'File list'
             if section == 1:
                 return 'Properties'
+    def doubleClicked(self,index):
+        print('Doublecklicked....', index)
 
     def setData(self,index,value,role=QtCore.Qt.EditRole):
         '''
@@ -94,6 +106,11 @@ class TreeModel(QtCore.QAbstractItemModel):
         if not index.isValid():
             return None # not sure here what this is...
         node = index.internalPointer()
+
+        if role == TreeModel.prepare_for_plot_role:
+            if hasattr(node, 'prepare_for_plot'):
+                arr, fs = node.prepare_for_plot()
+                self.plot_node_signal.emit(arr, fs)
 
         if role == QtCore.Qt.DisplayRole or role == QtCore.Qt.EditRole:
             if index.column() == 0:
@@ -134,6 +151,7 @@ class TreeModel(QtCore.QAbstractItemModel):
             # same postion and keeps pushiong items downwards
         self.endInsertRows()# emit signal that is handled by the views
         return success
+
     def remove_rows(self, position, rows, parent=QtCore.QModelIndex()):
         '''int int QmodelIndex'''
         parent_node = self.get_node(parent)
@@ -231,7 +249,6 @@ class DirectoryNode(Node):
     '''
     def __init__(self, name, parent=None):
         super(DirectoryNode, self).__init__(name,parent)
-
         self.name = name
 
     def set_name(self, value):
@@ -248,27 +265,29 @@ class FileNode(Node):
     def __init__(self, name, parent=None):
         super(FileNode, self).__init__(name,parent)
         self.name = name
-        # gonna have to do something clever here/ or in the
-        # def make_rootnode_from_folder(self, root_folder):
-        if self.name.endswith('.h5'):
-            self.build_channel_children()
-        #self.full_name = name
-        # have to get fullname for chain of nodes?
-        #self.fullname_have_to_grab_from_chaning
-
-    def build_channel_children(self):
-        '''currently set for just h5 files!'''
-        self.full_path = self.get_full_path()
-        #print('attempting to convert ', self.full_path)
-        try:
-            tids = eval('['+self.full_path.split('[')[1].split(']')[0]+']')
-            for tid in tids:
-                child_node = ChannelNode(tid, parent=self)
-        except IndexError:
-            print('h5 with no children detected:', self.full_path)
 
     def type_info(self):
         return 'File'
+
+class HDF5FileNode(Node):
+    def __init__(self, name, parent=None):
+        super(HDF5FileNode, self).__init__(name,parent)
+        self.name = name
+
+    def prepare_for_plot(self):
+        '''maybe change name?'''
+        self.h5_file = H5File(self.get_full_path())
+        fs_dict = eval(self.h5_file.attributes['fs_dict'])
+        fs = fs_dict[int(self.h5_file.attributes['t_ids'][0])]
+        channels = []
+        for tid in self.h5_file.attributes['t_ids']:
+            assert fs == int(fs_dict[tid])
+            channels.append(self.h5_file[tid]['data'])
+        arr = np.vstack(channels).T
+        return arr, fs
+
+    def type_info(self):
+        return 'HDF5 File'
 
 class ChannelNode(Node):
     '''Again,seems like we need to change how this is used...
@@ -276,6 +295,7 @@ class ChannelNode(Node):
     def __init__(self, name, parent=None):
         super(ChannelNode, self).__init__(name,parent)
         self.name = name
+
     def type_info(self):
         return 'Channel'
 

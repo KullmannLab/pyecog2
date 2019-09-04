@@ -1,6 +1,10 @@
-
-[![Build Status](https://pyqtgraph.visualstudio.com/pyqtgraph/_apis/build/status/pyqtgraph.pyqtgraph?branchName=develop)](https://pyqtgraph.visualstudio.com/pyqtgraph/_build/latest?definitionId=17&branchName=develop)
-
+Changes
+------------
+Important: GraphicsScene/GraphicsScene
+           GraphicsScene/mouseEvents
+           widgets/GraphicsView?
+           graphicsIems/ViewBox/
+           graphcisItems/InfiniteLine & LinearRegionItem
 
 PyQtGraph
 =========
@@ -47,14 +51,14 @@ Below is a table of the configurations we test and have confidence pyqtgraph wil
 
 Support
 -------
-  
+
 * Report issues on the [GitHub issue tracker](https://github.com/pyqtgraph/pyqtgraph/issues)
 * Post questions to the [mailing list / forum](https://groups.google.com/forum/?fromgroups#!forum/pyqtgraph) or [StackOverflow](https://stackoverflow.com/questions/tagged/pyqtgraph)
 
 Installation Methods
 --------------------
 
-* From PyPI:  
+* From PyPI:
   * Last released version: `pip install pyqtgraph`
   * Latest development version: `pip install git+https://github.com/pyqtgraph/pyqtgraph@develop`
 * From conda

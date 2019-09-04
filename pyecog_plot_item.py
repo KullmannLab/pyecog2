@@ -15,28 +15,28 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
     def init(self, *args):
         super(pg.PlotCurveItem, self).__init__(args)
 
-
-
     def mousePressEvent(self, ev):
+        ''' forget difference between this and the click and drag evnets belwo '''
         if self.clickable:
-            print('ive been cliked')
+            #print('ive been cliked')
             #super(pg.PlotCurveItem,self).mousePressEvent(ev)
             ev.ignore()
         else:
             ev.ignore()
 
     def mouseClickEvent(self, ev):
-        print('fiwejbfw click event')
-
+        print('mouseClickEvent plotcurveitem')
+        pass
     def mouseDragEvent(self, ev):
-        print('drag')
+        print('mouseDragEvent plotcurveitem')
+        pass
 
     def hoverEvent(self, ev):
         if self.clickable:
-            print('hoverEvent sent')
+            #print('hoverEvent sent')
             clickfocus = ev.acceptClicks(Qt.LeftButton)
-            print(clickfocus)
+            #print(clickfocus)
             dragfocus  = ev.acceptDrags(Qt.LeftButton)
-            print(dragfocus)
-            print('change colour!')
-            print('is this focus?')
+            #print(dragfocus)
+            #print('change colour!')
+            #print('is this focus?')

@@ -11,17 +11,40 @@ from PyQt5.QtCore import QThread, pyqtSignal, Qt, QRect, QTimer
 
 import pyqtgraph_copy.pyqtgraph as pg
 
-from paired_graphics_view import PairedGraphicsView
-from tree_model_and_nodes import FileTreeProxyModel, TreeModel, FileNode, DirectoryNode
+from tree_model_and_nodes import FileTreeProxyModel, TreeModel
+from tree_model_and_nodes import FileNode, DirectoryNode, ChannelNode, HDF5FileNode
 
+class FileTreeView(QtWidgets.QTreeView):
 
-def build_menubar():
-    pass
+    def __init__(self, parent=None):
+        #super(FileTreeView, self).__init__(self)
+        QtWidgets.QTreeView.__init__(self)
+        #self.setSortingEnabled(True) # relies on proxy model
+
+    def mouseDoubleClickEvent(self, event):
+        print('double cliokc event')
+        print(event)
+
+    def selectionChanged(self, *args):
+        print('selection changed', args)
+        super(FileTreeView, self).selectionChanged(*args)
+        index = self.currentIndex()
+        self.model().data(index, TreeModel.prepare_for_plot_role)
+
+    def setSelection(self, *args):
+        print('setSelection', args)
+        super(FileTreeView, self).setSelection(*args)
 
 class FileTreeElement():
     '''
     Might need to rename class, but basically a class to represent the filetree
-    browser part of the gui. It will include the menu bar
+    browser part of the gui.
+
+    Will not include the menu
+    basically will be composed of the tree widget? which is a filterbox and label, plus tree view
+    and tree moddel.
+
+
     '''
     def __init__(self):
 
@@ -38,45 +61,63 @@ class FileTreeElement():
         filter_widget.setLayout(filter_layout)
 
         # now the file tree view
-        tree_view = QtWidgets.QTreeView()
-        tree_view.setSortingEnabled(True) # relies on proxy model
-
-        #tree_view.setGeometry(0,0, size.width()*0.25, size.height()*0.5)
+        self.tree_view = FileTreeView()
 
         tree_layout = QtWidgets.QVBoxLayout()
         #tree_layout.addWidget(menu_bar, 0)
         tree_layout.addWidget(filter_widget)
-        tree_layout.addWidget(tree_view)
+        tree_layout.addWidget(self.tree_view)
 
-        self.tree_layout = tree_layout
-
-        #self.main_widget = QtWidgets.QWidget()
-        #self.main_widget.setGeometry(0,0, size.width()*0.25, size.height()*0.5)
-        #self.main_widget.setLayout(tree_layout)
-        #self.main_widget.menu_bar = menu_bar
-
-        #elf.main_window = QtWidgets.QMainWindow()
-
-        #self.main_window.setCentralWidget(self.main_widget)
-        #self.main_window.setMenuBar(menu_bar)
-        #menu_bar.show()
-
+        self.widget = QtWidgets.QWidget()
+        self.widget.setLayout(tree_layout)
+        #self.tree_layout = tree_layout
 
         # ok so gonna have to have a build data structure here....
+        # will bneed a self
         root_folder = self.get_default_folder()
-        self.root_node = self.make_rootnode_from_folder(root_folder)
-        model = TreeModel(self.root_node, parent=None)
-        tree_view.setModel(model)
+        self.set_rootnode_from_folder(root_folder, filetype_restriction = '.h5')
 
-        pass
+    def set_rootnode_from_folder(self, root_folder, filetype_restriction=None):
+        '''resets the tree self.model'''
+        if filetype_restriction is None:
+            self.root_node = self.make_rootnode_from_folder(root_folder)
+        elif filetype_restriction.endswith('h5'):
+            self.root_node = self.make_h5files_rootnode_from_folder(root_folder)
+
+        self.model = TreeModel(self.root_node, parent=None)
+        self.tree_view.setModel(self.model)
+
+    def make_h5files_rootnode_from_folder(self, root_folder):
+        '''
+        Again we need a recursion limit here
+
+        These builders are also a bit obtuse
+        '''
+        root = DirectoryNode(root_folder)
+        name_to_node = {root_folder:root}
+        for directory, dirnames, filenames in os.walk(root_folder):
+            node = name_to_node[directory]
+            for sub_directory in dirnames:
+                fullname = os.path.join(directory, sub_directory)
+                child_node = DirectoryNode(sub_directory, parent=node)
+                name_to_node[fullname] = child_node
+            for filename in filenames:
+                if not filename.endswith('.h5'):
+                    continue
+                fullname = os.path.join(directory, filename)
+                child_node = HDF5FileNode(filename, parent=node)
+                try:
+                    tids = eval('['+fullname.split('[')[1].split(']')[0]+']')
+                    for tid in tids:
+                        channel_node = ChannelNode(str(tid), parent=child_node)
+                except IndexError:
+                    print('h5 with no children detected:', fullname)
+                name_to_node[fullname] = child_node
+        return root
 
     def make_rootnode_from_folder(self, root_folder):
         '''
-        Currently you cannot click on them indivdually to get the channels... would be decent
-        to double click etc
-
-        # Todo - gonna have to change that right - such that they have subnodes?
-        # maybe on the filenode itself...
+        THERE SHOULD BE A RECURSION LIMIT!!!
         '''
         root = DirectoryNode(root_folder)
         name_to_node = {root_folder:root}
@@ -96,42 +137,11 @@ class FileTreeElement():
     def get_default_folder(self):
         # normally should have the pickle file here
         folder = '/media/jonathan/DATA/seizure_data/gabrielle/All_DATA/'
+        folder = '/media/jonathan/DATA/seizure_data/gabrielle/All_DATA/EEG DATA CRISPRa Kcna1 2018'
         if os.path.exists(folder):
             return folder
         else:
             return os.getcwd()
-
-def build_filetree_widget():
-    '''
-    returns widget containing the filetree
-    '''
-
-    ### initally you should check if there is a default folder
-    print('go')
-
-def build_paired_graphics_view():
-    pass
-
-    #maybe this should be a class?
-
-    #gwegwg
-
-# will eventually move this
-class MainWindow(QtWidgets.QWidget):
-    def __init__(self):
-        QtWidgets.QWidget.__init__(self)
-        'file_tree = FileTreeElement()
-        layout = QtWidgets.QGridLayout()
-        self.setLayout(layout)
-
-        menu_bar  = QtWidgets.QMenuBar();
-        #menu_bar.setNativeMenuBar(False)
-        file_menu = QtWidgets.QMenu("File")
-        menu_bar.addMenu(file_menu)
-        file_menu.addAction("Load Directory")
-        file_menu.addAction("Set Default Folder")
-
-        layout.addWidget(menu_bar, 0, 0)
 
 if __name__ == '__main__':
 

@@ -1214,7 +1214,7 @@ class ViewBox(GraphicsWidget):
         return self.menu.actions() if self.menuEnabled() else []
 
     def mouseDragEvent(self, ev, axis=None):
-        print('viewbox mouse frag event')
+        print('mouseDragEvent viewbox')
         ## if axis is specified, event will only affect that axis.
         ev.accept()  ## we accept all buttons
 

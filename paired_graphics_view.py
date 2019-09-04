@@ -34,7 +34,19 @@ class PairedGraphicsView():
             ev.accept()
             self.sigMouseLeftClick.emit(ev)
     '''
-    def __init__(self, splitter):
+    def build_splitter(self):
+        self.splitter  = QtWidgets.QSplitter(parent=None)
+        # might need a size here...
+        self.splitter.resize(680, 400)
+        self.splitter.setOrientation(QtCore.Qt.Vertical)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                   QtWidgets.QSizePolicy.Expanding)
+        self.splitter.setSizePolicy(sizePolicy)
+
+    def __init__(self):
+
+        self.build_splitter()
+
         overview_layout_widget  = pg.GraphicsLayoutWidget()
         self.overview_plot = overview_layout_widget.addPlot()
         # this doesnt work (getting the scroll)
@@ -47,12 +59,12 @@ class PairedGraphicsView():
         self.insetview_plot.vb.setLimits(xMin = 0)
         self.overview_plot.vb.setLimits(xMin = 0)
 
-        # prevent scrolling past 3600 THIS IS TERRIBLE # todo
+        # prevent scrolling past 3600 THIS IS A TERRIBLE HARDCODE # todo
         self.insetview_plot.vb.setLimits(xMax = 3600)
         self.overview_plot.vb.setLimits(xMax = 3600)
 
-        splitter.addWidget(overview_layout_widget)
-        splitter.addWidget(insetview_layout_widget)
+        self.splitter.addWidget(overview_layout_widget)
+        self.splitter.addWidget(insetview_layout_widget)
 
         self.insetview_plot.sigRangeChanged.connect(self.insetview_range_changed)
         self.overview_plot.vb.sigMouseLeftClick.connect(self.overview_clicked)
@@ -72,7 +84,11 @@ class PairedGraphicsView():
             self.overviewlines_dict[k].setZValue(100) # high z values drawn on top
             self.overview_plot.addItem(self.overviewlines_dict[k])
 
-    def make_and_add_item(self, x,y,pen):
+    def update_scenes(self, arr, fs):
+        print("ive been sent data to plot....")
+        print(arr.shape, fs)
+
+    def make_and_add_item(self, x, y, pen):
         '''
         takes x y data and pen and adds ti the two plots
         '''
@@ -84,7 +100,7 @@ class PairedGraphicsView():
         #plot_curve_item.setFlags(QtWidgets.QGraphicsItem.ItemIsMovable);
         self.overview_plot.addItem(plot_curve_item)
         plot_curve_item = PyecogPlotCurveItem(x=x,y=y, pen=pen)
-        plot_curve_item.setClickable(True, width=-1)
+        #plot_curve_item.setClickable(True, width=-1)
         #plot_curve_item.setFlags(QtWidgets.QGraphicsItem.ItemIsMovable);
         #plot_curve_item.setFlags(QtWidgets.QGraphicsItem.ItemIsSelectable);
         self.insetview_plot.addItem(plot_curve_item)
@@ -96,7 +112,6 @@ class PairedGraphicsView():
 
     def graphics_object_xchanged(self):
         print('xChanged grahics object')
-
 
 
     def overview_clicked(self, ev_pos):

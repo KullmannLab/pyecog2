@@ -12,6 +12,8 @@ from ... import debug as debug
 from ... import getConfigOption
 from ...Qt import isQObjectAlive
 
+from .. InfiniteLine import InfiniteLine
+
 __all__ = ['ViewBox']
 
 
@@ -132,6 +134,7 @@ class ViewBox(GraphicsWidget):
                         the axes of any other view to this one.
         ==============  =============================================================
         """
+        self.yscale_data = 1
 
         GraphicsWidget.__init__(self, parent)
         self.name = None
@@ -1176,6 +1179,8 @@ class ViewBox(GraphicsWidget):
         return self.mapSceneToView(item.sceneBoundingRect()).boundingRect()
 
     def wheelEvent(self, ev, axis=None):
+
+
         if axis in (0, 1):
             mask = [False, False]
             mask[axis] = self.state['mouseEnabled'][axis]
@@ -1184,14 +1189,40 @@ class ViewBox(GraphicsWidget):
         s = 1.02 ** (ev.delta() * self.state['wheelScaleFactor']) # actual scaling factor
         s = [(None if m is False else s) for m in mask]
         center = Point(fn.invertQTransform(self.childGroup.transform()).map(ev.pos()))
+        # JC added
+        if ev.modifiers() == QtCore.Qt.ShiftModifier:
+            #self.yscale_data *= s[1]
+            for child in self.childGroup.childItems()[:]:
+                if isinstance(child, InfiniteLine ):
+                    #print('inf line caught')
+                    continue
+                m_old = child.transform()
+                m = QtGui.QTransform()
+                #print('S is:', s)
+                m.scale(1, m_old.m22()*s[1])
+                #print(m.m22(), m.m11())
+                #self.childGroup.childItems()[0].setTransform(m)
+                #self.childGroup.setTransform(m)
+                ev.accept()
+                child.setTransform(m)
+                #child.update()
+            print('m old', m_old, m_old.m22())
+            print(self.childGroup)
+            child_trans = self.childGroup.transform()
+            print('m child_trans', child_trans, child_trans.m22())
+            #self.childGroup.update()
+            #self.autoRange()
+            #self.updateAutoRange()
+            #self.sigTransformChanged.emit(self)  ## segfaults here: 1
 
+            return
         self._resetTarget()
         self.scaleBy(s, center)
         ev.accept()
         self.sigRangeChangedManually.emit(mask)
 
     def mouseClickEvent(self, ev):
-        print('mouseClickEvent viewbox')
+        #print('mouseClickEvent viewbox')
         if ev.button() == QtCore.Qt.RightButton and self.menuEnabled():
             ev.accept()
             self.raiseContextMenu(ev)
@@ -1214,7 +1245,7 @@ class ViewBox(GraphicsWidget):
         return self.menu.actions() if self.menuEnabled() else []
 
     def mouseDragEvent(self, ev, axis=None):
-        print('mouseDragEvent viewbox')
+        #print('mouseDragEvent viewbox')
         ## if axis is specified, event will only affect that axis.
         ev.accept()  ## we accept all buttons
 
@@ -1578,7 +1609,8 @@ class ViewBox(GraphicsWidget):
         m.scale(scale[0], scale[1])
         st = Point(vr.center())
         m.translate(-st[0], -st[1])
-
+        #print(m.m22(), m.m11())
+        #self.childGroup.childItems()[0].setTransform(m)
         self.childGroup.setTransform(m)
         self._matrixNeedsUpdate = False
 

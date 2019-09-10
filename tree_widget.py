@@ -26,13 +26,13 @@ class FileTreeView(QtWidgets.QTreeView):
         print(event)
 
     def selectionChanged(self, *args):
-        print('selection changed', args)
+        #print('selection changed', args)
         super(FileTreeView, self).selectionChanged(*args)
         index = self.currentIndex()
         self.model().data(index, TreeModel.prepare_for_plot_role)
 
     def setSelection(self, *args):
-        print('setSelection', args)
+        #print('setSelection', args)
         super(FileTreeView, self).setSelection(*args)
 
 class FileTreeElement():
@@ -46,7 +46,9 @@ class FileTreeElement():
 
 
     '''
-    def __init__(self):
+    def __init__(self, parent=None):
+        self.parent = parent # the window holding both this file tree element and the
+        # paired graphcis view
 
         # initally construct filter elements
         filter_label  = QtWidgets.QLabel("Filter file list:")
@@ -62,6 +64,7 @@ class FileTreeElement():
 
         # now the file tree view
         self.tree_view = FileTreeView()
+        self.model = TreeModel(None, parent=None)
 
         tree_layout = QtWidgets.QVBoxLayout()
         #tree_layout.addWidget(menu_bar, 0)
@@ -72,10 +75,11 @@ class FileTreeElement():
         self.widget.setLayout(tree_layout)
         #self.tree_layout = tree_layout
 
-        # ok so gonna have to have a build data structure here....
-        # will bneed a self
-        root_folder = self.get_default_folder()
-        self.set_rootnode_from_folder(root_folder, filetype_restriction = '.h5')
+    def connect_model_to_parent_paired_graph(self):
+        # now it feels we are getting into pretty poor coding
+        if self.parent is not None:
+            self.model.plot_node_signal.connect(
+                self.parent.paired_graphics_view.set_scenes_plot_data)
 
     def set_rootnode_from_folder(self, root_folder, filetype_restriction=None):
         '''resets the tree self.model'''
@@ -86,6 +90,7 @@ class FileTreeElement():
 
         self.model = TreeModel(self.root_node, parent=None)
         self.tree_view.setModel(self.model)
+        self.connect_model_to_parent_paired_graph()
 
     def make_h5files_rootnode_from_folder(self, root_folder):
         '''
@@ -138,6 +143,7 @@ class FileTreeElement():
         # normally should have the pickle file here
         folder = '/media/jonathan/DATA/seizure_data/gabrielle/All_DATA/'
         folder = '/media/jonathan/DATA/seizure_data/gabrielle/All_DATA/EEG DATA CRISPRa Kcna1 2018'
+        folder = '/media/jonathan/DATA/seizure_data/gabrielle/All_DATA/EEG DATA CRISPRa Kcna1 2018/4_CRISP Oct-Nov 2018/CRISPRa_h5s BASELINE'
         if os.path.exists(folder):
             return folder
         else:

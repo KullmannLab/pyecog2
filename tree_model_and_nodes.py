@@ -40,6 +40,7 @@ class TreeModel(QtCore.QAbstractItemModel):
         Returns QModelIndex Obj associated parent of given QModelIndex'''
         node = self.get_node(index)
         parent_node = node.parent
+        #print('Parent is ', parent_node)
         if parent_node == self.root_node:
             # return empty index as root has no parent
             return QtCore.QModelIndex()

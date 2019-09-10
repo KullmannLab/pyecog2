@@ -53,6 +53,9 @@ class PlotCurveItem(GraphicsObject):
         """
         GraphicsObject.__init__(self, kargs.get('parent', None))
         self.clear()
+        print('Here')
+        print(*args)
+        print(**kargs)
 
         ## this is disastrous for performance.
         #self.setCacheMode(QtGui.QGraphicsItem.DeviceCoordinateCache)
@@ -405,6 +408,7 @@ class PlotCurveItem(GraphicsObject):
         profiler('update')
         self.sigPlotChanged.emit(self)
         profiler('emit')
+        #print('beep')
 
     def generatePath(self, x, y):
         if self.opts['stepMode']:

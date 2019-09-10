@@ -55,7 +55,7 @@ class HDF5PlotCurveItem(pg.PlotCurveItem):
         self.fft_plot = None
         pg.PlotCurveItem.__init__(self, *args, **kwds)
         if pg.CONFIG_OPTIONS['background'] == 'w':
-            self.pen = (0,0,0)
+            self.pen = (0,0,0, 0.1)
         else:
             self.pen = (255,255,255)
 
@@ -261,8 +261,6 @@ class HDF5PlotCurveItem(pg.PlotCurveItem):
             except:
                 throw_error()
                 return 0
-
-
             # TODO: setPos, scale, resetTransform methods... scale?
         self.setData(visible_x, visible_y, pen=self.pen) # update the plot
         #self.setPos(start, 0) # shift to match starting index ### Had comment out to stop it breaking... when limit is >0?!

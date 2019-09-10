@@ -17,34 +17,39 @@ class MainWindow(QWidget):
     menubar stuff
     '''
     def __init__(self):
-        QWidget.__init__(self)
+        super().__init__()
         layout = QGridLayout()
         self.setLayout(layout)
 
-        # create menu
+        # create elements of the main window
         self.build_menubar()
-        layout.setMenuBar(self.menu_bar)
+        self.paired_graphics_view = PairedGraphicsView()
+        self.tree_element = FileTreeElement(parent=self)
+        # link the signals from elements that need it
+        self.tree_element.model.plot_node_signal.connect(self.paired_graphics_view.set_scenes_plot_data)
 
         # make horizontal splitter to hold the filetree view and plots
         splitter_h   = QtWidgets.QSplitter(parent=None)
-        layout.addWidget(splitter_h, 0, 0)
-
-        self.tree_element = FileTreeElement()
         splitter_h.addWidget(self.tree_element.widget)
-
-        # the code here should be attached to a loading part when select a file
-        fs=40
-        colours= ['r', 'g', 'b']
-        self.paired_graphics_view = PairedGraphicsView()
-        for i in range(3):
-            y = np.random.normal(size=3600*fs) + i*10
-            x = np.linspace(0,3600,y.shape[0])
-            pen = pg.mkPen(colours[i])
-            self.paired_graphics_view.make_and_add_item(x=x,y=y, pen=pen)
-
         splitter_h.addWidget(self.paired_graphics_view.splitter)
 
-        self.tree_element.model.plot_node_signal.connect(self.paired_graphics_view.update_scenes)
+        layout.setMenuBar(self.menu_bar)
+        layout.addWidget(splitter_h, 0, 0)
+
+        # init for debugging
+        # ok so gonna have to have a build data structure here....
+        # will bneed a self
+        #root_folder = self.tree_element.get_default_folder()
+        folder = '/media/jonathan/DATA/seizure_data/gabrielle/All_DATA/EEG DATA CRISPRa Kcna1 2018/4_CRISP Oct-Nov 2018/CRISPRa_h5s BASELINE'
+        #folder = '/media/jonathan/DATA/seizure_data/gabrielle/All_DATA/EEG DATA CRISPRa Kcna1 2018/4_CRISP Oct-Nov 2018'
+        self.tree_element.set_rootnode_from_folder(folder, filetype_restriction = '.h5')
+        #self.tree_element.tree_view.setRootIndex()
+        #index = self.tree_element.tree_view.currentIndex()
+        #index = self.tree_element.model.createIndex(0,0)
+
+        #self.tree_element.tree_view.setTreePosition(0)
+        #index = QtCore.QModelIndex()
+        #self.tree_element.tree_view.setCurrentIndex(index)
 
     def get_available_screen(self):
         app = QApplication.instance()
@@ -68,7 +73,7 @@ class MainWindow(QWidget):
 
     def load_general(self):
         selected_directory = self.select_directory()
-        print(selected_directory)
+        #print(selected_directorsetScaley)
         self.tree_element.set_rootnode_from_folder(selected_directory)
 
     def select_directory(self, label_text='Select a directory'):

@@ -268,7 +268,21 @@ class FileNode(Node):
         self.name = name
 
     def type_info(self):
-        return 'File'
+        return 'Non-Data File'
+
+class LieteNode(Node):
+    def __init__(self, name, parent=None):
+        super(LieteNode, self).__init__(name,parent)
+        self.name = name
+        self.n_channels = 7
+        self.fs = 256
+
+    def prepare_for_plot(self):
+        m = np.memmap(self.get_full_path(),dtype='>i4',mode= 'r')
+        return m.reshape((-1,self.n_channels)), self.fs
+
+    def type_info(self):
+        return 'Leite DataFile'
 
 class HDF5FileNode(Node):
     def __init__(self, name, parent=None):

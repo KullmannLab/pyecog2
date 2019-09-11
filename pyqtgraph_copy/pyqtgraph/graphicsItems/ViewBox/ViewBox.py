@@ -134,8 +134,6 @@ class ViewBox(GraphicsWidget):
                         the axes of any other view to this one.
         ==============  =============================================================
         """
-        self.yscale_data = 1
-
         GraphicsWidget.__init__(self, parent)
         self.name = None
         self.linksBlocked = False
@@ -440,6 +438,7 @@ class ViewBox(GraphicsWidget):
             ch.setParentItem(None)
 
     def resizeEvent(self, ev):
+        print('resize event')
         self._matrixNeedsUpdate = True
         self.linkedXChanged()
         self.linkedYChanged()
@@ -1040,6 +1039,7 @@ class ViewBox(GraphicsWidget):
         if (self.state['autoRange'][0] is not False) or (self.state['autoRange'][1] is not False):
             self._autoRangeNeedsUpdate = True
             self.update()
+
         #self.updateAutoRange()
 
     def _invertAxis(self, ax, inv):
@@ -1180,7 +1180,6 @@ class ViewBox(GraphicsWidget):
 
     def wheelEvent(self, ev, axis=None):
 
-
         if axis in (0, 1):
             mask = [False, False]
             mask[axis] = self.state['mouseEnabled'][axis]
@@ -1191,30 +1190,20 @@ class ViewBox(GraphicsWidget):
         center = Point(fn.invertQTransform(self.childGroup.transform()).map(ev.pos()))
         # JC added
         if ev.modifiers() == QtCore.Qt.ShiftModifier:
-            #self.yscale_data *= s[1]
             for child in self.childGroup.childItems()[:]:
-                if isinstance(child, InfiniteLine ):
-                    #print('inf line caught')
-                    continue
-                m_old = child.transform()
-                m = QtGui.QTransform()
-                #print('S is:', s)
-                m.scale(1, m_old.m22()*s[1])
-                #print(m.m22(), m.m11())
-                #self.childGroup.childItems()[0].setTransform(m)
-                #self.childGroup.setTransform(m)
-                ev.accept()
-                child.setTransform(m)
-                #child.update()
-            print('m old', m_old, m_old.m22())
-            print(self.childGroup)
-            child_trans = self.childGroup.transform()
-            print('m child_trans', child_trans, child_trans.m22())
+                if hasattr(child, 'accept_mousewheel_transformations'):
+                    m_old = child.transform()
+                    m = QtGui.QTransform()
+                    m.scale(1, m_old.m22()*s[1])
+                    child.setTransform(m)
+            ev.accept()
+            child_group_transformation = self.childGroup.transform()
             #self.childGroup.update()
             #self.autoRange()
             #self.updateAutoRange()
             #self.sigTransformChanged.emit(self)  ## segfaults here: 1
-
+            print(self.viewRange())
+            print(self.targetRange())
             return
         self._resetTarget()
         self.scaleBy(s, center)

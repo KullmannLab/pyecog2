@@ -12,7 +12,7 @@ from PyQt5.QtCore import QThread, pyqtSignal, Qt, QRect, QTimer
 import pyqtgraph_copy.pyqtgraph as pg
 
 from tree_model_and_nodes import FileTreeProxyModel, TreeModel
-from tree_model_and_nodes import FileNode, DirectoryNode, ChannelNode, HDF5FileNode
+from tree_model_and_nodes import FileNode, DirectoryNode, ChannelNode, HDF5FileNode, LieteNode
 
 class FileTreeView(QtWidgets.QTreeView):
 
@@ -26,13 +26,13 @@ class FileTreeView(QtWidgets.QTreeView):
         print(event)
 
     def selectionChanged(self, *args):
-        #print('selection changed', args)
+        print('selection changed', args)
         super(FileTreeView, self).selectionChanged(*args)
         index = self.currentIndex()
         self.model().data(index, TreeModel.prepare_for_plot_role)
 
     def setSelection(self, *args):
-        #print('setSelection', args)
+        print('setSelection', args)
         super(FileTreeView, self).setSelection(*args)
 
 class FileTreeElement():
@@ -47,7 +47,8 @@ class FileTreeElement():
 
     '''
     def __init__(self, parent=None):
-        self.parent = parent # the window holding both this file tree element and the
+
+        self.mainwindow_parent = parent # the window holding both this file tree element and the
         # paired graphcis view
 
         # initally construct filter elements
@@ -77,9 +78,16 @@ class FileTreeElement():
 
     def connect_model_to_parent_paired_graph(self):
         # now it feels we are getting into pretty poor coding
-        if self.parent is not None:
+        if self.mainwindow_parent is not None:
             self.model.plot_node_signal.connect(
-                self.parent.paired_graphics_view.set_scenes_plot_data)
+                self.mainwindow_parent.paired_graphics_view.set_scenes_plot_data)
+
+    #def set_live_rootnode(self, filename):
+    #    self.root_node = FileNode(filename)
+    #    self.model = TreeModel(self.None, parent=None)
+        #self.tree_view.setModel(self.model)
+        #self.connect_model_to_parent_paired_graph()
+
 
     def set_rootnode_from_folder(self, root_folder, filetype_restriction=None):
         '''resets the tree self.model'''
@@ -134,7 +142,18 @@ class FileTreeElement():
                 name_to_node[fullname] = child_node
             for filename in filenames:
                 fullname = os.path.join(directory, filename)
-                child_node = FileNode(filename, parent=node)
+                if filename.endswith('.npy'):
+                    child_node = LieteNode(filename, parent=node)
+                elif filename.endswith('.h5'):
+                    child_node = HDF5FileNode(filename, parent=node)
+                    try:
+                        tids = eval('['+fullname.split('[')[1].split(']')[0]+']')
+                        for tid in tids:
+                            channel_node = ChannelNode(str(tid), parent=child_node)
+                    except IndexError:
+                        print('h5 with no children detected:', fullname)
+                else:
+                    child_node = FileNode(filename, parent=node)
                 name_to_node[fullname] = child_node
         return root
 

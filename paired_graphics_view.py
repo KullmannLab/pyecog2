@@ -37,6 +37,7 @@ class PairedGraphicsView():
     def __init__(self):
         # todo clean this method up!
         self.build_splitter()
+        self.scale = None # transform on the childitems of plot
 
         overview_layout_widget  = pg.GraphicsLayoutWidget()
         self.overview_plot = overview_layout_widget.addPlot()
@@ -52,11 +53,14 @@ class PairedGraphicsView():
         self.insetview_plot.showGrid(x=True,y=True, alpha=0.1)
         self.insetview_plot.setLabel('bottom', text='Time',
                                      units='s')
-        self.insetview_plot.setXRange(20,40) #hacky
+
+        self.insetview_plot.setXRange(0,60) #hacky
+        self.overview_plot.vb.setXRange(0,3600) #hacky
+        self.insetview_plot.vb.state['autoRange'] = [False, False]
+        self.overview_plot.vb.state['autoRange'] = [False, False]
         # prevent scrolling past 0
         self.insetview_plot.vb.setLimits(xMin = 0)
         self.overview_plot.vb.setLimits(xMin = 0)
-
         # prevent scrolling past 3600 THIS IS A TERRIBLE HARDCODE # todo
         self.insetview_plot.vb.setLimits(xMax = 3600)
         self.overview_plot.vb.setLimits(xMax = 3600)
@@ -90,6 +94,7 @@ class PairedGraphicsView():
 
     def set_scenes_plot_data(self, arr, fs, pens=None):
         '''
+        # Todo: need to handling changing number of channels...
         # Not entirely clear the differences between this and
         set_plotitem_data is snesnible
 
@@ -97,91 +102,64 @@ class PairedGraphicsView():
         fs  - sampling frequency
         pens - a list of len channels containing pens
         '''
-        # we need to calculate scales here if channel dict is none
-        scale = 1
-        self.overview_plot.vb.yscale_data = 0.001
-        self.insetview_plot.vb.yscale_data = 0.001
-        x = np.linspace(0,arr.shape[0]/fs, arr.shape[0])
+        # we need to handle if channel not seen before
+        # 6 std devations
+        if self.scale is None: # running for the first time
+            self.scale = 1 / (6*np.mean(np.std(arr, axis =0, keepdims=True), axis=1))
+            self.insetview_plot.vb.setYRange(-2,arr.shape[1]+1)
+            self.overview_plot.vb.setYRange(-2,arr.shape[1]+1)
+            self.insetview_plot.vb.setXRange(0,5)
+
         for i in range(arr.shape[1]):
             if pens is None:
                 pen = pg.mkPen('k')
             else:
                 pen = pen[i]
             y = arr[:, i]
-            self.set_plotitem_data(x, y, fs, pen, i, scale)
+            self.set_plotitem_data(y, fs, pen, i, self.scale)
         #self.clear_unused_channels() # to implement, not sure the best way
+        #self.test_children()
 
-        self.test_children()
+
 
     def test_children(self):
-        print('Enter here debugging code!')
+        #print('Enter here debugging code!')
         vbo = self.overview_plot.vb
         vbi = self.insetview_plot.vb
-        print(vbo.childGroup.boundingRect())
+        #print(vbo.childGroup.boundingRect())
         child_group = vbo.childGroup
-        print(child_group.childItems())
-        print(vbo.childrenBounds())
+        #print(child_group.childItems())
+        #print(vbo.childrenBounds())
 
-    def set_plotitem_data(self, x, y, fs, pen, index, init_scale):
+    def set_plotitem_data(self, y, fs, pen, index, init_scale):
         '''
         If the
 
         If the index exists within the plotitem dict we just set the data, else create
         or delete from the dict. (#todo)
 
-        init_scale is the initial scaling of the channels
+        init_scale is the initial scaling of the channels. Set transform
 
         '''
-        # todo stop using the vb have it added automatically when add the item to plot
+        # todo stop passing the vb to construction have it added automatically when add the item to plot
         if index not in self.channel_plotitem_dict.keys():
             self.channel_plotitem_dict[index] = {}
-            self.channel_plotitem_dict[index]['overview'] = PyecogPlotCurveItem(x, y, fs,viewbox=self.overview_plot.vb)
-            self.channel_plotitem_dict[index]['insetview'] = PyecogPlotCurveItem(x, y, fs,viewbox=self.insetview_plot.vb)
+            self.channel_plotitem_dict[index]['overview'] = PyecogPlotCurveItem( y, fs,
+                                                                                viewbox=self.overview_plot.vb)
+            self.channel_plotitem_dict[index]['insetview'] = PyecogPlotCurveItem(y, fs,
+                                                                                viewbox=self.insetview_plot.vb)
             self.channel_plotitem_dict[index]['overview'].setY(index)
             self.channel_plotitem_dict[index]['insetview'].setY(index)
-            #self.channel_plotitem_dict[index]['overview'].setScale(0.1)
-            #self.channel_plotitem_dict[index]['transform'] = self.channel_plotitem_dict[index]['insetview'].transform()
-            mat = self.channel_plotitem_dict[index]['overview'].transform()
-
-            #print(self.channel_plotitem_dict[index]['overview'].ItemIgnoresTransformations)
-            #print(QtWidgets.QGraphicsItem.ItemIgnoresTransformations)
-            #print()
-            #print(mat.m22())
-            m = QtGui.QTransform()
-            m.scale(1, 0.01)
-            mat = mat.scale(1,0.01)
-            #print(mat.m22())
-            #self.channel_plotitem_dict[index]['overview'].setTransform(m)
-            #mat = self.channel_plotitem_dict[index]['overview'].transform()
-            #print(mat.m22())
-            #self.channel_plotitem_dict[index]['overview'].setTransform(mat)
-            #print(self.channel_plotitem_dict[index]['transform'])
-            #self.channel_plotitem_dict[index]['overview'].setTransform(self.channel_plotitem_dict[index]['transform'].scale(1,0.001))
-
-            #self.channel_plotitem_dict[index]['overview'].setScale(1, 0.1)
-            #self.channel_plotitem_dict[index]['insetview'].setScale(1,init_scale)
+            m = QtGui.QTransform().scale(1, init_scale)
+            self.channel_plotitem_dict[index]['overview'].setTransform(m)
+            self.channel_plotitem_dict[index]['insetview'].setTransform(m)
             self.overview_plot.addItem(self.channel_plotitem_dict[index]['overview'])
             self.insetview_plot.addItem(self.channel_plotitem_dict[index]['insetview'])
-            trans = self.channel_plotitem_dict[index]['overview'].viewTransform()
-            #print(trans, trans.m22(), trans.m23())
-            #print(self.channel_plotitem_dict[index]['overview'].parentItem())
-            child_group = self.overview_plot.vb.childGroup
-            #print(child_group.childItems())
-            #print(child_group.transform().m11())
 
-        self.channel_plotitem_dict[index]['overview'].set_data(x,y,fs)
-        self.channel_plotitem_dict[index]['insetview'].set_data(x,y,fs)
+        self.channel_plotitem_dict[index]['overview'].set_data(y,fs)
+        self.channel_plotitem_dict[index]['insetview'].set_data(y,fs)
 
-
-        #plot_curve_item.setClickable(True, width=-1)
-        #plot_curve_item.setFlags(QtWidgets.QGraphicsItem.ItemIsMovable);
-        #plot_curve_item.setFlags(QtWidgets.QGraphicsItem.ItemIsSelectable);
-        #self.insetview_plot.addItem(plot_curve_item)
-
-
-        # ultimately these guys should inherit from qgraphicsobject
-        # therefore xChanged signal should be being emiilted
-        #plot_curve_item.xChanged.connect(self.graphics_object_xchanged)
+        self.overview_plot.vb.setXRange(0, y.shape[0]/fs, padding=0)
 
     def graphics_object_xchanged(self):
         print('xChanged grahics object')

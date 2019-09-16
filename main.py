@@ -148,6 +148,7 @@ class MainWindow(QWidget):
         self.actionLiveUpdate.triggered.connect(self.load_live_recording)
 
         self.menu_help = self.menu_bar.addMenu("Help")
+        self.menu_bar.setNativeMenuBar(False)
 
         #self.menubar.addMenu("Edit")
         #self.menubar.addMenu("View")

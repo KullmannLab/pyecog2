@@ -47,12 +47,12 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
             return 0
 
         x_range = [i*self.fs for i in self.parent_viewbox.viewRange()[0]]
-        print(x_range)
+        #print(x_range)
         start = max(0,int(x_range[0])-1)
         stop  = min(len(self.y), int(x_range[1]+2))
-        print(start, stop)
+        #print(start, stop)
         if stop-start < 1:
-            print('pyecog plotcurve item didnt update')
+            #print('pyecog plotcurve item didnt update')
             return 0
 
         # Decide by how much we should downsample
@@ -62,7 +62,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
             visible_data = self.y[start:stop]
             visible_time = np.linspace(start/self.fs, stop/self.fs, len(visible_data))#visible_time[:targetPtr]
             scale = 1
-            print(start, stop)
+            #print(start, stop)
         else:
             # Here convert data into a down-sampled array suitable for visualizing.
             # Must do this piecewise to limit memory usage.

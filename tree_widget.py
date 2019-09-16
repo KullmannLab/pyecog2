@@ -142,7 +142,7 @@ class FileTreeElement():
                 name_to_node[fullname] = child_node
             for filename in filenames:
                 fullname = os.path.join(directory, filename)
-                if filename.endswith('.npy'):
+                if filename.endswith('.leite'):
                     child_node = LieteNode(filename, parent=node)
                 elif filename.endswith('.h5'):
                     child_node = HDF5FileNode(filename, parent=node)

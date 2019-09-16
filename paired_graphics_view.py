@@ -104,6 +104,7 @@ class PairedGraphicsView():
         '''
         # we need to handle if channel not seen before
         # 6 std devations
+
         if self.scale is None: # running for the first time
             self.scale = 1 / (6*np.mean(np.std(arr, axis =0, keepdims=True), axis=1))
             self.insetview_plot.vb.setYRange(-2,arr.shape[1]+1)

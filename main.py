@@ -1,4 +1,4 @@
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import QMenuBar, QGridLayout, QApplication, QWidget, QPlainTextEdit
 from PyQt5.QtWidgets import QFileDialog
 import sys, os
@@ -39,12 +39,12 @@ class MainWindow(QWidget):
         # Below here we have code for debugging and development
 
         #root_folder = self.tree_element.get_default_folder()
-        folder = '/media/jonathan/DATA/seizure_data/gabrielle/All_DATA/EEG DATA CRISPRa Kcna1 2018/4_CRISP Oct-Nov 2018/CRISPRa_h5s BASELINE'
+        #folder = '/media/jonathan/DATA/seizure_data/gabrielle/All_DATA/EEG DATA CRISPRa Kcna1 2018/4_CRISP Oct-Nov 2018/CRISPRa_h5s BASELINE'
         #folder = '/media/jonathan/DATA/seizure_data/gabrielle/All_DATA/EEG DATA CRISPRa Kcna1 2018/4_CRISP Oct-Nov 2018'
 
-        self.tree_element.set_rootnode_from_folder(folder, filetype_restriction = '.h5')
+        #self.tree_element.set_rootnode_from_folder(folder, filetype_restriction = '.h5')
 
-        self.tree_element.set_rootnode_from_folder(os.getcwd())
+        #self.tree_element.set_rootnode_from_folder(os.getcwd())
         #testing automatic selection
         #self.tree_element.tree_view.setRootIndex()
         #index = self.tree_element.tree_view.currentIndex()
@@ -100,11 +100,11 @@ class MainWindow(QWidget):
         index = self.tree_element.tree_view.currentIndex()
         self.tree_element.model.data(index, TreeModel.prepare_for_plot_role)
         full_xrange = self.paired_graphics_view.overview_plot.vb.viewRange()[0][1]
-        print(full_xrange)
+        #print(full_xrange)
         xmin,xmax = self.paired_graphics_view.insetview_plot.vb.viewRange()[0]
         x_range=xmax-xmin
         if full_xrange > x_range:
-            print('called set xrange')
+            #print('called set xrange')
             self.paired_graphics_view.insetview_plot.vb.setXRange(full_xrange-x_range,full_xrange, padding=0)
 
 
@@ -126,13 +126,16 @@ class MainWindow(QWidget):
         self.menu_file = self.menu_bar.addMenu("File")
         self.action_load_general    = self.menu_file.addAction("(Tempory) Load directory")
         self.action_load_h5    = self.menu_file.addAction("Load h5 directory")
-        self.action_load_liete = self.menu_file.addAction("Load liete directory")
+        self.action_load_liete = self.menu_file.addAction("Load leite directory")
         self.action_save       = self.menu_file.addAction("Save")
         self.menu_file.addSeparator()
         self.actionLiveUpdate  = self.menu_file.addAction("Live Recording")
         self.actionLiveUpdate.setCheckable(True)
         self.actionLiveUpdate.toggled.connect(self.load_live_recording)
-        self.actionLiveUpdate.setChecked(True)
+        self.actionLiveUpdate.setChecked(False)
+        #self.live_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_L), self)
+        #self.live_shortcut.connect()
+        self.actionLiveUpdate.setShortcut('Ctrl+L')
 
         self.menu_file.addSeparator()
         self.action_quit       = self.menu_file.addAction("Quit")

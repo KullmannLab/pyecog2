@@ -2,7 +2,7 @@ import sys, os
 from PyQt5 import QtGui, QtCore, QtWidgets, uic
 import h5py
 import numpy as np
-
+import json
 from h5loader import H5File
 
 # rename module to be filetree model?
@@ -13,7 +13,7 @@ class TreeModel(QtCore.QAbstractItemModel):
     # sends an array of data and their sampling freq in hz
     # maybe memmap is better?
     plot_node_signal = QtCore.pyqtSignal(np.ndarray, int)
-
+    #plot_node_signal = QtCore.pyqtSignal()
     '''
     Naming convention (not right at the moment)
     lowerUpper is overidded modules
@@ -111,7 +111,9 @@ class TreeModel(QtCore.QAbstractItemModel):
         if role == TreeModel.prepare_for_plot_role:
             if hasattr(node, 'prepare_for_plot'):
                 arr, fs = node.prepare_for_plot()
-                self.plot_node_signal.emit(arr, fs)
+                if arr is not None:
+                    self.plot_node_signal.emit(arr, fs)
+
 
         if role == QtCore.Qt.DisplayRole or role == QtCore.Qt.EditRole:
             if index.column() == 0:
@@ -274,12 +276,29 @@ class LieteNode(Node):
     def __init__(self, name, parent=None):
         super(LieteNode, self).__init__(name,parent)
         self.name = name
-        self.n_channels = 7
-        self.fs = 256
+        self.metadata = None
+        self.old_memmap_shape = None
 
     def prepare_for_plot(self):
-        m = np.memmap(self.get_full_path(),dtype='>i4',mode= 'r')
+        if self.metadata is None:
+            self.load_metadata()
+            self.n_channels = self.metadata['no_channels']
+            self.fs = self.metadata['fs']
+            self.dtype = self.metadata['data_format']
+
+        m = np.memmap(self.get_full_path(),dtype=self.dtype, mode= 'r')
+        if self.old_memmap_shape == m.shape:
+            return None, None
+
+        self.old_memmap_shape = m.shape
         return m.reshape((-1,self.n_channels)), self.fs
+
+    def load_metadata(self):
+        '''Demo file creation notebook'''
+        meta_filepath = self.get_full_path().split('.')[0] + '.meta'
+
+        with open(meta_filepath, 'r') as json_file:
+            self.metadata = json.load(json_file)
 
     def type_info(self):
         return 'Leite DataFile'

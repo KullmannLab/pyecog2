@@ -2,6 +2,7 @@ from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import QMenuBar, QGridLayout, QApplication, QWidget, QPlainTextEdit, QDockWidget, QMainWindow, QFileDialog
 from PyQt5.QtCore import Qt, QSettings, QByteArray
 import sys, os
+import webbrowser
 import numpy as np
 import pyqtgraph_copy.pyqtgraph as pg
 
@@ -21,13 +22,7 @@ class MainWindow(QMainWindow):
 
         # Initialize Main Window geometry
         self.title = "PyEcog Main"
-        self.top = 10
-        self.left = 10
-        self.width = 800
-        self.height = 400
-        self.setWindowIcon(QtGui.QIcon("icon.png"))
-        self.setWindowTitle(self.title)
-        self.setGeometry(self.left, self.top, self.width, self.height)
+        self.init_geometry()
         # self.dockmanager = DockManager(self)/
 
         # Populate Main window with widgets
@@ -48,15 +43,27 @@ class MainWindow(QMainWindow):
         self.dock_list['File Tree'].setAllowedAreas(Qt.RightDockWidgetArea | Qt.LeftDockWidgetArea | Qt.TopDockWidgetArea | Qt.BottomDockWidgetArea)
         self.dock_list['File Tree'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
+        self.dock_list['Text'] = QDockWidget("Text", self)
+        self.dock_list['Text'].setWidget(QPlainTextEdit())
+        self.dock_list['Text'].setObjectName("Text")
+
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['Traces'])
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['File Tree'])
+        self.addDockWidget(Qt.BottomDockWidgetArea,self.dock_list['Text'])
+
+        settings = QSettings("PyEcog","PyEcog")
+        settings.beginGroup("StandardMainWindow")
+        settings.setValue("windowGeometry", self.saveGeometry())
+        settings.setValue("windowState", self.saveState())
+        settings.endGroup()
 
         self.settings = QSettings("PyEcog", "PyEcog")
         print("reading cofigurations from: " + self.settings.fileName())
         self.settings.beginGroup("MainWindow")
+        print(self.settings.value("windowGeometry", type=QByteArray))
         self.restoreGeometry(self.settings.value("windowGeometry", type=QByteArray))
         self.restoreState(self.settings.value("windowState", type=QByteArray))
-
+        #
         # for dock_name in self.dock_list.keys(): # This is unessecary, because restoreState of the parent window already works
         #     self.settings.beginGroup(dock_name)
         #     self.dock_list[dock_name].restoreGeometry(self.settings.value("windowGeometry", type=QByteArray))
@@ -91,6 +98,22 @@ class MainWindow(QMainWindow):
         print('Size: %d x %d' % (size.width(), size.height()))
         rect = screen.availableGeometry()
         print('Available: %d x %d' % (rect.width(), rect.height()))
+        return (size,rect)
+
+    def init_geometry(self):
+        (size, rect) = self.get_available_screen()
+        self.setWindowIcon(QtGui.QIcon("icon.png"))
+        self.setWindowTitle(self.title)
+        self.setGeometry(0, 0, size.width(), size.height())
+
+    def reset_geometry(self):
+        self.settings = QSettings("PyEcog", "PyEcog")
+        print("reading cofigurations from: " + self.settings.fileName())
+        self.settings.beginGroup("StandardMainWindow")
+        print(self.settings.value("windowGeometry", type=QByteArray))
+        self.restoreGeometry(self.settings.value("windowGeometry", type=QByteArray))
+        self.restoreState(self.settings.value("windowState", type=QByteArray))
+        self.show()
 
     def load_h5_directory(self):
         print('0penening only folders with h5 files')
@@ -148,10 +171,17 @@ class MainWindow(QMainWindow):
         if self.actionLiveUpdate.isChecked():
             self.timer.start(100)
 
+    def open_git_url(self):
+        webbrowser.open('https://github.com/jcornford/pyecog2')
+
+    def open_docs_url(self):
+        webbrowser.open('https://jcornford.github.io/pyecog_docs/')
+
+
 
 
     def build_menubar(self):
-        self.menu_bar = QMenuBar()
+        self.menu_bar = self.menuBar()
 
         self.menu_file = self.menu_bar.addMenu("File")
         self.action_load_general    = self.menu_file.addAction("(Tempory) Load directory")
@@ -178,6 +208,12 @@ class MainWindow(QMainWindow):
         self.actionLiveUpdate.triggered.connect(self.load_live_recording)
 
         self.menu_help = self.menu_bar.addMenu("Help")
+        self.action_reset_geometry    = self.menu_help.addAction("Reset Main Window layout")
+        self.action_reset_geometry.triggered.connect(self.reset_geometry)
+        self.action_go_to_git = self.menu_help.addAction("Go to Git Repository")
+        self.action_go_to_git.triggered.connect(self.open_git_url)
+        self.action_go_to_doc = self.menu_help.addAction("Go to web documentation")
+        self.action_go_to_doc.triggered.connect(self.open_docs_url)
         self.menu_bar.setNativeMenuBar(False)
 
         #self.menubar.addMenu("Edit")
@@ -186,11 +222,6 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         print('closing')
         settings = QSettings("PyEcog","PyEcog")
-        #
-        # settings.beginGroup("Docks")
-        # self.dockmanager.saveState(settings)
-        # settings.endGroup()
-
         settings.beginGroup("MainWindow")
         settings.setValue("windowGeometry", self.saveGeometry())
         settings.setValue("windowState", self.saveState())

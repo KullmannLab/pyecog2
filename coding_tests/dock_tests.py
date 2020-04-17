@@ -19,8 +19,11 @@ class DockDialog(QMainWindow):
         self.setWindowIcon(QtGui.QIcon("icon.png"))
         self.setWindowTitle(self.title)
         self.setGeometry(self.left, self.top, self.width, self.height)
+
         self.createDockWidget()
-        self.settings = QSettings("UCL","WPT")
+
+        self.settings = QSettings("PyEcog","PyEcog_tests")
+        print("reading cofigurations from: " + self.settings.fileName())
         self.settings.beginGroup("MainWindow")
         self.restoreGeometry(self.settings.value("windowGeometry", type=QByteArray))
         self.restoreState(self.settings.value("windowState", type=QByteArray))
@@ -44,7 +47,7 @@ class DockDialog(QMainWindow):
 
     def closeEvent(self, event):
         print('closing')
-        settings = QSettings("UCL","WPT")
+        settings = QSettings("PyEcog","PyEcog_tests")
         settings.beginGroup("MainWindow")
         windowGeometry = self.saveGeometry()
         settings.setValue("windowGeometry", windowGeometry)

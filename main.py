@@ -1,6 +1,6 @@
 from PyQt5 import QtCore, QtWidgets, QtGui
-from PyQt5.QtWidgets import QMenuBar, QGridLayout, QApplication, QWidget, QPlainTextEdit
-from PyQt5.QtWidgets import QFileDialog
+from PyQt5.QtWidgets import QMenuBar, QGridLayout, QApplication, QWidget, QPlainTextEdit, QDockWidget, QMainWindow, QFileDialog
+from PyQt5.QtCore import Qt, QSettings, QByteArray
 import sys, os
 import numpy as np
 import pyqtgraph_copy.pyqtgraph as pg
@@ -9,7 +9,7 @@ from tree_model_and_nodes import FileTreeProxyModel, TreeModel, FileNode, Direct
 from paired_graphics_view import PairedGraphicsView
 from tree_widget import FileTreeElement
 #
-class MainWindow(QWidget):
+class MainWindow(QMainWindow):
     '''
     basicvally handles the combination of the the threeemenu bar and the paired view
 
@@ -18,22 +18,52 @@ class MainWindow(QWidget):
     '''
     def __init__(self):
         super().__init__()
-        layout = QGridLayout()
-        self.setLayout(layout)
 
-        # create elements of the main window
+        # Initialize Main Window geometry
+        self.title = "PyEcog Main"
+        self.top = 10
+        self.left = 10
+        self.width = 800
+        self.height = 400
+        self.setWindowIcon(QtGui.QIcon("icon.png"))
+        self.setWindowTitle(self.title)
+        self.setGeometry(self.left, self.top, self.width, self.height)
+        # self.dockmanager = DockManager(self)/
+
+        # Populate Main window with widgets
+        # self.createDockWidget()
         self.build_menubar()
+        self.dock_list = {}
         self.paired_graphics_view = PairedGraphicsView()
+        self.dock_list['Traces'] = QDockWidget("Traces", self)
+        self.dock_list['Traces'].setWidget(self.paired_graphics_view.splitter)
+        self.dock_list['Traces'].setFloating(False)
+        self.dock_list['Traces'].setObjectName("Traces")
+
         self.tree_element = FileTreeElement(parent=self)
-        # note we pass in the
+        self.dock_list['File Tree'] = QDockWidget("File Tree", self)
+        self.dock_list['File Tree'].setWidget(self.tree_element.widget)
+        self.dock_list['File Tree'].setFloating(False)
+        self.dock_list['File Tree'].setObjectName("File Tree")
+        self.dock_list['File Tree'].setAllowedAreas(Qt.RightDockWidgetArea | Qt.LeftDockWidgetArea | Qt.TopDockWidgetArea | Qt.BottomDockWidgetArea)
+        self.dock_list['File Tree'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
-        # make horizontal splitter to hold the filetree view and plots
-        splitter_h   = QtWidgets.QSplitter(parent=None)
-        splitter_h.addWidget(self.tree_element.widget)
-        splitter_h.addWidget(self.paired_graphics_view.splitter)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['Traces'])
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['File Tree'])
 
-        layout.setMenuBar(self.menu_bar)
-        layout.addWidget(splitter_h, 0, 0)
+        self.settings = QSettings("PyEcog", "PyEcog")
+        print("reading cofigurations from: " + self.settings.fileName())
+        self.settings.beginGroup("MainWindow")
+        self.restoreGeometry(self.settings.value("windowGeometry", type=QByteArray))
+        self.restoreState(self.settings.value("windowState", type=QByteArray))
+
+        # for dock_name in self.dock_list.keys(): # This is unessecary, because restoreState of the parent window already works
+        #     self.settings.beginGroup(dock_name)
+        #     self.dock_list[dock_name].restoreGeometry(self.settings.value("windowGeometry", type=QByteArray))
+        #     # self.dock_list[dock_name].restoreState(self.settings.value("windowState", type=QByteArray))
+
+        # self.show()
+
 
         ########################################################
         # Below here we have code for debugging and development
@@ -153,6 +183,26 @@ class MainWindow(QWidget):
         #self.menubar.addMenu("Edit")
         #self.menubar.addMenu("View")
 
+    def closeEvent(self, event):
+        print('closing')
+        settings = QSettings("PyEcog","PyEcog")
+        #
+        # settings.beginGroup("Docks")
+        # self.dockmanager.saveState(settings)
+        # settings.endGroup()
+
+        settings.beginGroup("MainWindow")
+        settings.setValue("windowGeometry", self.saveGeometry())
+        settings.setValue("windowState", self.saveState())
+        settings.endGroup()
+        #
+        # for dock_name in self.dock_list.keys():
+        #     settings.beginGroup(dock_name)
+        #     settings.setValue("windowGeometry", self.dock_list[dock_name].saveGeometry())
+        #     # settings.setValue("windowState", self.dock_list[dock_name].saveState())
+        #     settings.endGroup()
+
+        self.saveState()
 
 if __name__ == '__main__':
 

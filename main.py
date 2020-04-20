@@ -30,15 +30,11 @@ class MainWindow(QMainWindow):
         self.build_menubar()
         self.dock_list = {}
         self.paired_graphics_view = PairedGraphicsView()
-        self.dock_list['Traces'] = QDockWidget("Traces", self)
-        self.dock_list['Traces'].setWidget(self.paired_graphics_view.splitter)
-        self.dock_list['Traces'].setFloating(False)
-        self.dock_list['Traces'].setObjectName("Traces")
 
         self.tree_element = FileTreeElement(parent=self)
         self.dock_list['File Tree'] = QDockWidget("File Tree", self)
         self.dock_list['File Tree'].setWidget(self.tree_element.widget)
-        self.dock_list['File Tree'].setFloating(False)
+        # self.dock_list['File Tree'].setFloating(False)
         self.dock_list['File Tree'].setObjectName("File Tree")
         self.dock_list['File Tree'].setAllowedAreas(Qt.RightDockWidgetArea | Qt.LeftDockWidgetArea | Qt.TopDockWidgetArea | Qt.BottomDockWidgetArea)
         self.dock_list['File Tree'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
@@ -47,7 +43,7 @@ class MainWindow(QMainWindow):
         self.dock_list['Text'].setWidget(QPlainTextEdit())
         self.dock_list['Text'].setObjectName("Text")
 
-        self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['Traces'])
+        self.setCentralWidget(self.paired_graphics_view.splitter)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['File Tree'])
         self.addDockWidget(Qt.BottomDockWidgetArea,self.dock_list['Text'])
 

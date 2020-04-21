@@ -34,7 +34,7 @@ class MainWindow(QMainWindow):
         self.tree_element = FileTreeElement(parent=self)
         self.dock_list['File Tree'] = QDockWidget("File Tree", self)
         self.dock_list['File Tree'].setWidget(self.tree_element.widget)
-        # self.dock_list['File Tree'].setFloating(False)
+        self.dock_list['File Tree'].setFloating(False)
         self.dock_list['File Tree'].setObjectName("File Tree")
         self.dock_list['File Tree'].setAllowedAreas(Qt.RightDockWidgetArea | Qt.LeftDockWidgetArea | Qt.TopDockWidgetArea | Qt.BottomDockWidgetArea)
         self.dock_list['File Tree'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
@@ -56,7 +56,7 @@ class MainWindow(QMainWindow):
         self.settings = QSettings("PyEcog", "PyEcog")
         print("reading cofigurations from: " + self.settings.fileName())
         self.settings.beginGroup("MainWindow")
-        print(self.settings.value("windowGeometry", type=QByteArray))
+        # print(self.settings.value("windowGeometry", type=QByteArray))
         self.restoreGeometry(self.settings.value("windowGeometry", type=QByteArray))
         self.restoreState(self.settings.value("windowState", type=QByteArray))
         #
@@ -104,7 +104,7 @@ class MainWindow(QMainWindow):
 
     def reset_geometry(self):
         self.settings = QSettings("PyEcog", "PyEcog")
-        print("reading cofigurations from: " + self.settings.fileName())
+        # print("reading cofigurations from: " + self.settings.fileName())
         self.settings.beginGroup("StandardMainWindow")
         print(self.settings.value("windowGeometry", type=QByteArray))
         self.restoreGeometry(self.settings.value("windowGeometry", type=QByteArray))

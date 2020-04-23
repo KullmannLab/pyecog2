@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QMenuBar, QGridLayout, QApplication, QWidget, QPlain
 from PyQt5.QtCore import Qt, QSettings, QByteArray
 import sys, os
 import webbrowser
+from coding_tests.VideoPlayer import VideoWindow
 import numpy as np
 import pyqtgraph_copy.pyqtgraph as pg
 
@@ -22,11 +23,14 @@ class MainWindow(QMainWindow):
 
         # Initialize Main Window geometry
         self.title = "PyEcog Main"
-        self.init_geometry()
+        (size, rect) = self.get_available_screen()
+        self.setWindowIcon(QtGui.QIcon("icon.png"))
+        self.setWindowTitle(self.title)
+        self.setGeometry(0, 0, size.width(), size.height())
         # self.dockmanager = DockManager(self)/
 
         # Populate Main window with widgets
-        # self.createDockWidget()
+        # self.createDockWidget()y
         self.build_menubar()
         self.dock_list = {}
         self.paired_graphics_view = PairedGraphicsView()
@@ -43,9 +47,15 @@ class MainWindow(QMainWindow):
         self.dock_list['Text'].setWidget(QPlainTextEdit())
         self.dock_list['Text'].setObjectName("Text")
 
+        self.dock_list['Video'] = QDockWidget("Video", self)
+        self.dock_list['Video'].setWidget(VideoWindow())
+        self.dock_list['Video'].setObjectName("Video")
+        self.dock_list['Video'].setFloating(True)
+        self.dock_list['Video'].hide()
+
         self.setCentralWidget(self.paired_graphics_view.splitter)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['File Tree'])
-        self.addDockWidget(Qt.BottomDockWidgetArea,self.dock_list['Text'])
+        self.addDockWidget(Qt.LeftDockWidgetArea,self.dock_list['Text'])
 
         settings = QSettings("PyEcog","PyEcog")
         settings.beginGroup("StandardMainWindow")
@@ -96,12 +106,6 @@ class MainWindow(QMainWindow):
         print('Available: %d x %d' % (rect.width(), rect.height()))
         return (size,rect)
 
-    def init_geometry(self):
-        (size, rect) = self.get_available_screen()
-        self.setWindowIcon(QtGui.QIcon("icon.png"))
-        self.setWindowTitle(self.title)
-        self.setGeometry(0, 0, size.width(), size.height())
-
     def reset_geometry(self):
         self.settings = QSettings("PyEcog", "PyEcog")
         # print("reading cofigurations from: " + self.settings.fileName())
@@ -140,7 +144,7 @@ class MainWindow(QMainWindow):
         dialog.setDirectory(home)
         '''
         dialog.setOption(QFileDialog.DontUseNativeDialog, True)
-        dialog.setOption(QFileDialog.ShowDirsOnly, False);
+        dialog.setOption(QFileDialog.ShowDirsOnly, False)
         dialog.exec()
         return dialog.selectedFiles()[0]
 
@@ -173,12 +177,14 @@ class MainWindow(QMainWindow):
     def open_docs_url(self):
         webbrowser.open('https://jcornford.github.io/pyecog_docs/')
 
-
-
+    def open_video_window(self):
+        self.dock_list['Video'].show()
+        self.show()
 
     def build_menubar(self):
         self.menu_bar = self.menuBar()
 
+        # FILE section
         self.menu_file = self.menu_bar.addMenu("File")
         self.action_load_general    = self.menu_file.addAction("(Tempory) Load directory")
         self.action_load_h5    = self.menu_file.addAction("Load h5 directory")
@@ -195,7 +201,6 @@ class MainWindow(QMainWindow):
 
         self.menu_file.addSeparator()
         self.action_quit       = self.menu_file.addAction("Quit")
-
         self.action_load_general.triggered.connect(self.load_general)
         self.action_load_h5.triggered.connect(self.load_h5_directory)
         self.action_load_liete.triggered.connect(self.load_liete_directory)
@@ -203,13 +208,25 @@ class MainWindow(QMainWindow):
         self.action_quit.triggered.connect(self.close)
         self.actionLiveUpdate.triggered.connect(self.load_live_recording)
 
+        # TOOLS section
+        self.menu_tools = self.menu_bar.addMenu("Tools")
+        self.action_open_video_window = self.menu_tools.addAction("Video")
+        self.action_open_video_window.triggered.connect(self.open_video_window)
+        # To do
+        self.action_open_fft_window = self.menu_tools.addAction("FFT")
+        self.action_open_morlet_window = self.menu_tools.addAction("Morlet Wavelet Transform")
+
+        # HELP section
         self.menu_help = self.menu_bar.addMenu("Help")
         self.action_reset_geometry    = self.menu_help.addAction("Reset Main Window layout")
         self.action_reset_geometry.triggered.connect(self.reset_geometry)
+
         self.action_go_to_git = self.menu_help.addAction("Go to Git Repository")
         self.action_go_to_git.triggered.connect(self.open_git_url)
+
         self.action_go_to_doc = self.menu_help.addAction("Go to web documentation")
         self.action_go_to_doc.triggered.connect(self.open_docs_url)
+
         self.menu_bar.setNativeMenuBar(False)
 
         #self.menubar.addMenu("Edit")

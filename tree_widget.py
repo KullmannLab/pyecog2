@@ -22,7 +22,7 @@ class FileTreeView(QtWidgets.QTreeView):
         #self.setSortingEnabled(True) # relies on proxy model
 
     def mouseDoubleClickEvent(self, event):
-        print('double cliokc event')
+        print('double click event')
         print(event)
 
     def selectionChanged(self, *args):

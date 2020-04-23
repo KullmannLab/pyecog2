@@ -109,7 +109,7 @@ class VideoWindow(QMainWindow):
         self.positionSlider.setRange(0, duration)
 
     def setPosition(self, position):
-        self.mediaPlayer.setPosition(position)
+        self.mediaPlayer.setPosition(position) #  milliseconds since the beginning of the media
 
     def handleError(self):
         self.playButton.setEnabled(False)

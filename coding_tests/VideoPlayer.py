@@ -76,6 +76,12 @@ class VideoWindow(QMainWindow):
         self.mediaPlayer.durationChanged.connect(self.durationChanged)
         self.mediaPlayer.error.connect(self.handleError)
 
+        # ERASE THIS SECTION AFTER LAB MEETING!!!
+        self.mediaPlayer.setMedia(
+            QMediaContent(QUrl.fromLocalFile('/home/mfpleite/PycharmProjects/pyecog2/Notebooks/Video.ogv')))
+        self.playButton.setEnabled(True)
+        # END
+
     def openFile(self):
         fileName, _ = QFileDialog.getOpenFileName(self, "Open Movie",
                 QDir.homePath())

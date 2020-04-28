@@ -9,10 +9,11 @@ from PyQt5.QtCore import Qt, QSettings, QByteArray
 
 import json
 import glob
-
+from collections import OrderedDict
 fname = glob.glob('../Notebooks/*meta')[0]
 with open(fname,'r') as metafile:
-    meta_data = json.load(metafile)
+    meta_data = OrderedDict(json.load(metafile))
+
 
 class TestDialog(QDialog):
     def __init__(self, data):
@@ -58,7 +59,7 @@ class TestDialog(QDialog):
                 child0 = QStandardItem(y)
                 child0.setFlags(QtCore.Qt.NoItemFlags |
                                 QtCore.Qt.ItemIsEnabled)
-                child1 = QStandardItem(str(value))
+                child1 = QStandardItem(repr(value))
                 child1.setFlags(QtCore.Qt.ItemIsEnabled |
                                 QtCore.Qt.ItemIsEditable |
                                 ~ QtCore.Qt.ItemIsSelectable)
@@ -74,14 +75,8 @@ class TestDialog(QDialog):
     def handleItemChanged(self, item):
         parent = self.data[item.parent().text()]
         key = item.parent().child(item.row(), 0).text()
-        parent[key] = type(parent[key])(item.text())
+        parent[key] = eval(item.text())
 
-class Other(object):
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-    def __repr__(self):
-        return '(%s, %s)' % (self.x, self.y)
 
 class Example(QWidget):
 
@@ -92,10 +87,6 @@ class Example(QWidget):
         btn = QPushButton('Button', self)
         btn.resize(btn.sizeHint())
         btn.clicked.connect(self.show_dialog)
-
-        self.data = {}
-        # This example will be hidden (has no parameter-value pair)
-        self.data['example0'] = meta_data # {}
 
         # A set example with an integer and a string parameters
         # self.data['example1'] = {}
@@ -109,6 +100,11 @@ class Example(QWidget):
         # self.data = meta_data
 
     def show_dialog(self):
+        meta_data['test_dict'] = {'test': 0}
+        self.data = {}
+        # This example will be hiddmeta_dataen (has no parameter-value pair)
+        self.data['example0'] = meta_data  # {}
+
         dialog = TestDialog(self.data)
         accepted = dialog.exec_()
         if not accepted:

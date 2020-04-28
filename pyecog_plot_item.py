@@ -24,7 +24,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
         self.fs = fs
         self.parent_viewbox = viewbox
         self.pen = (0,0,0,100)
-        self.n_display_points = 10000 # this should be horizontal resolution of screen
+        self.n_display_points = 5000 # this should be horizontal resolution of window
         super().__init__(*args, **kwds)
         self.resetTransform()
 
@@ -115,7 +115,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
                 throw_error()
                 return 0
 
-        self.setData(y=visible_data, x=visible_time, pen=self.pen,antialias=False) # update the plot
+        self.setData(y=visible_data, x=visible_time, pen=self.pen,antialias=True) # update the plot
         #self.resetTransform()
 
     def itemChange(self, *args):

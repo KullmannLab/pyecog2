@@ -172,7 +172,7 @@ class MainWindow(QMainWindow):
             self.timer.start(100)
 
     def open_git_url(self):
-        webbrowser.open('https://github.com/jcornford/pyecog2')
+        webbrowser.open('https://github.com/KullmannLab/pyecog2')
 
     def open_docs_url(self):
         webbrowser.open('https://jcornford.github.io/pyecog_docs/')
@@ -207,6 +207,20 @@ class MainWindow(QMainWindow):
         self.action_save.triggered.connect(self.save)
         self.action_quit.triggered.connect(self.close)
         self.actionLiveUpdate.triggered.connect(self.load_live_recording)
+
+        # ANNOTATIONS section
+        self.menu_annotations = self.menu_bar.addMenu("Annotations")
+        self.action_save_annotations = self.menu_annotations.addAction("Save annotations")
+        self.action_export_annotations = self.menu_annotations.addAction("Export annotations")
+        self.action_import_annotations = self.menu_annotations.addAction("Import annotations")
+
+        # CLASSIFIER section
+        self.menu_classifier = self.menu_bar.addMenu("Classifier")
+        self.action_setup_feature_extractor = self.menu_classifier.addAction("Setup feature extractor")
+        self.action_setup_classifier = self.menu_classifier.addAction("Setup classifier")
+        self.action_train_classifier = self.menu_classifier.addAction("Train classifier")
+        self.action_run_classifier   = self.menu_classifier.addAction("Run classifier")
+        self.action_review_classifications   = self.menu_classifier.addAction("Review classifications")
 
         # TOOLS section
         self.menu_tools = self.menu_bar.addMenu("Tools")

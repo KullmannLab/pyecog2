@@ -110,7 +110,7 @@ class PairedGraphicsView():
             self.scale = 1 / (6*np.mean(np.std(arr, axis =0, keepdims=True), axis=1))
             self.insetview_plot.vb.setYRange(-2,arr.shape[1]+1)
             self.overview_plot.vb.setYRange(-2,arr.shape[1]+1)
-            self.insetview_plot.vb.setXRange(0,5)
+            self.insetview_plot.vb.setXRange(0,min(30,arr.shape[0]/fs))
 
         for i in range(arr.shape[1]):
             if pens is None:
@@ -208,6 +208,8 @@ class PairedGraphicsView():
     def insetview_range_changed(self, mask):
         '''connected to signal from insetview_plot'''
         x_range, y_range = self.insetview_plot.viewRange()
+        # x_range, y_range = self.overview_plot.viewRange()
+
         # self.overviewlines_dict['x_min'].setPos(x_range[0])
         # self.overviewlines_dict['x_max'].setPos(x_range[1])
         # self.overviewlines_dict['y_min'].setPos(y_range[0])

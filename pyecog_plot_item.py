@@ -43,7 +43,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
         '''# todo clean up e.g. var names x y'''
         #print('set data')
         if self.y is None:
-            self.setData([])
+            self.setData([],1)
             return 0
 
         x_range = [i*self.fs for i in self.parent_viewbox.viewRange()[0]]
@@ -61,8 +61,8 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
             # Small enough to display with no intervention.
             visible_data = self.y[start:stop]
             visible_time = np.linspace(start/self.fs, stop/self.fs, len(visible_data))#visible_time[:targetPtr]
-            scale = 1
             #print(start, stop)
+
         else:
             # Here convert data into a down-sampled array suitable for visualizing.
             # Must do this piecewise to limit memory usage.
@@ -72,7 +72,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
             targetPtr = 0
             try:
                 # read data in chunks of ~1M samples
-                chunkSize = (1000000//ds) * ds
+                chunkSize = (1e6//ds) * ds
                 while sourcePtr < stop-1:
                     #print('Shapes:',hdf5data.shape, self.time.shape)
                     #chunk   = self.x[sourcePtr:min(stop,sourcePtr+chunkSize)]
@@ -80,7 +80,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
                     sourcePtr += chunkSize
                     #print('y,x shape',chunk.shape, chunk_data.shape)
 
-                    # reshape chunk to be integral multiple of ds
+                    # reshape chunk to be integer multiple of ds
                     chunk_data = chunk_data[:(len(chunk_data)//ds) * ds].reshape(len(chunk_data)//ds, ds)
 
                     # compute max and min

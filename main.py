@@ -57,6 +57,12 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['File Tree'])
         self.addDockWidget(Qt.LeftDockWidgetArea,self.dock_list['Text'])
 
+        # Clear this after sorting out how to beter save workspaces
+        try:
+            self.tree_element.set_rootnode_from_folder('/home/mfpleite/PycharmProjects/pyecog2/Notebooks', '.h5')
+        except:
+            pass
+
         settings = QSettings("PyEcog","PyEcog")
         settings.beginGroup("StandardMainWindow")
         settings.setValue("windowGeometry", self.saveGeometry())

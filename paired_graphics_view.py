@@ -34,6 +34,7 @@ class PairedGraphicsView():
                                            QtWidgets.QSizePolicy.Expanding)
         self.splitter.setSizePolicy(sizePolicy)
 
+
     def __init__(self):
         # todo clean this method up!
         self.build_splitter()
@@ -42,7 +43,7 @@ class PairedGraphicsView():
         overview_layout_widget  = pg.GraphicsLayoutWidget()
         self.overview_plot = overview_layout_widget.addPlot()
         #self.overview_plot.showAxis('left', show=False)
-        self.overview_plot.setLabel('bottom', text='Time', units='')
+        self.overview_plot.setLabel('bottom', text='Time', units='s')
 
         # this doesnt work (getting the scroll)
         #overview_layout_widget.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
@@ -51,41 +52,41 @@ class PairedGraphicsView():
         self.insetview_plot = insetview_layout_widget.addPlot()
         #self.insetview_plot.showAxis('left', show=False)
         self.insetview_plot.showGrid(x=True,y=True, alpha=0.1)
-        self.insetview_plot.setLabel('bottom', text='Time',
-                                     units='s')
+        self.insetview_plot.setLabel('bottom', text='Time', units='s')
 
-        self.insetview_plot.setXRange(0,60) #hacky
-        self.overview_plot.vb.setXRange(0,3600) #hacky
+        # self.insetview_plot.setXRange(0,60) #hacky
+        # self.overview_plot.vb.setXRange(0,3600) #hacky
         self.insetview_plot.vb.state['autoRange'] = [False, False]
         self.overview_plot.vb.state['autoRange'] = [False, False]
-        # prevent scrolling past 0
-        self.insetview_plot.vb.setLimits(xMin = 0)
-        self.overview_plot.vb.setLimits(xMin = 0)
-        # prevent scrolling past 3600 THIS IS A TERRIBLE HARDCODE # todo
-        self.insetview_plot.vb.setLimits(xMax = 3600)
-        self.overview_plot.vb.setLimits(xMax = 3600)
 
         self.splitter.addWidget(overview_layout_widget)
         self.splitter.addWidget(insetview_layout_widget)
+        self.splitter.setStretchFactor(1, 6)  # make inset view 6 times larger
 
         self.insetview_plot.sigRangeChanged.connect(self.insetview_range_changed)
         self.overview_plot.vb.sigMouseLeftClick.connect(self.overview_clicked)
         # hacky use of self.vb, but just rolling with it
 
         x_range, y_range = self.insetview_plot.viewRange()
-        pen = pg.mkPen(color=(200, 200, 100), width=2)
+        pen = pg.mkPen(color=(250, 250, 80), width=2)
+        penh = pg.mkPen(color=(100, 100, 250), width=2)
 
         # todo make better fix this shit!
-        self.overviewlines_dict = {
-            'x_min':pg.InfiniteLine(x_range[0],     angle=90, pen=pen, hoverPen=pen),
-            'x_max':pg.InfiniteLine(x_range[1]*100, angle=90,pen=pen, hoverPen=pen),
-
-            'y_min':pg.InfiniteLine(y_range[0], angle=0,pen=pen, hoverPen=pen),
-            'y_max':pg.InfiniteLine(y_range[1], angle=0,pen=pen, hoverPen=pen)
-        }
-        for k in self.overviewlines_dict.keys():
-            self.overviewlines_dict[k].setZValue(100) # high z values drawn on top
-            self.overview_plot.addItem(self.overviewlines_dict[k])
+        self.overviewROI = pg.RectROI(pos=(x_range[0],y_range[0]), size=(x_range[1]-x_range[0], y_range[1]-y_range[0]),
+                                      sideScalers=True, pen=penh, rotatable=False, removable=False)
+        self.overviewROI.sigRegionChanged.connect(self.overviewROIchanged)
+        self.overview_plot.addItem(self.overviewROI)
+        #
+        # self.overviewlines_dict = {
+        #     'x_min':pg.InfiniteLine(x_range[0],     angle=90, pen=pen, hoverPen=penh),
+        #     'x_max':pg.InfiniteLine(x_range[1]*100, angle=90,pen=pen, hoverPen=penh),
+        #
+        #     'y_min':pg.InfiniteLine(y_range[0], angle=0,pen=pen, hoverPen=penh),
+        #     'y_max':pg.InfiniteLine(y_range[1], angle=0,pen=pen, hoverPen=penh),
+        # }
+        # for k in self.overviewlines_dict.keys():
+        #     self.overviewlines_dict[k].setZValue(1) # high z values drawn on top
+        #     self.overview_plot.addItem(self.overviewlines_dict[k])
 
         # here we will store the plot items in nested dict form
         # {"1" : {'inset': obj,'overview':obj }
@@ -121,6 +122,18 @@ class PairedGraphicsView():
         #self.clear_unused_channels() # to implement, not sure the best way
         #self.test_children()
 
+        # prevent scrolling past 0 and end of data
+        self.insetview_plot.vb.setLimits(xMin=0, xMax=arr.shape[0]/fs)
+        self.overview_plot.vb.setLimits(xMin=0, xMax=arr.shape[0]/fs)
+        # rect = QtCore.QRect()
+        # rect.setLeft(0)
+        # rect.setRight(arr.shape[0]/fs)
+        # rect.setBottom(1e2)
+        # rect.setTop(-1e2)
+        # # rect.setCoords(0,arr.shape[0]/fs,1e6,-1e6)
+        # self.overviewROI.maxBounds = rect #Couldn't make this work
+        # prevent scrolling past channels
+        self.overview_plot.vb.setLimits(yMin=-3, yMax=arr.shape[1] + 3)
 
 
     def test_children(self):
@@ -134,7 +147,6 @@ class PairedGraphicsView():
 
     def set_plotitem_data(self, y, fs, pen, index, init_scale):
         '''
-        If the
 
         If the index exists within the plotitem dict we just set the data, else create
         or delete from the dict. (#todo)
@@ -165,6 +177,11 @@ class PairedGraphicsView():
     def graphics_object_xchanged(self):
         print('xChanged grahics object')
 
+    def overviewROIchanged(self):
+        state = self.overviewROI.getState()
+        self.insetview_plot.setRange(xRange=(state['pos'][0], state['pos'][0] + state['size'][0]),
+                                     yRange=(state['pos'][1], state['pos'][1] + state['size'][1]),
+                                     padding=0)
 
     def overview_clicked(self, ev_pos):
         '''
@@ -179,21 +196,24 @@ class PairedGraphicsView():
         x_range = xmax-xmin
         y_range = ymax-ymin
         new_xrange = (center.x()-x_range/2, center.x()+x_range/2)
+        # new_xrange = new_xrange - new_xrange
+
         new_yrange = (center.y()-y_range/2, center.y()+y_range/2)
-        #print(new_yrange)
+
+        print(new_xrange)
         self.insetview_plot.setRange(xRange = new_xrange,
                                      yRange = new_yrange,
                                      padding=0)
 
-
-
     def insetview_range_changed(self, mask):
         '''connected to signal from insetview_plot'''
         x_range, y_range = self.insetview_plot.viewRange()
-        self.overviewlines_dict['x_min'].setPos(x_range[0])
-        self.overviewlines_dict['x_max'].setPos(x_range[1])
-        self.overviewlines_dict['y_min'].setPos(y_range[0])
-        self.overviewlines_dict['y_max'].setPos(y_range[1])
+        # self.overviewlines_dict['x_min'].setPos(x_range[0])
+        # self.overviewlines_dict['x_max'].setPos(x_range[1])
+        # self.overviewlines_dict['y_min'].setPos(y_range[0])
+        # self.overviewlines_dict['y_max'].setPos(y_range[1])
+        self.overviewROI.setPos((x_range[0], y_range[0]))
+        self.overviewROI.setSize((x_range[1] - x_range[0], y_range[1] - y_range[0]))
 
 
 

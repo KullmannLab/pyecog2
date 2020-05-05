@@ -10,7 +10,20 @@ import pyqtgraph_copy.pyqtgraph as pg
 from tree_model_and_nodes import FileTreeProxyModel, TreeModel, FileNode, DirectoryNode
 from paired_graphics_view import PairedGraphicsView
 from tree_widget import FileTreeElement
+from annotations_module import Annotations
 #
+class MainModel:
+    def __init__(self):
+        self.data_eeg = np.array([])
+        self.data_acc = np.array([])
+        self.time_position = 0
+        self.time_window = [0,0]
+        self.filenames_dict = {'eeg': '', 'meta' : '', 'anno': '', 'acc': ''}
+        self.file_meta_dict = {}
+        self.annotations = Annotations()
+
+
+
 class MainWindow(QMainWindow):
     '''
     basicvally handles the combination of the the threeemenu bar and the paired view

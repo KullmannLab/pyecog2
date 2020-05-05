@@ -10,9 +10,9 @@ class LinearRegionItem(GraphicsObject):
     """
     **Bases:** :class:`GraphicsObject <pyqtgraph.GraphicsObject>`
     
-    Used for marking a horizontal or vertical region in plots.
-    The region can be dragged and is bounded by lines which can be dragged individually.
-    
+    Used for marking a ndividually.
+    horizontal or vertical region in plots.
+    The region can be dragged and is bounded by lines which can be dragged i
     ===============================  =============================================================================
     **Signals:**
     sigRegionChangeFinished(self)    Emitted when the user has finished dragging the region (or one of its lines)
@@ -110,6 +110,8 @@ class LinearRegionItem(GraphicsObject):
             l.sigPositionChangeFinished.connect(self.lineMoveFinished)
         self.lines[0].sigPositionChanged.connect(lambda: self.lineMoved(0))
         self.lines[1].sigPositionChanged.connect(lambda: self.lineMoved(1))
+        self.lines[0].setZValue(101) # ML: hack to have lines above areas
+        self.lines[1].setZValue(101)
             
         if brush is None:
             brush = QtGui.QBrush(QtGui.QColor(0, 0, 255, 50))
@@ -145,7 +147,7 @@ class LinearRegionItem(GraphicsObject):
         self.lines[0].setValue(rgn[0])
         self.blockLineSignal = False
         self.lines[1].setValue(rgn[1])
-        #self.blockLineSignal = False
+        self.blockLineSignal = False
         self.lineMoved(0)
         self.lineMoved(1)
         self.lineMoveFinished()

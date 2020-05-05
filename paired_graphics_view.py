@@ -11,8 +11,10 @@ from PyQt5.QtGui import QPainter, QBrush, QPen
 # temp
 from datetime import datetime
 import pyqtgraph_copy.pyqtgraph as pg
+import colorsys
 
 from pyecog_plot_item import PyecogPlotCurveItem
+from annotations_module import Annotations
 
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
@@ -71,31 +73,18 @@ class PairedGraphicsView():
         pen = pg.mkPen(color=(250, 250, 80), width=2)
         penh = pg.mkPen(color=(100, 100, 250), width=2)
 
-        # todo make better fix this shit!
         self.overviewROI = pg.RectROI(pos=(x_range[0],y_range[0]), size=(x_range[1]-x_range[0], y_range[1]-y_range[0]),
                                       sideScalers=True, pen=penh, rotatable=False, removable=False)
         self.overviewROI.sigRegionChanged.connect(self.overviewROIchanged)
         self.overview_plot.addItem(self.overviewROI)
-        #
-        # self.overviewlines_dict = {
-        #     'x_min':pg.InfiniteLine(x_range[0],     angle=90, pen=pen, hoverPen=penh),
-        #     'x_max':pg.InfiniteLine(x_range[1]*100, angle=90,pen=pen, hoverPen=penh),
-        #
-        #     'y_min':pg.InfiniteLine(y_range[0], angle=0,pen=pen, hoverPen=penh),
-        #     'y_max':pg.InfiniteLine(y_range[1], angle=0,pen=pen, hoverPen=penh),
-        # }
-        # for k in self.overviewlines_dict.keys():
-        #     self.overviewlines_dict[k].setZValue(1) # high z values drawn on top
-        #     self.overview_plot.addItem(self.overviewlines_dict[k])
 
         # here we will store the plot items in nested dict form
         # {"1" : {'inset': obj,'overview':obj }
         # will be used for an ugly hack to snchonize across plots
         self.channel_plotitem_dict = {}
 
-    def set_scenes_plot_data(self, arr, fs, pens=None):
+    def set_scenes_plot_channel_data(self, arr, fs, pens=None):
         '''
-        # Todo: need to handling changing number of channels...
         # Not entirely clear the differences between this and
         set_plotitem_data is snesnible
 
@@ -118,41 +107,29 @@ class PairedGraphicsView():
             else:
                 pen = pen[i]
             y = arr[:, i]
-            self.set_plotitem_data(y, fs, pen, i, self.scale)
+            self.set_plotitem_channel_data(y, fs, pen, i, self.scale)
         #self.clear_unused_channels() # to implement, not sure the best way
         #self.test_children()
 
         # prevent scrolling past 0 and end of data
         self.insetview_plot.vb.setLimits(xMin=0, xMax=arr.shape[0]/fs)
         self.overview_plot.vb.setLimits(xMin=0, xMax=arr.shape[0]/fs)
-        # rect = QtCore.QRect()
-        # rect.setLeft(0)
-        # rect.setRight(arr.shape[0]/fs)
-        # rect.setBottom(1e2)
-        # rect.setTop(-1e2)
-        # # rect.setCoords(0,arr.shape[0]/fs,1e6,-1e6)
-        # self.overviewROI.maxBounds = rect #Couldn't make this work
-        # prevent scrolling past channels
         self.overview_plot.vb.setLimits(yMin=-3, yMax=arr.shape[1] + 3)
 
+        #FOR DEBUGGING ONLY:
+        annotations_test = Annotations({'seizures':[[1, 10], [13, 15]]})
+        self.set_scenes_plot_annotations_data(annotations_test)
+        self.set_scene_window([0, 20])
+        self.set_scene_cursor(10)
 
-    def test_children(self):
-        #print('Enter here debugging code!')
-        vbo = self.overview_plot.vb
-        vbi = self.insetview_plot.vb
-        #print(vbo.childGroup.boundingRect())
-        child_group = vbo.childGroup
-        #print(child_group.childItems())
-        #print(vbo.childrenBounds())
 
-    def set_plotitem_data(self, y, fs, pen, index, init_scale):
+
+    def set_plotitem_channel_data(self, y, fs, pen, index, init_scale):
         '''
-
         If the index exists within the plotitem dict we just set the data, else create
         or delete from the dict. (#todo)
 
         init_scale is the initial scaling of the channels. Set transform
-
         '''
         # todo stop passing the vb to construction have it added automatically when add the item to plot
         if index not in self.channel_plotitem_dict.keys():
@@ -171,8 +148,42 @@ class PairedGraphicsView():
 
         self.channel_plotitem_dict[index]['overview'].set_data(y,fs)
         self.channel_plotitem_dict[index]['insetview'].set_data(y,fs)
-
         self.overview_plot.vb.setXRange(0, y.shape[0]/fs, padding=0)
+
+    def set_scenes_plot_annotations_data(self, annotations):
+        '''
+        :param annotations: an annotations object
+        :return: None
+        '''
+        n = max(len(annotations.labels), 6) # variable to give n different colors to different types of labels
+        for bi, label in enumerate(annotations.labels):
+            color = tuple(np.array(colorsys.hls_to_rgb(bi/n, .5, .9))*255) # circle hue with constant luminosity an saturation
+            brush = pg.functions.mkBrush(color=(*color, 50))
+            pen = pg.functions.mkPen(color=(*color, 100))
+            for annotation_times in annotations.get_all_annotation_times(label):
+                annotation_graph = pg.LinearRegionItem(annotation_times, pen=pen, brush=brush, movable=False)
+                annotation_graph.setZValue(-1)
+                self.overview_plot.addItem(annotation_graph)
+                annotation_graph = pg.LinearRegionItem(annotation_times, pen=pen, brush=brush)
+                annotation_graph.setZValue(-1)
+                self.insetview_plot.addItem(annotation_graph)
+
+    def set_scene_cursor(self, cursor):
+        pen = pg.functions.mkPen(color=(200,20,20),width = 3)
+        cursor_item = pg.InfiniteLine(pos=cursor, pen=pen)
+        cursor_item.setZValue(102) # Hack to make it above all else
+        self.overview_plot.addItem(cursor_item)
+        cursor_item = pg.InfiniteLine(pos=cursor, pen=pen)
+        cursor_item.setZValue(102) # Hack to make it above all else
+        self.insetview_plot.addItem(cursor_item)
+
+    def set_scene_window(self, window):
+        brush = pg.functions.mkBrush(color=(0,0,0,10))
+        window_item = pg.LinearRegionItem(window, brush=brush)
+        self.overview_plot.addItem(window_item)
+        window_item = pg.LinearRegionItem(window, brush=brush)
+        self.insetview_plot.addItem(window_item)
+
 
     def graphics_object_xchanged(self):
         print('xChanged grahics object')
@@ -208,12 +219,6 @@ class PairedGraphicsView():
     def insetview_range_changed(self, mask):
         '''connected to signal from insetview_plot'''
         x_range, y_range = self.insetview_plot.viewRange()
-        # x_range, y_range = self.overview_plot.viewRange()
-
-        # self.overviewlines_dict['x_min'].setPos(x_range[0])
-        # self.overviewlines_dict['x_max'].setPos(x_range[1])
-        # self.overviewlines_dict['y_min'].setPos(y_range[0])
-        # self.overviewlines_dict['y_max'].setPos(y_range[1])
         self.overviewROI.setPos((x_range[0], y_range[0]))
         self.overviewROI.setSize((x_range[1] - x_range[0], y_range[1] - y_range[0]))
 

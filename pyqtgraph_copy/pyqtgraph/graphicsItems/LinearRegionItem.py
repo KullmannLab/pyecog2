@@ -110,9 +110,7 @@ class LinearRegionItem(GraphicsObject):
             l.sigPositionChangeFinished.connect(self.lineMoveFinished)
         self.lines[0].sigPositionChanged.connect(lambda: self.lineMoved(0))
         self.lines[1].sigPositionChanged.connect(lambda: self.lineMoved(1))
-        self.lines[0].setZValue(101) # ML: hack to have lines above areas
-        self.lines[1].setZValue(101)
-            
+
         if brush is None:
             brush = QtGui.QBrush(QtGui.QColor(0, 0, 255, 50))
         self.setBrush(brush)

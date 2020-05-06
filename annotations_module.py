@@ -53,6 +53,7 @@ class Annotations:
 
     def set_annotation_times(self, label, index, tstart, tend):
         self.annotations_dict[label][index] = [tstart, tend]
+        print(self.annotations_dict) # For debug
 
     def get_all_annotation_times(self,label):
         return [i for i in self.annotations_dict[label]]

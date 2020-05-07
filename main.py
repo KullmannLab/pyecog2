@@ -1,6 +1,6 @@
 from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import QMenuBar, QGridLayout, QApplication, QWidget, QPlainTextEdit, QDockWidget, QMainWindow, QFileDialog
-from PyQt5.QtCore import Qt, QSettings, QByteArray
+from PyQt5.QtCore import Qt, QSettings, QByteArray, QObject
 import sys, os
 import webbrowser
 from coding_tests.VideoPlayer import VideoWindow
@@ -12,8 +12,11 @@ from paired_graphics_view import PairedGraphicsView
 from tree_widget import FileTreeElement
 from annotations_module import Annotations
 #
-class MainModel:
+class MainModel(QObject):
+
+    sigTimeChanged = QtCore.Signal(object)
     def __init__(self):
+        super().__init__()
         self.data_eeg = np.array([])
         self.data_acc = np.array([])
         self.time_position = 0
@@ -22,11 +25,17 @@ class MainModel:
         self.file_meta_dict = {}
         self.annotations = Annotations()
 
+    def set_time_position(self, pos):
+        if pos != self.pos: # only emit signal if time_position actually changed
+            self.sigTimeChanged.emit(self)
+            self.time_position = pos
+            print('Current Time:', pos)
+
 
 
 class MainWindow(QMainWindow):
     '''
-    basicvally handles the combination of the the threeemenu bar and the paired view
+    basicvally handles the combination of the the three menu bar and the paired view
 
     Most of the code here is for setting up the geometry of the gui and the
     menubar stuff
@@ -41,8 +50,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(self.title)
         self.setGeometry(0, 0, size.width(), size.height())
 
-        self.main_model_test = MainModel()
-        self.main_model_test.annotations = Annotations({'seizure': [[1, 10], [13, 15]],
+        self.main_model = MainModel()
+        # Just for testing purpouses
+        self.main_model.annotations = Annotations({'seizure': [[1, 10], [13, 15]],
                                              'spike': [[11, 12], [15, 16]],
                                              'artefact': [[24, 28]]})
 

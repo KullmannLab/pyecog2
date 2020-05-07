@@ -46,11 +46,11 @@ class VideoWindow(QMainWindow):
         exitAction.triggered.connect(self.exitCall)
 
         # Create menu bar and add action
-        menuBar = self.menuBar()
-        fileMenu = menuBar.addMenu('&File')
-        #fileMenu.addAction(newAction)
-        fileMenu.addAction(openAction)
-        fileMenu.addAction(exitAction)
+        # menuBar = self.menuBar()
+        # fileMenu = menuBar.addMenu('&File')
+        # #fileMenu.addAction(newAction)
+        # fileMenu.addAction(openAction)
+        # fileMenu.addAction(exitAction)
 
         # Create a widget for window contents
         wid = QWidget(self)

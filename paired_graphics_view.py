@@ -86,7 +86,8 @@ class PairedGraphicsView():
         # {"1" : {'inset': obj,'overview':obj }
         # will be used for an ugly hack to snchonize across plots
         self.channel_plotitem_dict = {}
-        self.annotations_test = parent.main_model_test.annotations
+        self.main_model = parent.main_model
+
 
     def set_scenes_plot_channel_data(self, arr, fs, pens=None):
         '''
@@ -130,9 +131,9 @@ class PairedGraphicsView():
         self.overview_plot.vb.setLimits(yMin=-3, yMax=arr.shape[1] + 3)
 
         # FOR DEBUGGING ONLY:
-        self.set_scenes_plot_annotations_data(self.annotations_test)
+        self.set_scenes_plot_annotations_data(self.main_model.annotations)
         self.set_scene_window([30, 32])
-        self.set_scene_cursor(10)
+        self.set_scene_cursor()
 
     def set_plotitem_channel_data(self, y, fs, pen, index, init_scale):
         '''
@@ -195,10 +196,13 @@ class PairedGraphicsView():
     def set_scene_cursor(self):
         cursor_o = PyecogCursorItem(pos=0)
         cursor_i = PyecogCursorItem(pos=0)
-        cursor_o.sigPositionChanged.connect(lambda:cursor_i.setPos(cursor_o.getPos()))
-        cursor_i.sigPositionChanged.connect(lambda:cursor_o.setPos(cursor_i.getPos()))
-        self.overview_plot.addItem(cursor_i)
-        self.insetview_plot.addItem(cursor_o)
+        # There is some circularity in these connections - maybe Qt handles that gracefully... who knows!
+        cursor_i.sigPositionChanged.connect(lambda: self.main_model.set_time_position(cursor_i.getXPos()))
+        self.main_model.sigTimeChanged.connect(lambda: cursor_i.setPos(self.main_model.time_position))
+        self.main_model.sigTimeChanged.connect(lambda: cursor_o.setPos(self.main_model.time_position))
+        self.overview_plot.addItem(cursor_o)
+        self.insetview_plot.addItem(cursor_i)
+
 
     def set_scene_window(self, window):
         brush = pg.functions.mkBrush(color=(0, 0, 0, 10))

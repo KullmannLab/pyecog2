@@ -196,12 +196,12 @@ class PairedGraphicsView():
     def set_scene_cursor(self):
         cursor_o = PyecogCursorItem(pos=0)
         cursor_i = PyecogCursorItem(pos=0)
-        # There is some circularity in these connections - maybe Qt handles that gracefully... who knows!
-        # Also... should these connections be made in the main window code?
+        # Should these connections be made in the main window code?
         cursor_i.sigPositionChanged.connect(lambda: self.main_model.set_time_position_from_graphs(cursor_i.getXPos()))
         cursor_i.sigPositionChanged.connect(lambda: cursor_o.setPos(cursor_i.getPos()))
-        self.main_model.sigTimeChanged.connect(lambda: cursor_i.setPos(self.main_model.time_position))
-        self.main_model.sigTimeChanged.connect(lambda: cursor_o.setPos(self.main_model.time_position))
+        cursor_o.sigPositionChanged.connect(lambda: cursor_i.setPos(cursor_o.getPos()))
+        self.main_model.sigTimeChangedGraph.connect(lambda: cursor_i.setPos(self.main_model.time_position))
+        self.main_model.sigTimeChangedGraph.connect(lambda: cursor_o.setPos(self.main_model.time_position))
         self.overview_plot.addItem(cursor_o)
         self.insetview_plot.addItem(cursor_i)
 

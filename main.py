@@ -14,7 +14,7 @@ from annotations_module import Annotations
 #
 class MainModel(QObject):
 
-    sigTimeChanged      = QtCore.Signal(object)
+    sigTimeChangedGraph = QtCore.Signal(object)
     sigTimeChangedVideo = QtCore.Signal(object)
     def __init__(self):
         super().__init__()
@@ -29,15 +29,15 @@ class MainModel(QObject):
     def set_time_position_from_graphs(self, pos):
         if pos != self.time_position: # only emit signal if time_position actually changed
             # self.sigTimeChanged.emit(pos)
-            self.sigTimeChangedVideo.emit(pos)
+            self.sigTimeChangedVideo.emit(pos*1000)
             self.time_position = pos
             print('Current Time:', pos)
 
     # This signal is to be used with video, such that changes in video don't call circular signals to change video again
     def set_time_position_from_video(self, pos):
-        pos = pos/1000 # video positions comes in milliseconds instead of seconds
+        pos = pos/1000 # Video sends position in miliseconds instead of seconds
         if pos != self.time_position: # only emit signal if time_position actually changed
-            self.sigTimeChanged.emit(pos)
+            self.sigTimeChangedGraph.emit(pos)
             self.time_position = pos
             print('Current Time:', pos)
 
@@ -89,8 +89,9 @@ class MainWindow(QMainWindow):
         self.dock_list['Video'].setObjectName("Video")
         self.dock_list['Video'].setFloating(True)
         self.dock_list['Video'].hide()
+        self.video_element.mediaPlayer.setNotifyInterval(40) # 25 fps
         self.video_element.mediaPlayer.positionChanged.connect(self.main_model.set_time_position_from_video)
-        self.main_model.sigTimeChangedVideo.connect(lambda pos: self.video_element.setPosition(pos*1000))
+        self.main_model.sigTimeChangedVideo.connect(self.video_element.setPosition)
 
         self.setCentralWidget(self.paired_graphics_view.splitter)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['File Tree'])

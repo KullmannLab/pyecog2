@@ -14,7 +14,7 @@ class VideoWindow(QMainWindow):
 
     def __init__(self, parent=None):
         super(VideoWindow, self).__init__(parent)
-        self.setWindowTitle("PyQt Video Player Widget Example - pythonprogramminglanguage.com") 
+        self.setWindowTitle("Video")
 
         self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
 

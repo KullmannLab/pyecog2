@@ -14,23 +14,32 @@ from annotations_module import Annotations
 #
 class MainModel(QObject):
 
-    sigTimeChanged = QtCore.Signal(object)
+    sigTimeChanged      = QtCore.Signal(object)
+    sigTimeChangedVideo = QtCore.Signal(object)
     def __init__(self):
         super().__init__()
         self.data_eeg = np.array([])
         self.data_acc = np.array([])
         self.time_position = 0
-        self.time_window = [0,0]
+        self.time_window = [0, 0]
         self.filenames_dict = {'eeg': '', 'meta' : '', 'anno': '', 'acc': ''}
         self.file_meta_dict = {}
         self.annotations = Annotations()
 
-    def set_time_position(self, pos):
-        if pos != self.pos: # only emit signal if time_position actually changed
-            self.sigTimeChanged.emit(self)
+    def set_time_position_from_graphs(self, pos):
+        if pos != self.time_position: # only emit signal if time_position actually changed
+            # self.sigTimeChanged.emit(pos)
+            self.sigTimeChangedVideo.emit(pos)
             self.time_position = pos
             print('Current Time:', pos)
 
+    # This signal is to be used with video, such that changes in video don't call circular signals to change video again
+    def set_time_position_from_video(self, pos):
+        pos = pos/1000 # video positions comes in milliseconds instead of seconds
+        if pos != self.time_position: # only emit signal if time_position actually changed
+            self.sigTimeChanged.emit(pos)
+            self.time_position = pos
+            print('Current Time:', pos)
 
 
 class MainWindow(QMainWindow):
@@ -74,11 +83,14 @@ class MainWindow(QMainWindow):
         self.dock_list['Text'].setWidget(QPlainTextEdit())
         self.dock_list['Text'].setObjectName("Text")
 
+        self.video_element = VideoWindow()
         self.dock_list['Video'] = QDockWidget("Video", self)
-        self.dock_list['Video'].setWidget(VideoWindow())
+        self.dock_list['Video'].setWidget(self.video_element)
         self.dock_list['Video'].setObjectName("Video")
         self.dock_list['Video'].setFloating(True)
         self.dock_list['Video'].hide()
+        self.video_element.mediaPlayer.positionChanged.connect(self.main_model.set_time_position_from_video)
+        self.main_model.sigTimeChangedVideo.connect(lambda pos: self.video_element.setPosition(pos*1000))
 
         self.setCentralWidget(self.paired_graphics_view.splitter)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['File Tree'])

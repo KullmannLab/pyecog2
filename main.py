@@ -40,13 +40,17 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QtGui.QIcon("icon.png"))
         self.setWindowTitle(self.title)
         self.setGeometry(0, 0, size.width(), size.height())
-        # self.dockmanager = DockManager(self)/
+
+        self.main_model_test = MainModel()
+        self.main_model_test.annotations = Annotations({'seizure': [[1, 10], [13, 15]],
+                                             'spike': [[11, 12], [15, 16]],
+                                             'artefact': [[24, 28]]})
 
         # Populate Main window with widgets
         # self.createDockWidget()y
         self.build_menubar()
         self.dock_list = {}
-        self.paired_graphics_view = PairedGraphicsView()
+        self.paired_graphics_view = PairedGraphicsView(parent=self)
 
         self.tree_element = FileTreeElement(parent=self)
         self.dock_list['File Tree'] = QDockWidget("File Tree", self)

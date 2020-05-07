@@ -161,7 +161,7 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
 
     def __init__(self, values=(0, 1), orientation='vertical', brush=None, pen=None,
                  hoverBrush=None, hoverPen=None, movable=True, bounds=None,
-                 span=(0, 1), swapMode='sort',label = ''):
+                 span=(0, 1), swapMode='sort',label = '', id = None):
 
         pg.LinearRegionItem.__init__(self, values=values, orientation=orientation, brush=brush, pen=pen,
                                      hoverBrush=hoverBrush, hoverPen=hoverPen, movable=movable, bounds=bounds,
@@ -169,10 +169,10 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
 
         self.lines[0].setZValue(101) # ML: hack to have lines above areas
         self.lines[1].setZValue(101)
-        self.label = label
+        self.label = label # Label of the annotation
+        self.id = id # field to identify corresponding annotation in the annotations object
         label_text = pg.TextItem(label, anchor=(0, -1), color= pen.color())
         label_text.setParentItem(self.lines[0])
-        print('Label position',label_text.pos())
 
 
     # Redefine move methods to only allow lines to move horizontally (hence keeping label vertically anchored)
@@ -232,3 +232,23 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
             self.moving = False
             self.sigRegionChanged.emit(self)
             self.sigRegionChangeFinished.emit(self)
+
+
+
+class PyecogCursorItem(pg.InfiniteLine):
+    def __init__(self, pos=None, angle=90, pen=None, movable=True, bounds=None,
+                 hoverPen=None, label=None, labelOpts=None, span=(0, 1), markers=None,
+                 name=None):
+        if pen is None:
+            pen = pg.functions.mkPen(color=(192, 32, 32,192), width=3)
+        if hoverPen is None:
+            hoverPen = pg.functions.mkPen(color=(192, 32, 32, 255), width=3)
+
+        pg.InfiniteLine.__init__(self, pos=pos, angle=angle, pen=pen, movable=movable, bounds=bounds,
+                 hoverPen=hoverPen, label=label, labelOpts=labelOpts, span=span, markers=markers,
+                 name=name)
+
+        self.setZValue(102)  # Hack to make it above all else
+
+
+

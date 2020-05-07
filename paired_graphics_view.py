@@ -13,7 +13,7 @@ from datetime import datetime
 import pyqtgraph_copy.pyqtgraph as pg
 import colorsys
 
-from pyecog_plot_item import PyecogPlotCurveItem, PyecogLinearRegionItem
+from pyecog_plot_item import PyecogPlotCurveItem, PyecogLinearRegionItem, PyecogCursorItem
 from annotations_module import Annotations
 
 pg.setConfigOption('background', 'w')
@@ -39,8 +39,9 @@ class PairedGraphicsView():
                                            QtWidgets.QSizePolicy.Expanding)
         self.splitter.setSizePolicy(sizePolicy)
 
-    def __init__(self):
+    def __init__(self, parent=None):
         # todo clean this method up!
+        self.parent = parent
         self.build_splitter()
         self.scale = None  # transform on the childitems of plot
 
@@ -85,6 +86,7 @@ class PairedGraphicsView():
         # {"1" : {'inset': obj,'overview':obj }
         # will be used for an ugly hack to snchonize across plots
         self.channel_plotitem_dict = {}
+        self.annotations_test = parent.main_model_test.annotations
 
     def set_scenes_plot_channel_data(self, arr, fs, pens=None):
         '''
@@ -97,6 +99,14 @@ class PairedGraphicsView():
         '''
         # we need to handle if channel not seen before
         # 6 std devations
+        print('Items to delete')
+        print(self.overview_plot.items)
+        self.overview_plot.clear()
+        self.overview_plot.addItem(self.overviewROI) # put back the overview box
+        print('Items after delete')
+        print(self.overview_plot.items)
+        self.insetview_plot.clear()
+
 
         if self.scale is None:  # running for the first time
             self.scale = 1 / (6 * np.mean(np.std(arr, axis=0, keepdims=True), axis=1))
@@ -120,10 +130,7 @@ class PairedGraphicsView():
         self.overview_plot.vb.setLimits(yMin=-3, yMax=arr.shape[1] + 3)
 
         # FOR DEBUGGING ONLY:
-        annotations_test = Annotations({'seizure': [[1, 10], [13, 15]],
-                                        'spike': [[11, 12], [15, 16]],
-                                        'artefact': [[24, 28]]})
-        self.set_scenes_plot_annotations_data(annotations_test)
+        self.set_scenes_plot_annotations_data(self.annotations_test)
         self.set_scene_window([30, 32])
         self.set_scene_cursor(10)
 
@@ -135,7 +142,7 @@ class PairedGraphicsView():
         init_scale is the initial scaling of the channels. Set transform
         '''
         # todo stop passing the vb to construction have it added automatically when add the item to plot
-        if index not in self.channel_plotitem_dict.keys():
+        if True: # index not in self.channel_plotitem_dict.keys(): # This was used before we were clearing the scenes upon file loading
             self.channel_plotitem_dict[index] = {}
             self.channel_plotitem_dict[index]['overview'] = PyecogPlotCurveItem(y, fs,
                                                                                 viewbox=self.overview_plot.vb)
@@ -159,36 +166,39 @@ class PairedGraphicsView():
         :return: None
         '''
         n = max(len(annotations.labels), 6)  # variable to give n different colors to different types of labels
-        annotation_graphs = {}
-        def function_generator(label,i,annotation_graph):
+
+        # Auxiliary functions that return functions with fixed parameters that can be used to connect to signals
+        def function_generator_link_annotaions(label, i, annotation_graph):
             return lambda: annotations.set_annotation_times(label, i, *annotation_graph.getRegion())
+
+        def function_generator_link_graphs(annotation_graph_a, annotation_graph_b):
+            return lambda: annotation_graph_b.setRegion(annotation_graph_a.getRegion())
 
         for bi, label in enumerate(annotations.labels):
             color = tuple(np.array(
                 colorsys.hls_to_rgb(bi / n, .5, .9)) * 255)  # circle hue with constant luminosity an saturation
-            # color = tuple(np.array(colorsys.hsv_to_rgb(bi / n, 1, .8)) * 255)  # circle hue with constant luminosity an saturation
             brush = pg.functions.mkBrush(color=(*color, 25))
             pen = pg.functions.mkPen(color=(*color, 200))
-            # annotation_graphs[label] = {'graphs': [], 'callbacks': []}
             for i, annotation_times in enumerate(annotations.get_all_annotation_times(label)):
-                annotation_graph_o = PyecogLinearRegionItem(annotation_times, pen=pen, brush=brush, movable=False)
+                annotation_graph_o = PyecogLinearRegionItem(annotation_times, pen=pen, brush=brush, movable=False,
+                                                            id=(label, i))
                 annotation_graph_o.setZValue(-1)
                 annotation_graph_i = PyecogLinearRegionItem(annotation_times, pen=pen, brush=brush, swapMode='push',
-                                                            label=label)
+                                                            label=label, id=(label, i))
                 annotation_graph_i.setZValue(-1)
-                annotation_graph_i.sigRegionChangeFinished.connect(function_generator(label, i, annotation_graph_i))
+                annotation_graph_i.sigRegionChangeFinished.connect(function_generator_link_annotaions(label, i, annotation_graph_i))
+                annotation_graph_i.sigRegionChangeFinished.connect(function_generator_link_graphs(annotation_graph_i, annotation_graph_o))
                 self.overview_plot.addItem(annotation_graph_o)
                 self.insetview_plot.addItem(annotation_graph_i)
 
 
-    def set_scene_cursor(self, cursor):
-        pen = pg.functions.mkPen(color=(200, 20, 20), width=3)
-        cursor_item = pg.InfiniteLine(pos=cursor, pen=pen)
-        cursor_item.setZValue(102)  # Hack to make it above all else
-        self.overview_plot.addItem(cursor_item)
-        cursor_item = pg.InfiniteLine(pos=cursor, pen=pen)
-        cursor_item.setZValue(102)  # Hack to make it above all else
-        self.insetview_plot.addItem(cursor_item)
+    def set_scene_cursor(self):
+        cursor_o = PyecogCursorItem(pos=0)
+        cursor_i = PyecogCursorItem(pos=0)
+        cursor_o.sigPositionChanged.connect(lambda:cursor_i.setPos(cursor_o.getPos()))
+        cursor_i.sigPositionChanged.connect(lambda:cursor_o.setPos(cursor_i.getPos()))
+        self.overview_plot.addItem(cursor_i)
+        self.insetview_plot.addItem(cursor_o)
 
     def set_scene_window(self, window):
         brush = pg.functions.mkBrush(color=(0, 0, 0, 10))

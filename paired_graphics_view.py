@@ -130,8 +130,8 @@ class PairedGraphicsView():
         self.overview_plot.vb.setLimits(xMin=0, xMax=arr.shape[0] / fs)
         self.overview_plot.vb.setLimits(yMin=-3, yMax=arr.shape[1] + 3)
 
-        # FOR DEBUGGING ONLY:
         self.set_scenes_plot_annotations_data(self.main_model.annotations)
+        # FOR DEBUGGING ONLY:
         self.set_scene_window([30, 32])
         self.set_scene_cursor()
 
@@ -169,8 +169,11 @@ class PairedGraphicsView():
         n = max(len(annotations.labels), 6)  # variable to give n different colors to different types of labels
 
         # Auxiliary functions that return functions with fixed parameters that can be used to connect to signals
-        def function_generator_link_annotaions(label, i, annotation_graph):
-            return lambda: annotations.set_annotation_times(label, i, *annotation_graph.getRegion())
+        def function_generator_link_annotaions(annotation_object, annotation_graph):
+            return lambda: annotation_object.setPos(annotation_graph.getRegion())
+
+        def function_generator_link_annotaions_to_graphs(annotation_object, annotation_graph):
+            return lambda: annotation_object.setPos(annotation_graph.getRegion())
 
         def function_generator_link_graphs(annotation_graph_a, annotation_graph_b):
             return lambda: annotation_graph_b.setRegion(annotation_graph_a.getRegion())
@@ -180,18 +183,19 @@ class PairedGraphicsView():
                 colorsys.hls_to_rgb(bi / n, .5, .9)) * 255)  # circle hue with constant luminosity an saturation
             brush = pg.functions.mkBrush(color=(*color, 25))
             pen = pg.functions.mkPen(color=(*color, 200))
-            for i, annotation_times in enumerate(annotations.get_all_annotation_times(label)):
-                annotation_graph_o = PyecogLinearRegionItem(annotation_times, pen=pen, brush=brush, movable=False,
-                                                            id=(label, i))
+            for i, annotation in enumerate(annotations.get_all_with_label(label)):
+                annotation_graph_o = PyecogLinearRegionItem((annotation.getStart(),annotation.getEnd()), pen=pen,
+                                                            brush=brush, movable=False, id=(label, i))
                 annotation_graph_o.setZValue(-1)
-                annotation_graph_i = PyecogLinearRegionItem(annotation_times, pen=pen, brush=brush, swapMode='push',
-                                                            label=label, id=(label, i))
+                annotation_graph_i = PyecogLinearRegionItem((annotation.getStart(),annotation.getEnd()), pen=pen,
+                                                            brush=brush, swapMode='push', label=label, id=(label, i))
                 annotation_graph_i.setZValue(-1)
-                annotation_graph_i.sigRegionChangeFinished.connect(function_generator_link_annotaions(label, i, annotation_graph_i))
+                annotation_graph_i.sigRegionChangeFinished.connect(function_generator_link_annotaions(annotation, annotation_graph_i))
                 annotation_graph_i.sigRegionChangeFinished.connect(function_generator_link_graphs(annotation_graph_i, annotation_graph_o))
                 self.overview_plot.addItem(annotation_graph_o)
                 self.insetview_plot.addItem(annotation_graph_i)
-
+                # annotation.sigAnnotationElementDeleted.connect() # todo
+                # annotation.sigAnnotationElementChanged.connect()
 
     def set_scene_cursor(self):
         cursor_o = PyecogCursorItem(pos=0)
@@ -208,11 +212,14 @@ class PairedGraphicsView():
 
     def set_scene_window(self, window):
         brush = pg.functions.mkBrush(color=(0, 0, 0, 10))
-        window_item = pg.LinearRegionItem(window, brush=brush)
-        self.overview_plot.addItem(window_item)
-        window_item = pg.LinearRegionItem(window, brush=brush)
-        window_item.setZValue(-1)
-        self.insetview_plot.addItem(window_item)
+        window_item_o = pg.LinearRegionItem(window, brush=brush,movable=False)
+        self.overview_plot.addItem(window_item_o)
+        window_item_i = pg.LinearRegionItem(window, brush=brush)
+        window_item_i.setZValue(-0.1) # Bellow traces, but above annotations
+        self.insetview_plot.addItem(window_item_i)
+        window_item_i.sigRegionChangeFinished.connect(lambda: window_item_o.setRegion(window_item_i.getRegion()))
+        window_item_i.sigRegionChangeFinished.connect(lambda: self.main_model.set_window_pos(window_item_i.getRegion()))
+        self.main_model.sigWindowChanged.connect(window_item_i.setRegion)
 
     def graphics_object_xchanged(self):
         print('xChanged grahics object')

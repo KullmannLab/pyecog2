@@ -10,18 +10,20 @@ import pyqtgraph_copy.pyqtgraph as pg
 from tree_model_and_nodes import FileTreeProxyModel, TreeModel, FileNode, DirectoryNode
 from paired_graphics_view import PairedGraphicsView
 from tree_widget import FileTreeElement
-from annotations_module import Annotations
+from annotations_module import Annotations, AnnotationElement, AnnotationPage
 #
 class MainModel(QObject):
 
     sigTimeChangedGraph = QtCore.Signal(object)
     sigTimeChangedVideo = QtCore.Signal(object)
+    sigWindowChanged    = QtCore.Signal(object)
+
     def __init__(self):
         super().__init__()
         self.data_eeg = np.array([])
         self.data_acc = np.array([])
         self.time_position = 0
-        self.time_window = [0, 0]
+        self.window = [0, 0]
         self.filenames_dict = {'eeg': '', 'meta' : '', 'anno': '', 'acc': ''}
         self.file_meta_dict = {}
         self.annotations = Annotations()
@@ -41,6 +43,11 @@ class MainModel(QObject):
             self.time_position = pos
             print('Current Time:', pos)
 
+    def set_window_pos(self, pos):
+        if pos != self.window:
+            self.window = pos
+            self.sigWindowChanged.emit(pos)
+            print('Window changesd to:', pos)
 
 class MainWindow(QMainWindow):
     '''
@@ -61,9 +68,10 @@ class MainWindow(QMainWindow):
 
         self.main_model = MainModel()
         # Just for testing purpouses
-        self.main_model.annotations = Annotations({'seizure': [[1, 10], [13, 15]],
-                                             'spike': [[11, 12], [15, 16]],
-                                             'artefact': [[24, 28]]})
+        self.main_model.annotations = AnnotationPage(list=[AnnotationElement(label='seizure', start=1, end=10),
+                                                           AnnotationElement(label='seizure', start=14, end=22),
+                                                           AnnotationElement(label='spike', start=23, end=25),
+                                                           AnnotationElement(label='artefact', start=26, end=26.5)])
 
         # Populate Main window with widgets
         # self.createDockWidget()y

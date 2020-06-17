@@ -1,6 +1,8 @@
 import json
 from PyQt5 import QtCore
 from PyQt5.QtCore import QObject
+import numpy as np
+import colorsys
 
 
 class AnnotationElement(QObject):
@@ -77,11 +79,17 @@ class AnnotationPage:
         if list is not None and self.checklist(list):
             self.annotations_list = list
             self.labels = set([annotation.getLabel() for annotation in list])
+            self.label_color_dict = {}
+            n = max(len(self.labels),6)  # make space for at least 6 colors, or space all colors equally
+            for i,label in enumerate(self.labels):
+                self.label_color_dict[label] = tuple(np.array(colorsys.hls_to_rgb(i / n, .5, .9)) * 255)
+
         elif fname is not None:
             self.import_from_json(fname)
         else:
             self.annotations_list = []
             self.labels = set()
+            self.label_color_dict = {}  # dictionary to save label plotting colors
 
     @staticmethod
     def checklist(alist):  # try to check if dictionary structure is valid
@@ -127,13 +135,16 @@ class AnnotationPage:
         # convert annotation objects into dictionaries
         full_dict = [json.loads(repr(a).replace('\'','\"')) for a in self.annotations_list]
         with open(fname, 'w') as f:
-            json.dump(full_dict, f)
+            json.dump([full_dict,list(self.labels),self.label_color_dict], f)
 
     def import_from_json(self, fname):
         with open(fname, 'r') as f:
-            full_dict = json.load(f)
+            object_list = json.load(f)
+        full_dict = object_list[0]
         # convert dictionaries into annotation objects
         self.annotations_list = [AnnotationElement(dictionary=a) for a in full_dict]
+        self.labels = set(object_list[1])
+        self.label_color_dict = object_list[2]
 
     def export_to_csv(self, fname, label):
         with open(fname, 'w') as f:

@@ -78,7 +78,9 @@ class VideoWindow(QMainWindow):
 
         # ERASE THIS SECTION AFTER LAB MEETING!!!
         self.mediaPlayer.setMedia(
-            QMediaContent(QUrl.fromLocalFile('/home/mfpleite/PycharmProjects/pyecog2/Notebooks/Video.ogv')))
+            QMediaContent(QUrl.fromLocalFile('/home/mfpleite/Shared/ele_data/119/20190930150911.mp4')))
+            # /home/mfpleite/PycharmProjects/pyecog2/Notebooks/Video.ogv
+            # /home/mfpleite/Shared/ele_data/119/20190930150911.mp4
         self.playButton.setEnabled(True)
         # END
 

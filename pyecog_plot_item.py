@@ -27,6 +27,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
         self.n_display_points = 5000  # this should be horizontal resolution of window
         super().__init__(*args, **kwds)
         self.resetTransform()
+        self.setZValue(1)
 
     def viewRangeChanged(self):
         self.setData_with_envelope()
@@ -158,10 +159,10 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
     '''
     Class to be used to plot annotations and current window
     '''
-
+    sigRemoveRequested = QtCore.pyqtSignal(object)
     def __init__(self, values=(0, 1), orientation='vertical', brush=None, pen=None,
                  hoverBrush=None, hoverPen=None, movable=True, bounds=None,
-                 span=(0, 1), swapMode='sort',label = '', id = None):
+                 span=(0, 1), swapMode='sort',label = '', id = None, removable=True):
 
         pg.LinearRegionItem.__init__(self, values=values, orientation=orientation, brush=brush, pen=pen,
                                      hoverBrush=hoverBrush, hoverPen=hoverPen, movable=movable, bounds=bounds,
@@ -173,10 +174,44 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
         self.id = id # field to identify corresponding annotation in the annotations object
         label_text = pg.TextItem(label, anchor=(0, -1), color= pen.color())
         label_text.setParentItem(self.lines[0])
+        self.removable = removable
+        self.menu = None
+        self.setAcceptedMouseButtons(self.acceptedMouseButtons() | QtCore.Qt.RightButton)
+        self.setZValue(0.1)
 
+    def checkRemoveHandle(self, handle):
+        ## This is used when displaying a Handle's context menu to determine
+        ## whether removing is allowed.
+        ## Subclasses may wish to override this to disable the menu entry.
+        ## Note: by default, handles are not user-removable even if this method returns True.
+        return self.removable
+
+    def contextMenuEnabled(self):
+        return True
+
+    def raiseContextMenu(self, ev):
+        if not self.contextMenuEnabled():
+            return
+        menu = self.getMenu()
+        menu = self.scene().addParentContextMenus(self, menu, ev)
+        pos = ev.screenPos()
+        menu.popup(QtCore.QPoint(pos.x(), pos.y()))
+
+    def getMenu(self):
+        if self.menu is None:
+            self.menu = QtGui.QMenu()
+            self.menu.setTitle("Annotations")
+            remAct = QtGui.QAction("Remove annotation", self.menu)
+            remAct.triggered.connect(self.removeClicked)
+            self.menu.addAction(remAct)
+            self.menu.remAct = remAct
+        return self.menu
+
+    def removeClicked(self):
+        ## Send remove event only after we have exited the menu event handler
+        QtCore.QTimer.singleShot(0, lambda: self.sigRemoveRequested.emit(self))
 
     # Redefine move methods to only allow lines to move horizontally (hence keeping label vertically anchored)
-
     def lineMoved(self, i):
         if self.blockLineSignal:
             return
@@ -232,8 +267,11 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
             self.moving = False
             self.sigRegionChanged.emit(self)
             self.sigRegionChangeFinished.emit(self)
-
-
+        elif ev.button() == QtCore.Qt.RightButton and self.contextMenuEnabled():
+            self.raiseContextMenu(ev)
+            ev.accept()
+        else:
+            ev.ignore()
 
 class PyecogCursorItem(pg.InfiniteLine):
     def __init__(self, pos=None, angle=90, pen=None, movable=True, bounds=None,

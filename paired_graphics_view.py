@@ -14,7 +14,6 @@ import pyqtgraph_copy.pyqtgraph as pg
 import colorsys
 
 from pyecog_plot_item import PyecogPlotCurveItem, PyecogLinearRegionItem, PyecogCursorItem
-from annotations_module import Annotations
 
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')

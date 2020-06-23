@@ -47,7 +47,7 @@ class AnnotationElement(QObject):
         self.sigAnnotationElementChanged.emit(self)
 
     def getPos(self):
-        return [self.element_dict['start'], self.element_dict['start']]
+        return [self.element_dict['start'], self.element_dict['end']]
 
     def setPos(self, pos):
         self.element_dict['start'] = min(pos)

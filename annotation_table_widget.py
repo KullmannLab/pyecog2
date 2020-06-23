@@ -1,5 +1,9 @@
-from PyQt5 import QtGui, QtCore
+from PyQt5 import QtGui, QtCore, QtWidgets
+from annotations_module import AnnotationPage
+import numpy as np
 
+basestring = str
+asUnicode = str
 __all__ = ['TableWidget']
 
 
@@ -21,14 +25,14 @@ def _defersort(fn):
     return defersort
 
 
-class TableWidget(QtGui.QTableWidget):
+class AnnotationTableWidget(QtWidgets.QTableWidget):
     """Extends QTableWidget with some useful functions for automatic data handling
     and copy / export context menu. Can automatically format and display a variety
     of data types (see :func:`setData() <pyqtgraph.TableWidget.setData>` for more
-    information.
+    information.QtWidgets.QTableWidgetok
     """
 
-    def __init__(self, *args, **kwds):
+    def __init__(self, annotationsPage = AnnotationPage(), *args, **kwds):
         """
         All positional arguments are passed to QTableWidget.__init__().
 
@@ -44,17 +48,18 @@ class TableWidget(QtGui.QTableWidget):
         ===================== =================================================
         """
 
-        QtGui.QTableWidget.__init__(self, *args)
+        QtWidgets.QTableWidget.__init__(self, *args)
 
+        self.setWindowTitle('Annotations Table')
         self.itemClass = TableWidgetItem
 
         self.setVerticalScrollMode(self.ScrollPerPixel)
-        self.setSelectionMode(QtGui.QAbstractItemView.ContiguousSelection)
-        self.setSizePolicy(QtGui.QSizePolicy.Preferred, QtGui.QSizePolicy.Preferred)
+        self.setSelectionMode(QtWidgets.QAbstractItemView.ContiguousSelection)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         self.clear()
 
         kwds.setdefault('sortable', True)
-        kwds.setdefault('editable', False)
+        kwds.setdefault('editable', True)
         self.setEditable(kwds.pop('editable'))
         self.setSortingEnabled(kwds.pop('sortable'))
 
@@ -68,15 +73,22 @@ class TableWidget(QtGui.QTableWidget):
 
         self.itemChanged.connect(self.handleItemChanged)
 
-        self.contextMenu = QtGui.QMenu()
+        self.contextMenu = QtWidgets.QMenu()
         self.contextMenu.addAction('Copy Selection').triggered.connect(self.copySel)
         self.contextMenu.addAction('Copy All').triggered.connect(self.copyAll)
         self.contextMenu.addAction('Save Selection').triggered.connect(self.saveSel)
         self.contextMenu.addAction('Save All').triggered.connect(self.saveAll)
+        self.setData([annotation.element_dict for annotation in annotationsPage.annotations_list])
+        for i in range(self.rowCount()):
+            # make bkgd color a bit lighter than normal color
+            alpha = 50 / 255
+            color = [value * alpha + 255 * (1 - alpha) for value in annotationsPage.label_color_dict[self.item(i, 0).text()]]
+            for k in range(self.columnCount()):
+                self.item(i, k).setBackground(QtGui.QBrush(QtGui.QColor(*color)))
 
     def clear(self):
         """Clear all contents from the table."""
-        QtGui.QTableWidget.clear(self)
+        QtWidgets.QTableWidget.clear(self)
         self.verticalHeadersSet = False
         self.horizontalHeadersSet = False
         self.items = []
@@ -98,6 +110,14 @@ class TableWidget(QtGui.QTableWidget):
         self.clear()
         self.appendData(data)
         self.resizeColumnsToContents()
+
+    @staticmethod
+    def function_generator_link_annotaions(annotation_object, table_item):
+        return lambda: annotation_object.setPos(table_item.getRegion())
+
+    @staticmethod
+    def function_generator_link_annotaions_to_graphs(annotation_object, table_item):
+        return lambda: annotation_object.setPos(table_item.getRegion())
 
     @_defersort
     def appendData(self, data):
@@ -140,6 +160,10 @@ class TableWidget(QtGui.QTableWidget):
         for row in it0:
             i += 1
             self.setRow(i, [x for x in fn1(row)])
+            # ML: connect Annotation changes to item changes
+            for k in range(self.columnCount()):
+                row.sigAnnotationElementChanged(self.item(i, k).itemChanged)
+
 
         if (self._sorting and self.horizontalHeadersSet and
                 self.horizontalHeader().sortIndicatorSection() >= self.columnCount()):
@@ -195,7 +219,7 @@ class TableWidget(QtGui.QTableWidget):
         if isinstance(data, list) or isinstance(data, tuple):
             return lambda d: d.__iter__(), None
         elif isinstance(data, dict):
-            return lambda d: iter(d.values()), list(map(asUnicode, data.keys()))
+            return lambda d: iter(d.values()), list(map(str, data.keys()))
         elif (hasattr(data, 'implements') and data.implements('MetaArray')):
             if data.axisHasColumns(0):
                 header = [asUnicode(data.columnName(0, i)) for i in range(data.shape[0])]
@@ -328,11 +352,11 @@ class TableWidget(QtGui.QTableWidget):
 
     def copySel(self):
         """Copy selected data to clipboard."""
-        QtGui.QApplication.clipboard().setText(self.serialize(useSelection=True))
+        QtWidgets.QApplication.clipboard().setText(self.serialize(useSelection=True))
 
     def copyAll(self):
         """Copy all data to clipboard."""
-        QtGui.QApplication.clipboard().setText(self.serialize(useSelection=False))
+        QtWidgets.QApplication.clipboard().setText(self.serialize(useSelection=False))
 
     def saveSel(self):
         """Save selected data to file."""
@@ -343,7 +367,7 @@ class TableWidget(QtGui.QTableWidget):
         self.save(self.serialize(useSelection=False))
 
     def save(self, data):
-        fileName = QtGui.QFileDialog.getSaveFileName(self, "Save As..", "", "Tab-separated values (*.tsv)")
+        fileName = QtWidgets.QFileDialog.getSaveFileName(self, "Save As..", "", "Tab-separated values (*.tsv)")
         if isinstance(fileName, tuple):
             fileName = fileName[0]  # Qt4/5 API difference
         if fileName == '':
@@ -358,15 +382,15 @@ class TableWidget(QtGui.QTableWidget):
             ev.accept()
             self.copySel()
         else:
-            QtGui.QTableWidget.keyPressEvent(self, ev)
+            QtWidgets.QTableWidget.keyPressEvent(self, ev)
 
     def handleItemChanged(self, item):
         item.itemChanged()
 
 
-class TableWidgetItem(QtGui.QTableWidgetItem):
+class TableWidgetItem(QtWidgets.QTableWidgetItem):
     def __init__(self, val, index, format=None):
-        QtGui.QTableWidgetItem.__init__(self, '')
+        QtWidgets.QTableWidgetItem.__init__(self, '')
         self._blockValueChange = False
         self._format = None
         self._defaultFormat = '%0.3g'
@@ -459,7 +483,7 @@ class TableWidgetItem(QtGui.QTableWidgetItem):
             else:
                 return self._format % self.value
         else:
-            return asUnicode(self.value)
+            return str(self.value)
 
     def __lt__(self, other):
         if self.sortMode == 'index' and hasattr(other, 'index'):

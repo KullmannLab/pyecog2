@@ -10,7 +10,10 @@ import pyqtgraph_copy.pyqtgraph as pg
 from tree_model_and_nodes import FileTreeProxyModel, TreeModel, FileNode, DirectoryNode
 from paired_graphics_view import PairedGraphicsView
 from tree_widget import FileTreeElement
-from annotations_module import Annotations, AnnotationElement, AnnotationPage
+from annotations_module import AnnotationElement, AnnotationPage
+from annotation_table_widget import AnnotationTableWidget
+
+
 #
 class MainModel(QObject):
 
@@ -26,7 +29,7 @@ class MainModel(QObject):
         self.window = [0, 0]
         self.filenames_dict = {'eeg': '', 'meta' : '', 'anno': '', 'acc': ''}
         self.file_meta_dict = {}
-        self.annotations = Annotations()
+        self.annotations = AnnotationPage()
 
     def set_time_position_from_graphs(self, pos):
         if pos != self.time_position: # only emit signal if time_position actually changed
@@ -91,6 +94,10 @@ class MainWindow(QMainWindow):
         self.dock_list['Text'].setWidget(QPlainTextEdit())
         self.dock_list['Text'].setObjectName("Text")
 
+        self.dock_list['Annotations Table'] = QDockWidget("Annotations Table", self)
+        self.dock_list['Annotations Table'].setWidget(AnnotationTableWidget(self.main_model.annotations))
+        self.dock_list['Annotations Table'].setObjectName("Annotations Table")
+
         self.video_element = VideoWindow()
         self.dock_list['Video'] = QDockWidget("Video", self)
         self.dock_list['Video'].setWidget(self.video_element)
@@ -103,7 +110,8 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.paired_graphics_view.splitter)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['File Tree'])
-        self.addDockWidget(Qt.LeftDockWidgetArea,self.dock_list['Text'])
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['Annotations Table'])
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['Text'])
 
         # Clear this after sorting out how to beter save workspaces
         try:

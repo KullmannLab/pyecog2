@@ -160,38 +160,46 @@ class PairedGraphicsView():
         self.channel_plotitem_dict[index]['insetview'].set_data(y, fs)
         self.overview_plot.vb.setXRange(0, y.shape[0] / fs, padding=0)
 
+    @staticmethod
+    def function_generator_link_annotaions_to_graphs(annotation_object, annotation_graph):
+        return lambda: annotation_graph.setRegion(annotation_object.getPos())
+
+    @staticmethod
+    def function_generator_link_graphs_to_annotations(annotation_object, annotation_graph):
+        return lambda: annotation_object.setPos(annotation_graph.getRegion())
+
+    @staticmethod
+    def function_generator_link_graphs(annotation_graph_a, annotation_graph_b):
+        return lambda: annotation_graph_b.setRegion(annotation_graph_a.getRegion()) \
+
+    def add_annotaion_plot(self, annotation, color):
+        brush = pg.functions.mkBrush(color=(*color, 25))
+        pen = pg.functions.mkPen(color=(*color, 200))
+        annotation_graph_o = PyecogLinearRegionItem((annotation.getStart(), annotation.getEnd()), pen=pen,
+                                                    brush=brush, movable=False, id=None)
+        annotation_graph_o.setZValue(-1)
+        annotation_graph_i = PyecogLinearRegionItem((annotation.getStart(), annotation.getEnd()), pen=pen,
+                                                    brush=brush, swapMode='push', label=annotation.getLabel(), id=None)
+
+        annotation_graph_i.sigRegionChangeFinished.connect(
+            self.function_generator_link_graphs_to_annotations(annotation, annotation_graph_i))
+        annotation_graph_i.sigRegionChangeFinished.connect(
+            self.function_generator_link_graphs(annotation_graph_i, annotation_graph_o))
+        self.overview_plot.addItem(annotation_graph_o)
+        self.insetview_plot.addItem(annotation_graph_i)
+        # annotation.sigAnnotationElementDeleted.connect() # todo
+        annotation.sigAnnotationElementChanged.connect(
+            self.function_generator_link_annotaions_to_graphs(annotation, annotation_graph_i))
+
     def set_scenes_plot_annotations_data(self, annotations):
         '''
         :param annotations: an annotations object
         :return: None
         '''
-        # Auxiliary functions that return functions with fixed parameters that can be used to connect to signals
-        def function_generator_link_annotaions(annotation_object, annotation_graph):
-            return lambda: annotation_object.setPos(annotation_graph.getRegion())
+        for annotation in annotations.annotations_list:
+            color = annotations.label_color_dict[annotation.getLabel()]  # circle hue with constant luminosity an saturation
+            self.add_annotaion_plot(annotation, color)
 
-        def function_generator_link_annotaions_to_graphs(annotation_object, annotation_graph):
-            return lambda: annotation_object.setPos(annotation_graph.getRegion())
-
-        def function_generator_link_graphs(annotation_graph_a, annotation_graph_b):
-            return lambda: annotation_graph_b.setRegion(annotation_graph_a.getRegion())
-
-        for bi, label in enumerate(annotations.labels):
-            color = annotations.label_color_dict[label]  # circle hue with constant luminosity an saturation
-            brush = pg.functions.mkBrush(color=(*color, 25))
-            pen = pg.functions.mkPen(color=(*color, 200))
-            for i, annotation in enumerate(annotations.get_all_with_label(label)):
-                annotation_graph_o = PyecogLinearRegionItem((annotation.getStart(),annotation.getEnd()), pen=pen,
-                                                            brush=brush, movable=False, id=(label, i))
-                annotation_graph_o.setZValue(-1)
-                annotation_graph_i = PyecogLinearRegionItem((annotation.getStart(),annotation.getEnd()), pen=pen,
-                                                            brush=brush, swapMode='push', label=label, id=(label, i))
-
-                annotation_graph_i.sigRegionChangeFinished.connect(function_generator_link_annotaions(annotation, annotation_graph_i))
-                annotation_graph_i.sigRegionChangeFinished.connect(function_generator_link_graphs(annotation_graph_i, annotation_graph_o))
-                self.overview_plot.addItem(annotation_graph_o)
-                self.insetview_plot.addItem(annotation_graph_i)
-                # annotation.sigAnnotationElementDeleted.connect() # todo
-                # annotation.sigAnnotationElementChanged.connect()
 
     def set_scene_cursor(self):
         cursor_o = PyecogCursorItem(pos=0)

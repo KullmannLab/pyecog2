@@ -4,7 +4,7 @@ import numpy as np
 
 basestring = str
 asUnicode = str
-__all__ = ['TableWidget']
+# __all__ = ['TableWidget']
 
 
 def _defersort(fn):
@@ -88,7 +88,8 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         if item is not None:
             self.annotationsPage.focusOnAnnotation(item.annotation)
         else:
-            self.annotationsPage.focusOnAnnotation(None)
+            # self.annotationsPage.focusOnAnnotation(None) # This Creates circularities because the funciton is called on currentItemChamged and not click
+            pass
 
     def updateTableColor(self):
         for i in range(self.rowCount()):
@@ -119,9 +120,16 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         * dict-of-lists  {'x': [1,2,3], 'y': [4,5,6]}
         * list-of-dicts  [{'x': 1, 'y': 4}, {'x': 2, 'y': 5}, ...]
         """
+
+        ranges = self.selectedRanges()
         self.clear()
         self.appendData(data)
         self.resizeColumnsToContents()
+        if len(ranges) > 0:
+            self.setRangeSelected(ranges[0], True)
+        items = self.selectedItems()
+        if len(items) > 0:
+            self.setCurrentItem(items[0])
 
     @_defersort
     def appendData(self, annotaion_list):
@@ -156,6 +164,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
     def myremoveRow(self,r):
         # couldn't figure out any other way apart from reseting all the data
         self.setData(self.annotationsPage.annotations_list)
+
 
 
     def setEditable(self, editable=True):

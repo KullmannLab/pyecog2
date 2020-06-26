@@ -253,13 +253,18 @@ class PairedGraphicsView():
 
     def set_scene_window(self, window):
         brush = pg.functions.mkBrush(color=(0, 0, 0, 10))
-        window_item_o = pg.LinearRegionItem(window, brush=brush,movable=False)
+        pen = pg.functions.mkPen(color=(0, 0, 0, 200))
+        # window_item_o = pg.LinearRegionItem(window, brush=brush,movable=False)
+        window_item_o = PyecogLinearRegionItem(window, pen=pen, brush=brush, movable=False, id=None)
         self.overview_plot.addItem(window_item_o)
-        window_item_i = pg.LinearRegionItem(window, brush=brush)
+        # window_item_i = pg.LinearRegionItem(window, brush=brush)
+        window_item_i = PyecogLinearRegionItem(window, pen=pen, brush=brush, movable=True, id=None)
         window_item_i.setZValue(0.11) # Bellow traces, but above annotations
         self.insetview_plot.addItem(window_item_i)
         window_item_i.sigRegionChangeFinished.connect(lambda: window_item_o.setRegion(window_item_i.getRegion()))
         window_item_i.sigRegionChangeFinished.connect(lambda: self.main_model.set_window_pos(window_item_i.getRegion()))
+        window_item_i.sigClicked.connect(lambda: self.main_model.annotations.focusOnAnnotation(None))
+        window_item_i.sigClicked.connect(lambda: self.main_model.set_time_position(self.main_model.window[0]))
         self.main_model.sigWindowChanged.connect(window_item_i.setRegion)
 
     def graphics_object_xchanged(self):

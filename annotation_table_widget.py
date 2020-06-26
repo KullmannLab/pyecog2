@@ -51,7 +51,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         QtWidgets.QTableWidget.__init__(self, *args)
 
         self.setWindowTitle('Annotations Table')
-        self.itemClass = TableWidgetItem
+        self.itemClass = AnnotationTableWidgetItem
 
         self.setVerticalScrollMode(self.ScrollPerPixel)
         self.setSelectionMode(QtWidgets.QAbstractItemView.ContiguousSelection)
@@ -70,7 +70,6 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
 
         self._formats = {None: None}  # stores per-column formats and entire table format
         self.sortModes = {}  # stores per-column sort mode
-
         self.itemChanged.connect(self.handleItemChanged)
 
         self.contextMenu = QtWidgets.QMenu()
@@ -78,23 +77,36 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         self.contextMenu.addAction('Copy All').triggered.connect(self.copyAll)
         self.contextMenu.addAction('Save Selection').triggered.connect(self.saveSel)
         self.contextMenu.addAction('Save All').triggered.connect(self.saveAll)
-        self.setData([annotation.element_dict for annotation in annotationsPage.annotations_list])
+        self.annotationsPage = annotationsPage
+        self.setData(annotationsPage.annotations_list)
+        self.annotationsPage.sigFocusOnAnnotation.connect(self.selectAnnotation) #connect function to select annotation
+        self.currentItemChanged.connect(self.my_item_clicekd)
+        self.annotationsPage.sigAnnotationAdded.connect(self.appendData)
+        self.annotationsPage.sigLabelsChanged.connect(lambda: self.setData(annotationsPage.annotations_list))
+
+    def my_item_clicekd(self,item):
+        if item is not None:
+            self.annotationsPage.focusOnAnnotation(item.annotation)
+        else:
+            self.annotationsPage.focusOnAnnotation(None)
+
+    def updateTableColor(self):
         for i in range(self.rowCount()):
             # make bkgd color a bit lighter than normal color
             alpha = 50 / 255
-            color = [value * alpha + 255 * (1 - alpha) for value in annotationsPage.label_color_dict[self.item(i, 0).text()]]
+            color = [value * alpha + 255 * (1 - alpha) for value in self.annotationsPage.label_color_dict[self.item(i, 0).text()]]
             for k in range(self.columnCount()):
                 self.item(i, k).setBackground(QtGui.QBrush(QtGui.QColor(*color)))
 
     def clear(self):
         """Clear all contents from the table."""
-        QtWidgets.QTableWidget.clear(self)
-        self.verticalHeadersSet = False
-        self.horizontalHeadersSet = False
+        QtWidgets.QTableWidget.clearContents(self)
+        # self.verticalHeadersSet = False
+        # self.horizontalHeadersSet = False
         self.items = []
         self.setRowCount(0)
-        self.setColumnCount(0)
-        self.sortModes = {}
+        # self.setColumnCount(0)
+        # self.sortModes = {}
 
     def setData(self, data):
         """Set the data displayed in the table.
@@ -111,63 +123,40 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         self.appendData(data)
         self.resizeColumnsToContents()
 
-    @staticmethod
-    def function_generator_link_annotaions(annotation_object, table_item):
-        return lambda: annotation_object.setPos(table_item.getRegion())
-
-    @staticmethod
-    def function_generator_link_annotaions_to_graphs(annotation_object, table_item):
-        return lambda: annotation_object.setPos(table_item.getRegion())
-
     @_defersort
-    def appendData(self, data):
+    def appendData(self, annotaion_list):
         """
         Add new rows to the table.
 
         See :func:`setData() <pyqtgraph.TableWidget.setData>` for accepted
         data types.
         """
+        if type(annotaion_list) is not list:
+            annotaion_list = [annotaion_list] # Allow to receive lists or single annotations as inputs as well
+
         startRow = self.rowCount()
+        self.setColumnCount(5) #['Label', 'Start', 'End', 'Confidence', 'Notes']
+        self.setHorizontalHeaderLabels(['Label', 'Start', 'End', 'Confidence', 'Notes'])
+        self.horizontalHeadersSet = True
+        r = startRow
 
-        fn0, header0 = self.iteratorFn(data)
-        if fn0 is None:
-            self.clear()
-            return
-        it0 = fn0(data)
-        try:
-            first = next(it0)
-        except StopIteration:
-            return
-        fn1, header1 = self.iteratorFn(first)
-        if fn1 is None:
-            self.clear()
-            return
-
-        firstVals = [x for x in fn1(first)]
-        self.setColumnCount(len(firstVals))
-
-        if not self.verticalHeadersSet and header0 is not None:
-            labels = [self.verticalHeaderItem(i).text() for i in range(self.rowCount())]
-            self.setRowCount(startRow + len(header0))
-            self.setVerticalHeaderLabels(labels + header0)
-            self.verticalHeadersSet = True
-        if not self.horizontalHeadersSet and header1 is not None:
-            self.setHorizontalHeaderLabels(header1)
-            self.horizontalHeadersSet = True
-
-        i = startRow
-        self.setRow(i, firstVals)
-        for row in it0:
-            i += 1
-            self.setRow(i, [x for x in fn1(row)])
-            # ML: connect Annotation changes to item changes
-            for k in range(self.columnCount()):
-                row.sigAnnotationElementChanged(self.item(i, k).itemChanged)
-
+        for annotation in annotaion_list:
+            self.setRow(r, annotation, [i[0] for i in annotation.element_dict.items()])
+            annotation.sigAnnotationElementDeleted.connect(lambda: self.myremoveRow(r))
+            for c in range(self.columnCount()):
+                annotation.sigAnnotationElementChanged.connect(self.item(r,c).update_value_from_annotation)
+            r+=1
 
         if (self._sorting and self.horizontalHeadersSet and
                 self.horizontalHeader().sortIndicatorSection() >= self.columnCount()):
-            self.sortByColumn(0, QtCore.Qt.AscendingOrder)
+            self.sortByColumn(1, QtCore.Qt.AscendingOrder)
+
+        self.updateTableColor()
+
+    def myremoveRow(self,r):
+        # couldn't figure out any other way apart from reseting all the data
+        self.setData(self.annotationsPage.annotations_list)
+
 
     def setEditable(self, editable=True):
         self.editable = editable
@@ -263,13 +252,15 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         self.setRow(row, vals)
 
     @_defersort
-    def setRow(self, row, vals):
+    def setRow(self, row, annotation, keys):
         if row > self.rowCount() - 1:
             self.setRowCount(row + 1)
-        for col in range(len(vals)):
-            val = vals[col]
-            item = self.itemClass(val, row)
-            item.setEditable(self.editable)
+        for col in range(len(keys)):
+            key = keys[col]
+            item = self.itemClass(annotation, key, row)
+            if key != 'label':
+                item.setEditable(self.editable)
+
             sortMode = self.sortModes.get(col, None)
             if sortMode is not None:
                 item.setSortMode(sortMode)
@@ -277,7 +268,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
             item.setFormat(format)
             self.items.append(item)
             self.setItem(row, col, item)
-            item.setValue(val)  # Required--the text-change callback is invoked
+            # item.setValue(val)  # Required--the text-change callback is invoked
             # when we call setItem.
 
     def setSortMode(self, column, mode):
@@ -378,28 +369,67 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         self.contextMenu.popup(ev.globalPos())
 
     def keyPressEvent(self, ev):
+        print('Key press captured by Table', ev.key())
         if ev.key() == QtCore.Qt.Key_C and ev.modifiers() == QtCore.Qt.ControlModifier:
             ev.accept()
             self.copySel()
-        else:
-            QtWidgets.QTableWidget.keyPressEvent(self, ev)
+            return
+        # Now follows a very dirty piece of code because QTableWidget handles kyepresses in very inconsistent ways
+        numbered_keys = [QtCore.Qt.Key_1, QtCore.Qt.Key_2, QtCore.Qt.Key_3, QtCore.Qt.Key_4, QtCore.Qt.Key_5,
+                         QtCore.Qt.Key_6, QtCore.Qt.Key_7, QtCore.Qt.Key_8, QtCore.Qt.Key_9, QtCore.Qt.Key_0]
+
+        for i in range(len(self.annotationsPage.labels)):
+            if ev.key() == numbered_keys[i]:
+                print(i + 1, 'pressed')
+                if self.annotationsPage.focused_annotation is not None:
+                    annotation = self.annotationsPage.focused_annotation
+                    annotation.setLabel(self.annotationsPage.labels[i])
+                    # a bit of a pity that this signal cannot be emited by the anotation
+                    self.annotationsPage.sigLabelsChanged.emit(self.annotationsPage.labels[i])
+                    self.annotationsPage.focusOnAnnotation(annotation)
+                return
+
+        QtWidgets.QTableWidget.keyPressEvent(self, ev)
+
+
+
+
 
     def handleItemChanged(self, item):
         item.itemChanged()
 
+    def selectAnnotation(self, annotation):
+        if annotation is None:
+            self.clearSelection()  # clear selection if no annotation is found
+            return
+        for r in range(self.rowCount()):
+            if self.item(r, 0).annotation == annotation:
+                c = 0
+                try:
+                    c = self.selectedRanges()[0].leftColumn() # Keep the same column selected if there is already a selection
+                except:
+                    pass
+                self.setCurrentCell(r,c)
 
-class TableWidgetItem(QtWidgets.QTableWidgetItem):
-    def __init__(self, val, index, format=None):
+
+class AnnotationTableWidgetItem(QtWidgets.QTableWidgetItem):
+    def __init__(self, annotation, key, index, format=None):
         QtWidgets.QTableWidgetItem.__init__(self, '')
         self._blockValueChange = False
         self._format = None
-        self._defaultFormat = '%0.3g'
+        self._defaultFormat = '%4.2f'
         self.sortMode = 'value'
         self.index = index
         flags = QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled
         self.setFlags(flags)
-        self.setValue(val)
+        self.annotation = annotation
+        self.key = key
+        self.setValue(annotation.element_dict[key])
         self.setFormat(format)
+
+    def update_value_from_annotation(self):
+        if self.value != self.annotation.element_dict[self.key]:
+            self.setValue(self.annotation.element_dict[self.key])
 
     def setEditable(self, editable):
         """
@@ -452,6 +482,9 @@ class TableWidgetItem(QtWidgets.QTableWidgetItem):
 
     def setValue(self, value):
         self.value = value
+        if self.value != self.annotation.element_dict[self.key]:
+            self.annotation.setKey(self.key, value)
+            print('setting new value:', type(value),value)
         self._updateText()
 
     def itemChanged(self):
@@ -461,18 +494,22 @@ class TableWidgetItem(QtWidgets.QTableWidgetItem):
 
     def textChanged(self):
         """Called when this item's text has changed for any reason."""
+        print('TextChanged was called')
         self._text = self.text()
 
         if self._blockValueChange:
             # text change was result of value or format change; do not
             # propagate.
+            print('skiped set value')
             return
 
         try:
-
-            self.value = type(self.value)(self.text())
+            self.setValue(type(self.value)(self.text()))
+            # self.value = type(self.value)(self.text())
         except ValueError:
-            self.value = str(self.text())
+            # self.value = str(self.text())
+            self._updateText()
+            print('error changing value ')
 
     def format(self):
         if callable(self._format):
@@ -492,3 +529,4 @@ class TableWidgetItem(QtWidgets.QTableWidgetItem):
             return self.value < other.value
         else:
             return self.text() < other.text()
+

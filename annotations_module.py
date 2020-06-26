@@ -5,6 +5,16 @@ import numpy as np
 import colorsys
 from collections import OrderedDict
 
+def i_spaced_nfold(i,n):
+    floorlog = max(np.floor(np.log2(2*(i-1)/n)),0)
+    d   = n*2**(floorlog)
+    if d == n:
+        h = i-1
+    else:
+        h = (2*i - d - 1)
+    v   = h/d
+    return v
+
 class AnnotationElement(QObject):
     sigAnnotationElementChanged = QtCore.pyqtSignal(object) # emited when any attribute is changed
     sigAnnotationElementDeleted = QtCore.pyqtSignal(object) # emited when all references to annotation are deleted
@@ -20,10 +30,17 @@ class AnnotationElement(QObject):
             #                      'confidence': confidence,
             #                      'notes': notes}  # To be used by classifier predictions
             self.element_dict = OrderedDict([('label', label),
-                                             ('start', start),
-                                             ('end', end),
-                                             ('confidence', confidence),
+                                             ('start', float(start)),
+                                             ('end', float(end)),
+                                             ('confidence', float(confidence)),
                                              ('notes', notes)])  # To be used by classifier predictions
+
+    def getKey(self,key):
+        return self.element_dict[key]
+
+    def setKey(self,key,value):
+        self.element_dict[key] = value
+        self.sigAnnotationElementChanged.emit(self)
 
     def getLabel(self):
         return self.element_dict['label']
@@ -72,7 +89,7 @@ class AnnotationElement(QObject):
         self.sigAnnotationElementDeleted.emit(self)
 
     # def __del__(self):
-    #     self.sigAnnotationElementDeleted.emit(self)
+    #      self.sigAnnotationElementDeleted.emit(self)
 
     def __repr__(self):
         return repr(dict(self.element_dict))
@@ -80,11 +97,16 @@ class AnnotationElement(QObject):
     def __str__(self):
         return str(dict(self.element_dict))
 
-class AnnotationPage:
-    def __init__(self, list=None, fname=None):
-        if list is not None and self.checklist(list):
-            self.annotations_list = list
-            self.labels = set([annotation.getLabel() for annotation in list])
+class AnnotationPage(QObject):
+    sigFocusOnAnnotation = QtCore.pyqtSignal(object)
+    sigAnnotationAdded   = QtCore.pyqtSignal(object)
+    sigLabelsChanged     = QtCore.pyqtSignal(object)
+
+    def __init__(self, alist=None, fname=None):
+        super().__init__()
+        if list is not None and self.checklist(alist):
+            self.annotations_list = alist
+            self.labels = list(set([annotation.getLabel() for annotation in alist]))
             self.label_color_dict = {}
             n = max(len(self.labels),6)  # make space for at least 6 colors, or space all colors equally
             for i,label in enumerate(self.labels):
@@ -94,8 +116,15 @@ class AnnotationPage:
             self.import_from_json(fname)
         else:
             self.annotations_list = []
-            self.labels = set()
+            self.labels = []
             self.label_color_dict = {}  # dictionary to save label plotting colors
+        self.focused_annotation = None
+
+    def focusOnAnnotation(self, annotation):
+        if annotation != self.focused_annotation:
+            self.focused_annotation = annotation
+            print('focused on', annotation)
+            self.sigFocusOnAnnotation.emit(annotation)
 
     @staticmethod
     def checklist(alist):  # try to check if dictionary structure is valid
@@ -110,14 +139,28 @@ class AnnotationPage:
 
     def add_annotation(self, annotation):
         self.annotations_list.append(annotation)
-        self.labels.add(annotation.getLabel())
+        self.add_label(annotation.getLabel())
+        self.sigAnnotationAdded.emit(annotation)
 
-    def delete_annotation(self, index):
+    def delete_annotation(self, annotation):
+        if type(annotation) is not int:
+            index = self.get_annotation_index(annotation)
+        else:
+            index = annotation # allow for annotation to be the index
+            annotation = self.annotations_list[index]
+        if index is None:
+            return
         try:
-            self.annotations_list[index].delete() # send signal we are deleting annotation
             del self.annotations_list[index]
+            annotation.delete() # send signal we are deleting annotation
         except IndexError:
             print('Annotation index is out of range')
+
+    def get_annotation_index(self, annotation):
+        for i in range(len(self.annotations_list)):
+            if self.annotations_list[i] == annotation:
+                return i
+        return None
 
     def get_all_with_label(self, label):
         result = []
@@ -131,9 +174,41 @@ class AnnotationPage:
             if a.getLabel() == label:
                 self.delete_annotation(i)
 
-    def add_label(self, label):
+    def delete_label(self, label):
+        print('labels before delete',self.labels)
+        self.delete_all_with_label(label)
+        del self.label_color_dict[label]
+        for i, l in reversed(list(enumerate(self.labels))):
+            if l == label:
+                del self.labels[i]
+        print('labels after', self.labels)
+
+    def change_label_name(self,old_label, new_label):
+        for annotation in self.get_all_with_label(old_label):
+            annotation.setLabel(new_label)
+        for i,l in enumerate(self.labels):
+            if l == old_label:
+                self.labels[i] = new_label
+        self.label_color_dict[new_label] = self.label_color_dict[old_label]
+        del self.label_color_dict[old_label]
+        self.sigLabelsChanged.emit(new_label)
+
+    def change_label_color(self,label,color):
+        self.label_color_dict[label] = color
+        self.sigLabelsChanged.emit(label)
+
+    def add_label(self, label, color = None):
+        print(label,color,self.labels)
         if label not in self.labels:
-            self.labels.add(label) # for future if labels can have global propreties... probably will never be used
+            self.labels.append(label) # for future if labels can have global propreties... probably will never be used
+            if label not in self.label_color_dict.keys():
+                if color is not None:
+                    self.label_color_dict[label] = color
+                else:
+                    n = len(self.labels)
+                    h = i_spaced_nfold(n,6)
+                    self.label_color_dict[label] = tuple(np.array(colorsys.hls_to_rgb(h, .5, .9)) * 255)
+            self.sigLabelsChanged.emit(label)
         else:
             print('Annotations: Label already exists')
 

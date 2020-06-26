@@ -160,6 +160,8 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
     Class to be used to plot annotations and current window
     '''
     sigRemoveRequested = QtCore.pyqtSignal(object)
+    sigClicked = QtCore.pyqtSignal(object)
+
     def __init__(self, values=(0, 1), orientation='vertical', brush=None, pen=None,
                  hoverBrush=None, hoverPen=None, movable=True, bounds=None,
                  span=(0, 1), swapMode='sort',label = '', id = None, removable=True):
@@ -260,6 +262,7 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
             self.sigRegionChanged.emit(self)
 
     def mouseClickEvent(self, ev):
+        self.sigClicked.emit(ev)
         if self.moving and ev.button() == QtCore.Qt.RightButton:
             ev.accept()
             for i, l in enumerate(self.lines):

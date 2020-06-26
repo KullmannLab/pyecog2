@@ -4,6 +4,7 @@ from PyQt5.QtCore import Qt, QSettings, QByteArray, QObject
 import sys, os
 import webbrowser
 from coding_tests.VideoPlayer import VideoWindow
+from coding_tests.AnnotationParameterTree import AnnotationParameterTee
 import numpy as np
 import pyqtgraph_copy.pyqtgraph as pg
 
@@ -16,9 +17,7 @@ from annotation_table_widget import AnnotationTableWidget
 
 #
 class MainModel(QObject):
-
-    sigTimeChangedGraph = QtCore.Signal(object)
-    sigTimeChangedVideo = QtCore.Signal(object)
+    sigTimeChanged      = QtCore.Signal(object)
     sigWindowChanged    = QtCore.Signal(object)
 
     def __init__(self):
@@ -26,25 +25,19 @@ class MainModel(QObject):
         self.data_eeg = np.array([])
         self.data_acc = np.array([])
         self.time_position = 0
+        self.time_position_emited = self.time_position
         self.window = [0, 0]
         self.filenames_dict = {'eeg': '', 'meta' : '', 'anno': '', 'acc': ''}
         self.file_meta_dict = {}
         self.annotations = AnnotationPage()
 
-    def set_time_position_from_graphs(self, pos):
-        if pos != self.time_position: # only emit signal if time_position actually changed
-            # self.sigTimeChanged.emit(pos)
-            self.sigTimeChangedVideo.emit(pos*1000)
-            self.time_position = pos
-            print('Current Time:', pos)
-
-    # This signal is to be used with video, such that changes in video don't call circular signals to change video again
-    def set_time_position_from_video(self, pos):
-        pos = pos/1000 # Video sends position in miliseconds instead of seconds
-        if pos != self.time_position: # only emit signal if time_position actually changed
-            self.sigTimeChangedGraph.emit(pos)
-            self.time_position = pos
-            print('Current Time:', pos)
+    def set_time_position(self, pos):
+        self.time_position = pos
+        # print('Current Time:', pos)
+        if abs(pos - self.time_position_emited) > .01: # only emit signal if time_position actually changed
+            self.time_position_emited = pos
+            self.sigTimeChanged.emit(pos)
+            # print('Current Time emited:', pos)
 
     def set_window_pos(self, pos):
         if pos != self.window:
@@ -71,10 +64,10 @@ class MainWindow(QMainWindow):
 
         self.main_model = MainModel()
         # Just for testing purpouses
-        self.main_model.annotations = AnnotationPage(list=[AnnotationElement(label='seizure', start=1, end=10),
-                                                           AnnotationElement(label='seizure', start=14, end=22),
-                                                           AnnotationElement(label='spike', start=23, end=25),
-                                                           AnnotationElement(label='artefact', start=26, end=26.5)])
+        self.main_model.annotations = AnnotationPage(alist=[AnnotationElement(label='seizure', start=1, end=10),
+                                                            AnnotationElement(label='seizure', start=14, end=22),
+                                                            AnnotationElement(label='spike', start=23, end=25),
+                                                            AnnotationElement(label='artefact', start=26, end=26.5)])
 
         # Populate Main window with widgets
         # self.createDockWidget()y
@@ -98,6 +91,10 @@ class MainWindow(QMainWindow):
         self.dock_list['Annotations Table'].setWidget(AnnotationTableWidget(self.main_model.annotations))
         self.dock_list['Annotations Table'].setObjectName("Annotations Table")
 
+        self.dock_list['Annotation Parameter Tree'] = QDockWidget("Annotation Parameter Tree", self)
+        self.dock_list['Annotation Parameter Tree'].setWidget(AnnotationParameterTee(self.main_model.annotations))
+        self.dock_list['Annotation Parameter Tree'].setObjectName("Annotation Parameter Tree")
+
         self.video_element = VideoWindow()
         self.dock_list['Video'] = QDockWidget("Video", self)
         self.dock_list['Video'].setWidget(self.video_element)
@@ -105,12 +102,14 @@ class MainWindow(QMainWindow):
         self.dock_list['Video'].setFloating(True)
         self.dock_list['Video'].hide()
         self.video_element.mediaPlayer.setNotifyInterval(40) # 25 fps
-        self.video_element.mediaPlayer.positionChanged.connect(self.main_model.set_time_position_from_video)
-        self.main_model.sigTimeChangedVideo.connect(self.video_element.setPosition)
+        # Video units are in miliseconds, pyecog units are in seconds
+        self.video_element.mediaPlayer.positionChanged.connect(lambda pos: self.main_model.set_time_position(pos/1000))
+        self.main_model.sigTimeChanged.connect(lambda pos: self.video_element.setPosition(1000*pos))
 
         self.setCentralWidget(self.paired_graphics_view.splitter)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['File Tree'])
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['Annotations Table'])
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['Annotation Parameter Tree'])
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['Text'])
 
         # Clear this after sorting out how to beter save workspaces
@@ -323,6 +322,38 @@ class MainWindow(QMainWindow):
         #     settings.endGroup()
 
         self.saveState()
+
+    def keyPressEvent(self, evt):
+        print('Key press captured by Main', evt.key())
+        if evt.key() == QtCore.Qt.Key_Space:
+            print('Space pressed')
+            self.video_element.play()
+            return
+
+        if evt.key() == QtCore.Qt.Key_Delete:
+            self.main_model.annotations.delete_annotation(self.main_model.annotations.focused_annotation)
+            return
+
+        numbered_keys = [QtCore.Qt.Key_1,QtCore.Qt.Key_2,QtCore.Qt.Key_3,QtCore.Qt.Key_4,QtCore.Qt.Key_5,
+                         QtCore.Qt.Key_6,QtCore.Qt.Key_7,QtCore.Qt.Key_8,QtCore.Qt.Key_9,QtCore.Qt.Key_0]
+
+        for i in range(len(self.main_model.annotations.labels)):
+            if evt.key() == numbered_keys[i]:
+                print(i+1,'pressed')
+                if self.main_model.annotations.focused_annotation is None:
+                    new_annotation = AnnotationElement(label = self.main_model.annotations.labels[i],
+                                                       start = self.main_model.window[0],
+                                                       end = self.main_model.window[1],
+                                                       notes = '')
+                    self.main_model.annotations.add_annotation(new_annotation)
+                    self.main_model.annotations.focusOnAnnotation(new_annotation)
+                else:
+                    annotation = self.main_model.annotations.focused_annotation
+                    annotation.setLabel(self.main_model.annotations.labels[i])
+                    # a bit of a pity that this signal cannot be emited by the anotation
+                    self.main_model.annotations.sigLabelsChanged.emit(self.main_model.annotations.labels[i])
+                    self.main_model.annotations.focusOnAnnotation(annotation)
+                return
 
 if __name__ == '__main__':
 

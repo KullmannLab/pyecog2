@@ -55,7 +55,7 @@ class PairedGraphicsView():
         insetview_layout_widget = pg.GraphicsLayoutWidget()
         self.insetview_plot = insetview_layout_widget.addPlot()
         # self.insetview_plot.showAxis('left', show=False)
-        self.insetview_plot.showGrid(x=True, y=True, alpha=0.1)
+        self.insetview_plot.showGrid(x=True, y=True, alpha=0.15)
         self.insetview_plot.setLabel('bottom', text='Time', units='s')
 
         # self.insetview_plot.setXRange(0,60) #hacky
@@ -68,8 +68,10 @@ class PairedGraphicsView():
         self.splitter.setStretchFactor(1, 6)  # make inset view 6 times larger
 
         self.insetview_plot.sigRangeChanged.connect(self.insetview_range_changed)
+        self.insetview_plot.vb.scene().sigMouseClicked.connect(self.inset_clicked) # Get original mouseclick signal with modifiers
         self.overview_plot.vb.sigMouseLeftClick.connect(self.overview_clicked)
         # hacky use of self.vb, but just rolling with it
+        self.is_setting_window_position = False
 
         x_range, y_range = self.insetview_plot.viewRange()
         pen = pg.mkPen(color=(250, 250, 80), width=2)
@@ -86,7 +88,9 @@ class PairedGraphicsView():
         # will be used for an ugly hack to snchonize across plots
         self.channel_plotitem_dict = {}
         self.main_model = parent.main_model
-
+        self.main_model.annotations.sigAnnotationAdded.connect(self.add_annotaion_plot)
+        self.main_model.annotations.sigLabelsChanged.connect(
+            lambda: self.set_scenes_plot_annotations_data(self.main_model.annotations))
 
     def set_scenes_plot_channel_data(self, arr, fs, pens=None):
         '''
@@ -129,9 +133,12 @@ class PairedGraphicsView():
         self.overview_plot.vb.setLimits(xMin=0, xMax=arr.shape[0] / fs)
         self.overview_plot.vb.setLimits(yMin=-3, yMax=arr.shape[1] + 3)
 
+        self.inset_annotations = []
+        self.overview_annotations = []
         self.set_scenes_plot_annotations_data(self.main_model.annotations)
+        self.main_model.annotations.sigFocusOnAnnotation.connect(self.set_focus_on_annotation)
         # FOR DEBUGGING ONLY:
-        self.set_scene_window([30, 32])
+        self.set_scene_window(self.main_model.window)
         self.set_scene_cursor()
 
     def set_plotitem_channel_data(self, y, fs, pen, index, init_scale):
@@ -170,9 +177,14 @@ class PairedGraphicsView():
 
     @staticmethod
     def function_generator_link_graphs(annotation_graph_a, annotation_graph_b):
-        return lambda: annotation_graph_b.setRegion(annotation_graph_a.getRegion()) \
+        return lambda: annotation_graph_b.setRegion(annotation_graph_a.getRegion())
 
-    def add_annotaion_plot(self, annotation, color):
+    @staticmethod
+    def function_generator_link_click(annotationpage, annotation_object):
+        return lambda: annotationpage.focusOnAnnotation(annotation_object)
+
+    def add_annotaion_plot(self, annotation):
+        color = self.main_model.annotations.label_color_dict[annotation.getLabel()]  # circle hue with constant luminosity an saturation
         brush = pg.functions.mkBrush(color=(*color, 25))
         pen = pg.functions.mkPen(color=(*color, 200))
         annotation_graph_o = PyecogLinearRegionItem((annotation.getStart(), annotation.getEnd()), pen=pen,
@@ -185,31 +197,56 @@ class PairedGraphicsView():
             self.function_generator_link_graphs_to_annotations(annotation, annotation_graph_i))
         annotation_graph_i.sigRegionChangeFinished.connect(
             self.function_generator_link_graphs(annotation_graph_i, annotation_graph_o))
-        self.overview_plot.addItem(annotation_graph_o)
-        self.insetview_plot.addItem(annotation_graph_i)
-        # annotation.sigAnnotationElementDeleted.connect() # todo
+        annotation_graph_i.sigClicked.connect(
+            self.function_generator_link_click(self.main_model.annotations, annotation))
         annotation.sigAnnotationElementChanged.connect(
             self.function_generator_link_annotaions_to_graphs(annotation, annotation_graph_i))
+        self.overview_plot.addItem(annotation_graph_o)
+        self.insetview_plot.addItem(annotation_graph_i)
+        self.inset_annotations.append(annotation_graph_i)  # lists to easily keep track of annotations
+        self.overview_annotations.append(annotation_graph_o)
+
+        annotation.sigAnnotationElementDeleted.connect(lambda: self.insetview_plot.removeItem(annotation_graph_i))
+        annotation.sigAnnotationElementDeleted.connect(lambda: self.overview_plot.removeItem(annotation_graph_o))
+
 
     def set_scenes_plot_annotations_data(self, annotations):
         '''
         :param annotations: an annotations object
         :return: None
         '''
+        # Clear existing annotations
+        for item in self.inset_annotations:
+            self.insetview_plot.removeItem(item)
+        for item in self.overview_annotations:
+            self.overview_plot.removeItem(item)
+        # Add annotation plots
         for annotation in annotations.annotations_list:
-            color = annotations.label_color_dict[annotation.getLabel()]  # circle hue with constant luminosity an saturation
-            self.add_annotaion_plot(annotation, color)
+            self.add_annotaion_plot(annotation)
 
+    def set_focus_on_annotation(self, annotation):
+        if annotation is None:
+            return
+        state = self.overviewROI.getState()
+        annotation_start = annotation.getStart()
+        self.main_model.set_time_position(annotation_start)
+        if annotation_start > state['pos'][0] and annotation_start < state['pos'][0] + state['size'][0]:
+            return # skip if start of annotation is already in the plot area
+
+        state['pos'][0] = annotation_start - .25*(state['size'][0])  # put start of annotation in first quarter of screen
+        self.insetview_plot.setRange(xRange=(state['pos'][0], state['pos'][0] + state['size'][0]),
+                                     yRange=(state['pos'][1], state['pos'][1] + state['size'][1]),
+                                     padding=0)
 
     def set_scene_cursor(self):
         cursor_o = PyecogCursorItem(pos=0)
         cursor_i = PyecogCursorItem(pos=0)
         # Should these connections be made in the main window code?
-        cursor_i.sigPositionChanged.connect(lambda: self.main_model.set_time_position_from_graphs(cursor_i.getXPos()))
+        cursor_i.sigPositionChanged.connect(lambda: self.main_model.set_time_position(cursor_i.getXPos()))
         cursor_i.sigPositionChanged.connect(lambda: cursor_o.setPos(cursor_i.getPos()))
         cursor_o.sigPositionChanged.connect(lambda: cursor_i.setPos(cursor_o.getPos()))
-        self.main_model.sigTimeChangedGraph.connect(lambda: cursor_i.setPos(self.main_model.time_position))
-        self.main_model.sigTimeChangedGraph.connect(lambda: cursor_o.setPos(self.main_model.time_position))
+        self.main_model.sigTimeChanged.connect(lambda: cursor_i.setPos(self.main_model.time_position))
+        self.main_model.sigTimeChanged.connect(lambda: cursor_o.setPos(self.main_model.time_position))
         self.overview_plot.addItem(cursor_o)
         self.insetview_plot.addItem(cursor_i)
 
@@ -256,8 +293,29 @@ class PairedGraphicsView():
                                      yRange=new_yrange,
                                      padding=0)
 
+    def inset_clicked(self,ev):
+        pos = self.insetview_plot.vb.mapSceneToView(ev.scenePos())
+        print('insetclicked ', pos)
+        print('modifiers:',ev.modifiers())
+        modifiers = ev.modifiers()
+        if modifiers == QtCore.Qt.ShiftModifier:
+            self.main_model.annotations.focusOnAnnotation(None)
+            if not self.is_setting_window_position:
+                self.main_model.set_window_pos([pos.x(), pos.x()])
+                self.is_setting_window_position = True
+                return
+            else:
+                current_pos = self.main_model.window
+                self.main_model.set_window_pos([current_pos, pos.x()])
+        self.is_setting_window_position = False
+
+        if modifiers == QtCore.Qt.ControlModifier:
+            self.main_model.annotations.focusOnAnnotation(None)
+            self.main_model.set_time_position(pos.x())
+
     def insetview_range_changed(self, mask):
         '''connected to signal from insetview_plot'''
         x_range, y_range = self.insetview_plot.viewRange()
         self.overviewROI.setPos((x_range[0], y_range[0]))
         self.overviewROI.setSize((x_range[1] - x_range[0], y_range[1] - y_range[0]))
+

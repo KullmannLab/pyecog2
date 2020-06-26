@@ -97,6 +97,7 @@ params = [
         {'name': 'ScalableParam 1', 'type': 'str', 'value': "default param 1"},
         {'name': 'ScalableParam 2', 'type': 'str', 'value': "default param 2"},
     ]),
+    {'name': 'Action Parameter', 'type': 'action'}
 ]
 
 ## Create tree of Parameter objects

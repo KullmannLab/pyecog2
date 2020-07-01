@@ -5,6 +5,7 @@ import sys, os
 import webbrowser
 from coding_tests.VideoPlayer import VideoWindow
 from coding_tests.AnnotationParameterTree import AnnotationParameterTee
+from coding_tests.FFT import FFTwindow
 import numpy as np
 import pyqtgraph_copy.pyqtgraph as pg
 
@@ -106,11 +107,17 @@ class MainWindow(QMainWindow):
         self.video_element.mediaPlayer.positionChanged.connect(lambda pos: self.main_model.set_time_position(pos/1000))
         self.main_model.sigTimeChanged.connect(lambda pos: self.video_element.setPosition(1000*pos))
 
+        self.dock_list['FFT'] = QDockWidget("FFT", self)
+        self.dock_list['FFT'].setWidget(FFTwindow(self.main_model))
+        self.dock_list['FFT'].setObjectName("FFT")
+        self.dock_list['FFT'].hide()
+
         self.setCentralWidget(self.paired_graphics_view.splitter)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['File Tree'])
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['Annotations Table'])
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['Annotation Parameter Tree'])
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['Text'])
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['FFT'])
 
         # Clear this after sorting out how to beter save workspaces
         try:
@@ -242,6 +249,10 @@ class MainWindow(QMainWindow):
         self.dock_list['Video'].show()
         self.show()
 
+    def open_fft_window(self):
+        self.dock_list['FFT'].show()
+        self.show()
+
     def build_menubar(self):
         self.menu_bar = self.menuBar()
 
@@ -289,6 +300,7 @@ class MainWindow(QMainWindow):
         self.action_open_video_window.triggered.connect(self.open_video_window)
         # To do
         self.action_open_fft_window = self.menu_tools.addAction("FFT")
+        self.action_open_fft_window.triggered.connect(self.open_fft_window)
         self.action_open_morlet_window = self.menu_tools.addAction("Morlet Wavelet Transform")
 
         # HELP section

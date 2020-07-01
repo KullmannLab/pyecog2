@@ -53,9 +53,9 @@ class PlotCurveItem(GraphicsObject):
         """
         GraphicsObject.__init__(self, kargs.get('parent', None))
         self.clear()
-        print('Here')
-        print(*args)
-        print(**kargs)
+        # print('Here') # THIS WAS MADE BY JONNY, TOOK ME AGES TO FIND IT YOU NAUGHTY BRAT
+        # print(*args)
+        # print(**kargs)
 
         ## this is disastrous for performance.
         #self.setCacheMode(QtGui.QGraphicsItem.DeviceCoordinateCache)

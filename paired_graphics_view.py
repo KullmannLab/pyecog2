@@ -58,8 +58,6 @@ class PairedGraphicsView():
         self.insetview_plot.showGrid(x=True, y=True, alpha=0.15)
         self.insetview_plot.setLabel('bottom', text='Time', units='s')
 
-        # self.insetview_plot.setXRange(0,60) #hacky
-        # self.overview_plot.vb.setXRange(0,3600) #hacky
         self.insetview_plot.vb.state['autoRange'] = [False, False]
         self.overview_plot.vb.state['autoRange'] = [False, False]
 
@@ -263,6 +261,8 @@ class PairedGraphicsView():
         self.insetview_plot.addItem(window_item_i)
         window_item_i.sigRegionChangeFinished.connect(lambda: window_item_o.setRegion(window_item_i.getRegion()))
         window_item_i.sigRegionChangeFinished.connect(lambda: self.main_model.set_window_pos(window_item_i.getRegion()))
+        window_item_i.sigRegionChangeFinished.connect(lambda: self.main_model.annotations.focusOnAnnotation(None))
+        window_item_i.sigRegionChangeFinished.connect(lambda: self.main_model.set_time_position(self.main_model.window[0]))
         window_item_i.sigClicked.connect(lambda: self.main_model.annotations.focusOnAnnotation(None))
         window_item_i.sigClicked.connect(lambda: self.main_model.set_time_position(self.main_model.window[0]))
         self.main_model.sigWindowChanged.connect(window_item_i.setRegion)

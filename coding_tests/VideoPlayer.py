@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import QMainWindow,QWidget, QPushButton, QAction
 from PyQt5.QtGui import QIcon
 import sys
 
-class VideoWindow(QMainWindow):
+class VideoWindow(QWidget):
 
     def __init__(self, parent=None):
         super(VideoWindow, self).__init__(parent)
@@ -52,10 +52,6 @@ class VideoWindow(QMainWindow):
         # fileMenu.addAction(openAction)
         # fileMenu.addAction(exitAction)
 
-        # Create a widget for window contents
-        wid = QWidget(self)
-        self.setCentralWidget(wid)
-
         # Create layouts to place inside widget
         controlLayout = QHBoxLayout()
         controlLayout.setContentsMargins(0, 0, 0, 0)
@@ -65,10 +61,10 @@ class VideoWindow(QMainWindow):
         layout = QVBoxLayout()
         layout.addWidget(videoWidget)
         layout.addLayout(controlLayout)
-        layout.addWidget(self.errorLabel)
+        # layout.addWidget(self.errorLabel)   # Hide error Label
 
         # Set widget to contain window contents
-        wid.setLayout(layout)
+        self.setLayout(layout)
 
         self.mediaPlayer.setVideoOutput(videoWidget)
         self.mediaPlayer.stateChanged.connect(self.mediaStateChanged)
@@ -76,7 +72,7 @@ class VideoWindow(QMainWindow):
         self.mediaPlayer.durationChanged.connect(self.durationChanged)
         self.mediaPlayer.error.connect(self.handleError)
 
-        # ERASE THIS SECTION AFTER LAB MEETING!!!
+        # ERASE THIS SECTION AFTER LAB MEETING!!! todo
         self.mediaPlayer.setMedia(
             QMediaContent(QUrl.fromLocalFile('/home/mfpleite/Shared/ele_data/119/20190930150911.mp4')))
             # /home/mfpleite/PycharmProjects/pyecog2/Notebooks/Video.ogv
@@ -122,6 +118,7 @@ class VideoWindow(QMainWindow):
     def handleError(self):
         self.playButton.setEnabled(False)
         self.errorLabel.setText("Error: " + self.mediaPlayer.errorString())
+        print("Video - Error: " + self.mediaPlayer.errorString())
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

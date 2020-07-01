@@ -167,6 +167,7 @@ class FileTreeElement():
         folder = '/media/jonathan/DATA/seizure_data/gabrielle/All_DATA/EEG DATA CRISPRa Kcna1 2018'
         folder = '/media/jonathan/DATA/seizure_data/gabrielle/All_DATA/EEG DATA CRISPRa Kcna1 2018/4_CRISP Oct-Nov 2018/CRISPRa_h5s BASELINE'
         folder = '/home/mfpleite/PycharmProjects/pyecog2/Notebooks'
+        folder = '/home/mfpleite/Shared/ele_data'
         if os.path.exists(folder):
             return folder
         else:

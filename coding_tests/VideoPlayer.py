@@ -74,7 +74,8 @@ class VideoWindow(QWidget):
 
         # ERASE THIS SECTION AFTER LAB MEETING!!! todo
         self.mediaPlayer.setMedia(
-            QMediaContent(QUrl.fromLocalFile('/home/mfpleite/Shared/ele_data/119/20190930150911.mp4')))
+            QMediaContent(QUrl.fromLocalFile('/home/mfpleite/Documents/RDSS/mouse IVC/2019/video/100_PC/20191127174021.mp4')))
+            # /home/mfpleite/Documents/RDSS/mouseIVC/2019/video/100_PC/20191127170021.mp4
             # /home/mfpleite/PycharmProjects/pyecog2/Notebooks/Video.ogv
             # /home/mfpleite/Shared/ele_data/119/20190930150911.mp4
         self.playButton.setEnabled(True)

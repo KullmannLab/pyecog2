@@ -1,7 +1,8 @@
 import sys
 import os
 import numpy as np
-
+import time
+from datetime import datetime
 from PyQt5 import QtGui, QtCore, QtWidgets, uic, Qt
 from PyQt5.QtGui import QPainter, QBrush, QPen
 
@@ -32,7 +33,7 @@ class PairedGraphicsView():
     def build_splitter(self):
         # Todo might need to paqss a size in here
         self.splitter = QtWidgets.QSplitter(parent=None)
-        self.splitter.resize(680, 400)  # Todo currently not sure about this
+        # self.splitter.resize(680, 400)  # Todo currently not sure about this
         self.splitter.setOrientation(QtCore.Qt.Vertical)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                            QtWidgets.QSizePolicy.Expanding)
@@ -45,9 +46,10 @@ class PairedGraphicsView():
         self.scale = None  # transform on the childitems of plot
 
         overview_layout_widget = pg.GraphicsLayoutWidget()
-        self.overview_plot = overview_layout_widget.addPlot()
+        overview_date_axis = DateAxis(orientation='bottom')
+        self.overview_plot = overview_layout_widget.addPlot(axisItems={'bottom':overview_date_axis})
         # self.overview_plot.showAxis('left', show=False)
-        self.overview_plot.setLabel('bottom', text='Time', units='s')
+        # self.overview_plot.setLabel('bottom', text='Time', units='s')
 
         # this doesnt work (getting the scroll)
         # overview_layout_widget.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
@@ -165,6 +167,7 @@ class PairedGraphicsView():
         self.channel_plotitem_dict[index]['insetview'].set_data(y, fs)
         self.overview_plot.vb.setXRange(0, y.shape[0] / fs, padding=0)
 
+    # The following static methods are auxiliary functions to link several annotation related signals:
     @staticmethod
     def function_generator_link_annotaions_to_graphs(annotation_object, annotation_graph):
         return lambda: annotation_graph.setRegion(annotation_object.getPos())
@@ -206,7 +209,6 @@ class PairedGraphicsView():
 
         annotation.sigAnnotationElementDeleted.connect(lambda: self.insetview_plot.removeItem(annotation_graph_i))
         annotation.sigAnnotationElementDeleted.connect(lambda: self.overview_plot.removeItem(annotation_graph_o))
-
 
     def set_scenes_plot_annotations_data(self, annotations):
         '''
@@ -324,3 +326,42 @@ class PairedGraphicsView():
         self.overviewROI.setPos((x_range[0], y_range[0]))
         self.overviewROI.setSize((x_range[1] - x_range[0], y_range[1] - y_range[0]))
 
+
+class DateAxis(pg.AxisItem):
+    def tickStrings(self, values, scale, spacing):
+        strns = []
+        rng = self.range[1] - self.range[0] #max(values)-min(values)
+        #if rng < 120:
+        #    return pg.AxisItem.tickStrings(self, values, scale, spacing)
+        if rng <= 2:
+            string = '%H:%M:%S.%f'
+            label1 = '%b %d -'
+            label2 = ' %b %d, %Y'
+        elif rng < 3600*24:
+            string = '%H:%M:%S'
+            label1 = '%b %d -'
+            label2 = ' %b %d, %Y'
+        elif rng >= 3600*24 and rng < 3600*24*30:
+            string = '%d'
+            label1 = '%b - '
+            label2 = '%b, %Y'
+        elif rng >= 3600*24*30 and rng < 3600*24*30*24:
+            string = '%b'
+            label1 = '%Y -'
+            label2 = ' %Y'
+        elif rng >=3600*24*30*24:
+            string = '%Y'
+            label1 = ''
+            label2 = ''
+
+        for x in values:
+            try:
+                strns.append(datetime.strftime(datetime.fromtimestamp(x),string))
+            except ValueError:  ## Windows can't handle dates before 1970
+                strns.append('err')
+        try:
+            label = time.strftime(label1, time.localtime(min(values)))+time.strftime(label2, time.localtime(max(values)))
+        except ValueError:
+            label = ''
+        self.setLabel(text=label)
+        return strns

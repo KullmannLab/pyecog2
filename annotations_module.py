@@ -5,14 +5,15 @@ import numpy as np
 import colorsys
 from collections import OrderedDict
 
+# Function to generate nicely spaced colors (i.e. points around a ring)
 def i_spaced_nfold(i,n):
     floorlog = max(np.floor(np.log2(2*(i-1)/n)),0)
-    d   = n*2**(floorlog)
+    d = n*2**floorlog
     if d == n:
         h = i-1
     else:
         h = (2*i - d - 1)
-    v   = h/d
+    v = h/d
     return v
 
 class AnnotationElement(QObject):

@@ -53,6 +53,7 @@ class AnnotationParameterTee(ParameterTree):
         self.p.sigTreeStateChanged.connect(self.change)
         self.setParameters(self.p, showTop=False)
         self.setWindowTitle('Parameter Tree')
+        self.headerItem().setHidden(True)
 
     ## If anything changes in the tree, print a message
     def change(self, param, changes):

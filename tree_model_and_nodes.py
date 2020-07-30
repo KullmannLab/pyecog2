@@ -9,7 +9,7 @@ from h5loader import H5File
 # maybe split file into one that has nodes seperately
 
 class TreeModel(QtCore.QAbstractItemModel):
-    # hmmm not sure best but ets roll with it
+    # hmmm not sure best but lets roll with it
     # sends an array of data and their sampling freq in hz
     # maybe memmap is better?
     plot_node_signal = QtCore.pyqtSignal(np.ndarray, int)
@@ -125,9 +125,15 @@ class TreeModel(QtCore.QAbstractItemModel):
             if index.column() == 0:
                 if isinstance(node, DirectoryNode):
                     return QtGui.QIcon('icons/folder.png')
-
-                if isinstance(node, FileNode):
-                    pass #return pass
+                if isinstance(node, HDF5FileNode):
+                    return QtGui.QIcon('icons/wave.png')
+                if isinstance(node, LieteNode):
+                    return QtGui.QIcon('icons/wave.png')
+                if isinstance(node, AnimalNode):
+                    return QtGui.QIcon('icons/laboratory-mouse.png')
+                if isinstance(node, ProjectNode):
+                    return QtGui.QIcon('icons/research.png')
+                pass #return pass
 
         if role == QtCore.Qt.ToolTipRole:
             return node.get_full_path()
@@ -170,8 +176,12 @@ class TreeModel(QtCore.QAbstractItemModel):
 
 class Node:
     '''Represents item of data in tree model'''
-    def __init__(self,name,parent=None):
+    def __init__(self,name,parent=None, path=None):
         self.name = name
+        if path is None:
+            self.path = name
+        else:
+            self.path = path
         self.parent = parent
         self.children = []
 
@@ -235,23 +245,22 @@ class Node:
     # could make this a property
     def get_full_path(self):
         ''' Constructs fullpath from parent names'''
-        full_path = self.name
+        full_path = self.path
         node = self
         while True:
             if node.parent is None:
                 break
             node = node.parent
-            full_path = os.path.join(node.name, full_path)
+            full_path = os.path.join(node.path, full_path)
 
         return full_path
 
 class DirectoryNode(Node):
     '''presume this should be always listening to a folder? (ideally)
-
-    # maybe mnake this a FOLDER node
+    # maybe make this a FOLDER node
     '''
-    def __init__(self, name, parent=None):
-        super(DirectoryNode, self).__init__(name,parent)
+    def __init__(self, name, parent=None, path=None):
+        super(DirectoryNode, self).__init__(name,parent,path)
         self.name = name
 
     def set_name(self, value):
@@ -265,16 +274,16 @@ class DirectoryNode(Node):
 
 class FileNode(Node):
     '''This might end up being powerful... like an actual proxy around a file () but cant write?'''
-    def __init__(self, name, parent=None):
-        super(FileNode, self).__init__(name,parent)
+    def __init__(self, name, parent=None,path=None):
+        super(FileNode, self).__init__(name,parent,path)
         self.name = name
 
     def type_info(self):
         return 'Non-Data File'
 
 class LieteNode(Node):
-    def __init__(self, name, parent=None):
-        super(LieteNode, self).__init__(name,parent)
+    def __init__(self, name, parent=None,path=None):
+        super(LieteNode, self).__init__(name,parent,path)
         self.name = name
         self.metadata = None
         self.old_memmap_shape = None
@@ -295,7 +304,7 @@ class LieteNode(Node):
 
     def load_metadata(self):
         '''Demo file creation notebook'''
-        meta_filepath = self.get_full_path().split('.')[0] + '.meta'
+        meta_filepath = self.get_full_path().split('.')[:-1] + '.meta'
 
         with open(meta_filepath, 'r') as json_file:
             self.metadata = json.load(json_file)
@@ -304,8 +313,8 @@ class LieteNode(Node):
         return 'Leite DataFile'
 
 class HDF5FileNode(Node):
-    def __init__(self, name, parent=None):
-        super(HDF5FileNode, self).__init__(name,parent)
+    def __init__(self, name, parent=None,path=None):
+        super(HDF5FileNode, self).__init__(name,parent,path)
         self.name = name
 
     def prepare_for_plot(self):
@@ -333,6 +342,44 @@ class ChannelNode(Node):
     def type_info(self):
         return 'Channel'
 
+class AnimalNode(Node):
+    '''
+
+    '''
+    def __init__(self, animal, parent=None,path=''):
+        super(DirectoryNode, self).__init__(str(animal.id),parent=parent,path=path)
+        self.animal = animal
+        for file in animal.eeg_files:
+            metadata = json.load(open(os.path.join(self.get_full_path(),file)))
+            if metadata['data_format'] == 'h5':
+                HDF5FileNode(file[:-4]+'h5',parent=self) # replace .meta for .h5 to get the h5 file name
+            else:
+                LieteNode(file[:-4]+'bin',parent=self) # replace .meta for .bin to get the binary file name
+
+    def set_name(self, value):
+        self.name = str(value)
+        self.animal.id = value
+
+    def type_info(self):
+        return 'Animal: ' + self.name
+
+class ProjectNode(Node):
+    '''
+
+    '''
+    def __init__(self, project, parent=None):
+        super(DirectoryNode, self).__init__(str(project.id),parent=parent,path='')
+        self.project = project
+        self.name = project.title
+        for animal in self.project.animal_list:
+            AnimalNode(animal, parent = self)
+
+    def set_name(self, value):
+        self.name = str(value)
+        self.animal.id = value
+
+    def type_info(self):
+        return 'Project: ' + self.name
 
 class FileTreeProxyModel(QtCore.QAbstractProxyModel):
     '''Reimplement some of the virtual methods? '''

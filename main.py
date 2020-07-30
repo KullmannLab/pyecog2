@@ -114,9 +114,9 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.paired_graphics_view.splitter)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['File Tree'])
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['Annotations Table'])
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['Annotation Parameter Tree'])
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['Text'])
+        self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['Annotation Parameter Tree'])
+        self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['Annotations Table'])
+        self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['Text'])
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['FFT'])
 
         # Clear this after sorting out how to beter save workspaces

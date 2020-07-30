@@ -73,7 +73,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
             targetPtr = 0
             try:
                 # read data in chunks of ~1M samples
-                chunkSize = (1e6 // ds) * ds
+                chunkSize = int((1e6 // ds) * ds)
                 while sourcePtr < stop - 1:
                     # print('Shapes:',hdf5data.shape, self.time.shape)
                     # chunk   = self.x[sourcePtr:min(stop,sourcePtr+chunkSize)]
@@ -114,8 +114,9 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
                 # print(visible_time.shape, visible_data.shape)
                 scale = ds * 0.5
             except:
-                throw_error()
-                return 0
+                raise
+                # throw_error()
+                # return 0
 
         self.setData(y=visible_data, x=visible_time, pen=self.pen, antialias=True)  # update the plot
         # self.resetTransform()

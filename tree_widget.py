@@ -12,7 +12,7 @@ from PyQt5.QtCore import QThread, pyqtSignal, Qt, QRect, QTimer
 import pyqtgraph_copy.pyqtgraph as pg
 
 from tree_model_and_nodes import FileTreeProxyModel, TreeModel
-from tree_model_and_nodes import FileNode, DirectoryNode, ChannelNode, HDF5FileNode, LieteNode
+from tree_model_and_nodes import FileNode, DirectoryNode, ChannelNode, HDF5FileNode, LieteNode, ProjectNode
 
 class FileTreeView(QtWidgets.QTreeView):
 
@@ -37,12 +37,16 @@ class FileTreeView(QtWidgets.QTreeView):
 
 class FileTreeElement():
     '''
+    To use when in directory explorer mode
+
     Might need to rename class, but basically a class to represent the filetree
     browser part of the gui.
 
     Will not include the menu
     basically will be composed of the tree widget? which is a filterbox and label, plus tree view
     and tree moddel.
+
+    ML: I will expand this class to be able to represent projects as well.
 
 
     '''
@@ -110,13 +114,13 @@ class FileTreeElement():
         These builders are also a bit obtuse
         '''
         root = DirectoryNode(root_folder)
-        name_to_node = {root_folder:root}
+        name_to_node = {root_folder:root} # create branch node for root directory
         for directory, dirnames, filenames in os.walk(root_folder):
-            node = name_to_node[directory]
+            node = name_to_node[directory] # get branch node for directory
             for sub_directory in dirnames:
                 fullname = os.path.join(directory, sub_directory)
                 child_node = DirectoryNode(sub_directory, parent=node)
-                name_to_node[fullname] = child_node
+                name_to_node[fullname] = child_node  # create branch node for sub-directory
             for filename in filenames:
                 if not filename.endswith('.h5'):
                     continue
@@ -128,7 +132,7 @@ class FileTreeElement():
                         channel_node = ChannelNode(str(tid), parent=child_node)
                 except IndexError:
                     print('h5 with no children detected:', fullname)
-                name_to_node[fullname] = child_node
+                name_to_node[fullname] = child_node # this seems un necessary - I think this is only needed for directory branch nodes
         return root
 
     def make_rootnode_from_folder(self, root_folder):
@@ -160,6 +164,9 @@ class FileTreeElement():
                 name_to_node[fullname] = child_node
         return root
 
+    def make_rootnode_from_project(self, project):
+        root = ProjectNode(project)
+        return root
 
     def get_default_folder(self):
         # normally should have the pickle file here
@@ -172,6 +179,9 @@ class FileTreeElement():
             return folder
         else:
             return os.getcwd()
+
+
+
 
 if __name__ == '__main__':
 

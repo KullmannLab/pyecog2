@@ -164,9 +164,13 @@ class FileTreeElement():
                 name_to_node[fullname] = child_node
         return root
 
-    def make_rootnode_from_project(self, project):
-        root = ProjectNode(project)
-        return root
+    def set_rootnode_from_project(self, project):
+        '''resets the tree self.model'''
+        self.root_node = DirectoryNode('')
+        ProjectNode(project,parent=self.root_node)
+        self.model = TreeModel(self.root_node, parent=None)
+        self.tree_view.setModel(self.model)
+        self.connect_model_to_parent_paired_graph()
 
     def get_default_folder(self):
         # normally should have the pickle file here

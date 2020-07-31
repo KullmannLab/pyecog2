@@ -217,7 +217,7 @@ class AnnotationPage(QObject):
         # convert annotation objects into dictionaries
         full_dict = [json.loads(repr(a).replace('\'','\"')) for a in self.annotations_list]
         with open(fname, 'w') as f:
-            json.dump([full_dict,list(self.labels),self.label_color_dict], f)
+            json.dump([full_dict,list(self.labels),self.label_color_dict], f, indent=4)
 
     def import_from_json(self, fname):
         with open(fname, 'r') as f:

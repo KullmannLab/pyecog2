@@ -14,7 +14,7 @@ from paired_graphics_view import PairedGraphicsView
 from tree_widget import FileTreeElement
 from annotations_module import AnnotationElement, AnnotationPage
 from annotation_table_widget import AnnotationTableWidget
-
+from ProjectClass import Project, Animal
 
 #
 class MainModel(QObject):
@@ -31,6 +31,7 @@ class MainModel(QObject):
         self.filenames_dict = {'eeg': '', 'meta' : '', 'anno': '', 'acc': ''}
         self.file_meta_dict = {}
         self.annotations = AnnotationPage()
+        self.project = Project()
 
     def set_time_position(self, pos):
         self.time_position = pos
@@ -119,11 +120,13 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['Text'])
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['FFT'])
 
-        # Clear this after sorting out how to beter save workspaces
         try:
-            self.tree_element.set_rootnode_from_folder('/home/mfpleite/PycharmProjects/pyecog2/Notebooks', '.h5')
-        except:
-            pass
+            self.main_model.project.load_from_json('/home/mfpleite/Shared/ele_data/proj.pyecog')
+            print(self.main_model.project.__dict__)
+            self.tree_element.set_rootnode_from_project(self.main_model.project)
+        except Exception as e:
+            print('ERROR in tree build')
+            print(e)
 
         settings = QSettings("PyEcog","PyEcog")
         settings.beginGroup("StandardMainWindow")

@@ -347,7 +347,7 @@ class AnimalNode(Node):
 
     '''
     def __init__(self, animal, parent=None,path=''):
-        super(DirectoryNode, self).__init__(str(animal.id),parent=parent,path=path)
+        super(AnimalNode, self).__init__(str(animal.id),parent=parent,path=path)
         self.animal = animal
         for file in animal.eeg_files:
             metadata = json.load(open(os.path.join(self.get_full_path(),file)))
@@ -368,15 +368,16 @@ class ProjectNode(Node):
 
     '''
     def __init__(self, project, parent=None):
-        super(DirectoryNode, self).__init__(str(project.id),parent=parent,path='')
+        super(ProjectNode, self).__init__(str(project.title), parent=parent, path='')
         self.project = project
+
         self.name = project.title
         for animal in self.project.animal_list:
-            AnimalNode(animal, parent = self)
+            AnimalNode(animal, parent=self)
 
     def set_name(self, value):
         self.name = str(value)
-        self.animal.id = value
+        self.project.title = value
 
     def type_info(self):
         return 'Project: ' + self.name

@@ -7,6 +7,7 @@ from h5loader import H5File
 import glob, os
 from datetime import datetime
 
+
 def create_metafile_from_h5(file):
     assert file.endswith('.h5')
     h5_file = H5File(file)
@@ -27,13 +28,18 @@ def create_metafile_from_h5(file):
     with open(metafile, 'w') as json_file:
         json.dump(metadata, json_file, indent=2, sort_keys=True)
 
+
 class Animal():
-    def __init__(self,id=None,eeg_folder=None, video_folder = None):
+    def __init__(self,id=None,eeg_folder=None, video_folder = None, dict={}):
+        if dict != {}:
+            self.__dict__ = dict
+            return
+
         for file in glob.glob(eeg_folder + '/*.h5'):
             if os.path.isfile(file[:-2] + 'meta'):
                 print(file[:-2] + 'meta already exists')
                 continue
-            create_metafile_from_h5(eeg_folder + file)
+            create_metafile_from_h5(file)
 
         if eeg_folder is not None:
             self.eeg_files = glob.glob(eeg_folder + '/*.meta')
@@ -64,11 +70,20 @@ class Animal():
             self.id = id
 
 
-
 class Project():
-    def __init__(self,eeg_data_folder=None,video_data_folder=None,title='New Project'):
+    def __init__(self,eeg_data_folder=None,video_data_folder=None,title='New Project', dict={}):
+
         self.animal_list = []
         self.eeg_root_folder = eeg_data_folder
         self.video_root_folder = video_data_folder
         self.title = title
 
+    def save_to_json(self,fname):
+        dict = self.__dict__.copy()
+        dict['animal_list'] = [animal.__dict__ for animal in self.animal_list]  # make animals into dicts
+        json.dump(dict, open(fname,'w'),indent=4)
+
+    def load_from_json(self, fname):
+        dict = json.load(open(fname))
+        dict['animal_list'] = [Animal(dict=animal) for animal in dict['animal_list']]  # make dicts into animals
+        self.__dict__ = dict

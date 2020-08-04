@@ -13,7 +13,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
     also maybe the downsampling in plotitem?
     '''
 
-    def __init__(self, y, fs, viewbox, *args, **kwds):
+    def __init__(self, y, fs, viewbox, t0=0, *args, **kwds):
         '''
         Todo: I really dont like passining in the viewbox
         This should be assigned instead when they get added to the plot
@@ -22,6 +22,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
         self.yscale_data = 1
         self.y = y
         self.fs = fs
+        self.t0 = t0
         self.parent_viewbox = viewbox
         self.pen = (0, 0, 0, 100)
         self.n_display_points = 5000  # this should be horizontal resolution of window
@@ -35,13 +36,16 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
     def set_pen(self, pen):
         self.pen = pen
 
-    def set_data(self, y, fs):
+    def set_data(self, y, fs, t0=0):
         self.y = y
         self.fs = fs
+        self.t0 = t0
         self.setData_with_envelope()
 
     def setData_with_envelope(self):
-        '''# todo clean up e.g. var names x y'''
+        '''# todo clean up e.g. var names x y
+        Consider translating this into cython for speed improvements
+        '''
         # print('set data')
         if self.y is None:
             self.setData([], 1)

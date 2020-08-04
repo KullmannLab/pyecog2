@@ -87,3 +87,12 @@ class Project():
         dict = json.load(open(fname))
         dict['animal_list'] = [Animal(dict=animal) for animal in dict['animal_list']]  # make dicts into animals
         self.__dict__ = dict
+
+    def get_file(self,animal_id,time):
+        for a,animal in enumerate(self.animal_list):
+            if animal.id == animal_id:
+                for i,file in enumerate(animal.eeg_files):
+                    if animal.eeg_init_time[i] >= time and animal.eeg_init_time[i] + animal.eeg_duration[i] <= time:
+                        return a, i, file  # return animal and file indices and file path
+                return None  # return if found animal but not file
+        return None   # return if animal not found

@@ -12,7 +12,7 @@ class TreeModel(QtCore.QAbstractItemModel):
     # hmmm not sure best but lets roll with it
     # sends an array of data and their sampling freq in hz
     # maybe memmap is better?
-    plot_node_signal = QtCore.pyqtSignal(np.ndarray, int)
+    plot_node_signal = QtCore.pyqtSignal(np.ndarray)
     #plot_node_signal = QtCore.pyqtSignal()
     '''
     Naming convention (not right at the moment)
@@ -110,9 +110,9 @@ class TreeModel(QtCore.QAbstractItemModel):
 
         if role == TreeModel.prepare_for_plot_role:
             if hasattr(node, 'prepare_for_plot'):
-                arr, fs = node.prepare_for_plot()
-                if arr is not None:
-                    self.plot_node_signal.emit(arr, fs)
+                range = node.prepare_for_plot()
+                if range is not None:
+                    self.plot_node_signal.emit(range)
 
 
         if role == QtCore.Qt.DisplayRole or role == QtCore.Qt.EditRole:
@@ -294,13 +294,14 @@ class LieteNode(Node):
             self.n_channels = self.metadata['no_channels']
             self.fs = self.metadata['fs']
             self.dtype = self.metadata['data_format']
+            t0 = self.metadata['start_timestamp_unix']
 
         m = np.memmap(self.get_full_path(),dtype=self.dtype, mode= 'r')
         if self.old_memmap_shape == m.shape:
             return None, None
 
         self.old_memmap_shape = m.shape
-        return m.reshape((-1,self.n_channels)), self.fs
+        return m.reshape((-1,self.n_channels)), self.fs, t0
 
     def load_metadata(self):
         '''Demo file creation notebook'''
@@ -319,15 +320,26 @@ class HDF5FileNode(Node):
 
     def prepare_for_plot(self):
         '''maybe change name?'''
-        self.h5_file = H5File(self.get_full_path())
-        fs_dict = eval(self.h5_file.attributes['fs_dict'])
-        fs = fs_dict[int(self.h5_file.attributes['t_ids'][0])]
-        channels = []
-        for tid in self.h5_file.attributes['t_ids']:
-            assert fs == int(fs_dict[tid])
-            channels.append(self.h5_file[tid]['data'])
-        arr = np.vstack(channels).T
-        return arr, fs
+        self.load_metadata()
+        t0 = self.metadata['start_timestamp_unix']
+        duration = self.metadata['duration']
+        self.parent.parent.project.current_animal = self.parent.animal
+        # self.h5_file = H5File(self.get_full_path())
+        # fs_dict = eval(self.h5_file.attributes['fs_dict'])
+        # fs = fs_dict[int(self.h5_file.attributes['t_ids'][0])]
+        # channels = []
+        # for tid in self.h5_file.attributes['t_ids']:
+        #     assert fs == int(fs_dict[tid])
+        #     channels.append(self.h5_file[tid]['data'])
+        # arr = np.vstack(channels).T
+        return np.array([t0, t0+duration])
+
+    def load_metadata(self):
+        '''Demo file creation notebook'''
+        meta_filepath = self.get_full_path()[:-3] + '.meta'
+
+        with open(meta_filepath, 'r') as json_file:
+            self.metadata = json.load(json_file)
 
     def type_info(self):
         return 'HDF5 File'

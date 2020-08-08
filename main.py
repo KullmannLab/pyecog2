@@ -24,6 +24,7 @@ class MainModel(QObject):
     def __init__(self):
         super().__init__()
         self.data_eeg = np.array([])
+        self.time_range = np.array([0,0])
         self.data_acc = np.array([])
         self.time_position = 0
         self.time_position_emited = self.time_position
@@ -46,6 +47,14 @@ class MainModel(QObject):
             self.window = pos
             self.sigWindowChanged.emit(pos)
             print('Window changesd to:', pos)
+
+    def update_eeg_range(self,x_range):
+        print('Updating data range...')
+        if x_range[0]<self.time_range[0]:
+            dilated_x_range = np.array([x_range[0]-1,x_range[0]+1])  # dilate x_range to avoid too much repetitive loads in edge cases
+            self.data_eeg, self.time_range = self.project.current_animal.get_data_from_range(dilated_x_range)
+
+
 
 class MainWindow(QMainWindow):
     '''

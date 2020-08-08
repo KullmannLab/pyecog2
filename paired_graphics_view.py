@@ -52,7 +52,7 @@ class PairedGraphicsView():
         # self.overview_plot.setLabel('bottom', text='Time', units='s')
 
         # this doesnt work (getting the scroll)
-        # overview_layout_widget.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        overview_layout_widget.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
 
         insetview_layout_widget = pg.GraphicsLayoutWidget()
         self.insetview_plot = insetview_layout_widget.addPlot()
@@ -68,6 +68,7 @@ class PairedGraphicsView():
         self.splitter.setStretchFactor(1, 6)  # make inset view 6 times larger
 
         self.insetview_plot.sigRangeChanged.connect(self.insetview_range_changed)
+        self.overview_plot.sigRangeChanged.connect(self.overview_range_changed)
         self.insetview_plot.vb.scene().sigMouseClicked.connect(self.inset_clicked) # Get original mouseclick signal with modifiers
         self.overview_plot.vb.sigMouseLeftClick.connect(self.overview_clicked)
         # hacky use of self.vb, but just rolling with it
@@ -92,13 +93,10 @@ class PairedGraphicsView():
         self.main_model.annotations.sigLabelsChanged.connect(
             lambda: self.set_scenes_plot_annotations_data(self.main_model.annotations))
 
-    def set_scenes_plot_channel_data(self, arr, fs, pens=None):
+    def set_scenes_plot_channel_data(self, overview_range = [0,3600], pens=None):
         '''
         # Not entirely clear the differences between this and
         set_plotitem_data is snesnible
-
-        arr - ndarray of shape (n datapoints, channels)
-        fs  - sampling frequency
         pens - a list of len channels containing pens
         '''
         # we need to handle if channel not seen before
@@ -110,28 +108,29 @@ class PairedGraphicsView():
         print('Items after delete')
         print(self.overview_plot.items)
         self.insetview_plot.clear()
-
+        print(overview_range)
+        self.overview_plot.setXRange(*overview_range)
 
         if self.scale is None:  # running for the first time
+            arr,tarr = self.main_model.project.get_data_from_range(self.overview_plot.vb.viewRange()[0])
+            print(arr.shape, tarr.shape)
+            self.n_channels = arr.shape[1]
             self.scale = 1 / (6 * np.mean(np.std(arr, axis=0, keepdims=True), axis=1))
             self.insetview_plot.vb.setYRange(-2, arr.shape[1] + 1)
             self.overview_plot.vb.setYRange(-2, arr.shape[1] + 1)
-            self.insetview_plot.vb.setXRange(0, min(30, arr.shape[0] / fs))
+            self.insetview_plot.vb.setXRange(overview_range[0], overview_range[0] + min(30, overview_range[1]-overview_range[0]))
 
-        for i in range(arr.shape[1]):
+        for i in range(self.n_channels):
             if pens is None:
                 pen = pg.mkPen('k')
             else:
                 pen = pen[i]
-            y = arr[:, i]
-            self.set_plotitem_channel_data(y, fs, pen, i, self.scale)
-        # self.clear_unused_channels() # to implement, not sure the best way
-        # self.test_children()
+            self.set_plotitem_channel_data(pen, i, self.scale)
 
         # prevent scrolling past 0 and end of data
-        self.insetview_plot.vb.setLimits(xMin=0, xMax=arr.shape[0] / fs)
-        self.overview_plot.vb.setLimits(xMin=0, xMax=arr.shape[0] / fs)
-        self.overview_plot.vb.setLimits(yMin=-3, yMax=arr.shape[1] + 3)
+        # self.insetview_plot.vb.setLimits(xMin=0, xMax=arr.shape[0] / fs)
+        self.overview_plot.vb.setLimits(maxXRange=3600)
+        self.overview_plot.vb.setLimits(yMin=-3, yMax=self.n_channels + 3)
 
         self.inset_annotations = []
         self.overview_annotations = []
@@ -141,7 +140,7 @@ class PairedGraphicsView():
         self.set_scene_window(self.main_model.window)
         self.set_scene_cursor()
 
-    def set_plotitem_channel_data(self, y, fs, pen, index, init_scale):
+    def set_plotitem_channel_data(self, pen, index, init_scale):
         '''
         If the index exists within the plotitem dict we just set the data, else create
         or delete from the dict. (#todo)
@@ -151,9 +150,9 @@ class PairedGraphicsView():
         # todo stop passing the vb to construction have it added automatically when add the item to plot
         if True: # index not in self.channel_plotitem_dict.keys(): # This was used before we were clearing the scenes upon file loading
             self.channel_plotitem_dict[index] = {}
-            self.channel_plotitem_dict[index]['overview'] = PyecogPlotCurveItem(y, fs,
+            self.channel_plotitem_dict[index]['overview'] = PyecogPlotCurveItem(self.main_model.project, index,
                                                                                 viewbox=self.overview_plot.vb)
-            self.channel_plotitem_dict[index]['insetview'] = PyecogPlotCurveItem(y, fs,
+            self.channel_plotitem_dict[index]['insetview'] = PyecogPlotCurveItem(self.main_model.project, index,
                                                                                  viewbox=self.insetview_plot.vb)
             self.channel_plotitem_dict[index]['overview'].setY(index)
             self.channel_plotitem_dict[index]['insetview'].setY(index)
@@ -163,9 +162,10 @@ class PairedGraphicsView():
             self.overview_plot.addItem(self.channel_plotitem_dict[index]['overview'])
             self.insetview_plot.addItem(self.channel_plotitem_dict[index]['insetview'])
 
-        self.channel_plotitem_dict[index]['overview'].set_data(y, fs)
-        self.channel_plotitem_dict[index]['insetview'].set_data(y, fs)
-        self.overview_plot.vb.setXRange(0, y.shape[0] / fs, padding=0)
+        # self.channel_plotitem_dict[index]['overview'].set_data(y, fs)
+        # self.channel_plotitem_dict[index]['insetview'].set_data(y, fs)
+        # self.overview_plot.vb.setXRange(t0, t0 + y.shape[0]/fs, padding=0)
+        # self.insetview_plot.vb.setXRange(t0, t0 + min(30, y.shape[0] / fs))
 
     # The following static methods are auxiliary functions to link several annotation related signals:
     @staticmethod
@@ -320,12 +320,22 @@ class PairedGraphicsView():
             self.main_model.annotations.focusOnAnnotation(None)
             self.main_model.set_time_position(pos.x())
 
+    def overview_range_changed(self, mask):
+        x_range, y_range = self.overview_plot.viewRange()
+        # Check if data buffer covers the requested range and update data if necessary
+        self.main_model.update_eeg_range(x_range)
+
     def insetview_range_changed(self, mask):
         '''connected to signal from insetview_plot'''
         x_range, y_range = self.insetview_plot.viewRange()
         self.overviewROI.setPos((x_range[0], y_range[0]))
         self.overviewROI.setSize((x_range[1] - x_range[0], y_range[1] - y_range[0]))
 
+        ox_range, oy_range = self.overview_plot.viewRange() # scroll the overview if the inset is on the edge
+        if x_range[0] < ox_range[0]:
+            self.overview_plot.vb.setXRange(x_range[0], x_range[0] + ox_range[1] - ox_range[0], padding=0)
+        elif x_range[1] > ox_range[1]:
+            self.overview_plot.vb.setXRange(x_range[1] - (ox_range[1] - ox_range[0]), x_range[1], padding=0)
 
 class DateAxis(pg.AxisItem):
     def tickStrings(self, values, scale, spacing):

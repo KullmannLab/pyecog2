@@ -42,12 +42,12 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
         self.setData_with_envelope()
 
     def setData_with_envelope(self):
-        n = self.n_display_points()
-        print('displaying n points', n)
+        n = self.n_display_points()*2
+        # print('displaying n points', n)
         visible_data, visible_time = self.project.get_data_from_range(self.parent_viewbox.viewRange()[0], self.channel,
                                                                       n_envelope=n)
         print('visible data shape:',visible_data.shape)
-        self.setData(y=visible_data.reshape(-1), x=visible_time, pen=self.pen, antialias=True)  # update the plot
+        self.setData(y=visible_data.ravel(), x=visible_time.ravel(), pen=self.pen, antialias=True)  # update the plot
         # self.resetTransform()
 
     def itemChange(self, *args):

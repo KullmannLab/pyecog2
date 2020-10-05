@@ -74,7 +74,7 @@ class Animal():
 class file_buffer():  # Consider translating this to cython
     def __init__(self):
         self.files = []
-        self.range = [0, 0]
+        self.range = [np.Inf, -np.Inf]
         self.data = []
         self.data_ranges = []
         self.metadata = []
@@ -109,36 +109,38 @@ class file_buffer():  # Consider translating this to cython
             if len(self.data) > 3:  # buffer 3 files - consider having this as a variable...
                 i = max(range(len(self.data)),
                         key=lambda j: self.data_ranges[j][0])  # get the index of the latest starting buffered file
-                self.files[i] = []
-                self.data[i] = []
-                self.data_ranges[i] = []
-                self.metadata[i] = []
-                self.range = [min([r[0] for r in  self.data_ranges]), max([r[1] for r in  self.data_ranges])]
+                del(self.files[i])
+                del(self.data[i])
+                del(self.data_ranges[i])
+                del(self.metadata[i])
+                self.range = [min([r[0] for r in self.data_ranges]), max([r[1] for r in self.data_ranges])]
 
-        if self.range[1] < trange[1]:  # buffering earlier file
+        if self.range[1] < trange[1]:  # buffering later file
             self.range[1] = trange[1]
             if len(self.data) > 3:  # buffer 3 files - consider having this as a variable...
                 i = min(range(len(self.data)),
                         key=lambda j: self.data_ranges[j][0])  # get the index of the earliest starting buffered file
-                self.files[i] = []
-                self.data[i] = []
-                self.data_ranges[i] = []
-                self.metadata[i] = []
-                self.range = [min([r[0] for r in  self.data_ranges]), max([r[1] for r in  self.data_ranges])]
+                del(self.files[i])
+                del(self.data[i])
+                del(self.data_ranges[i])
+                del(self.metadata[i])
+                self.range = [min([r[0] for r in self.data_ranges]), max([r[1] for r in self.data_ranges])]
 
     def get_data_from_range(self, trange, channel=None, n_envelope=None):
-        #  Find sample ranges from data_ranges:
         def clip(x, a, b):
             return min(max(int(x), a), b)
 
+        #  Find sample ranges from data_ranges:
         sample_ranges = []
+        print('range:',self.range)
         print('data ranges:',self.data_ranges)
         for i, ranges in enumerate(self.data_ranges):
+            print('metadata',i,':',self.metadata[i])
             fs = self.metadata[i]['fs']
             print(((trange[0] - ranges[0]) * fs, 0, len(self.data[i])))
             sample_ranges.append([clip((trange[0] - ranges[0]) * fs, 0, len(self.data[i])),
                                   clip((trange[1] - ranges[0]) * fs, 0, len(self.data[i]))])
-        print('Sample ranges:', sample_ranges)
+
         total_sample_range = max(sum([s[1] - s[0] for s in sample_ranges]),1)
         if n_envelope is None:
             n_envelope = total_sample_range
@@ -147,9 +149,9 @@ class file_buffer():  # Consider translating this to cython
 
         enveloped_data = []
         enveloped_time = []
-        print('sample ranges: ', sample_ranges)
-        print('data ranges: ', self.data_ranges)
-        print('data: ', len(self.data))
+        # print('sample ranges: ', sample_ranges)
+        # print('data ranges: ', self.data_ranges)
+        # print('data: ', len(self.data))
         for i, data in enumerate(self.data):
             start = sample_ranges[i][0]
             stop = sample_ranges[i][1]
@@ -168,6 +170,7 @@ class file_buffer():  # Consider translating this to cython
                 # Here convert data into a down-sampled array suitable for visualizing.
                 # Must do this piecewise to limit memory usage.
                 samples = (1 + (stop - start) // ds)
+                # print('grabbing',samples,'samples from buffred file',i)
                 visible_data = np.zeros((samples * 2,1), dtype=data.dtype)
                 sourcePtr = start
                 targetPtr = 0
@@ -191,16 +194,31 @@ class file_buffer():  # Consider translating this to cython
                     enveloped_data.append(visible_data[:targetPtr,:].reshape((-1,1)))
 
                 except:
+                    print('ERROR in downsampling')
                     raise
                     # throw_error()
                     # return 0
 
             enveloped_time.append(np.linspace(start/fs + self.data_ranges[i][0], stop/fs + self.data_ranges[i][0],
                                                len(enveloped_data[-1])).reshape(-1,1))
-            print('env data shapes')
-            print([data.shape for data in enveloped_data])
-            print([data.shape for data in enveloped_time])
-        return np.vstack(enveloped_data), np.vstack(enveloped_time)
+            if len(enveloped_time[-1])==0:
+                del(enveloped_time[-1])
+                del(enveloped_data[-1])
+            # print('env data shapes')
+            # print([data.shape for data in enveloped_data])
+            # print([data.shape for data in enveloped_time])
+        # sort vectors with enveloped_time:
+        start_times = [(t[0], enveloped_data[i], t) for (i, t) in enumerate(enveloped_time)]
+        start_times.sort()
+        enveloped_data = [d[1] for d in start_times]
+        enveloped_time = [d[2] for d in start_times]
+
+        print('env data shapes')
+        print([data.shape for data in enveloped_data])
+        print([data.shape for data in enveloped_time])
+        data = np.vstack(enveloped_data)
+        time = np.vstack(enveloped_time)
+        return data, time
 
 class Project():
     def __init__(self, eeg_data_folder=None, video_data_folder=None, title='New Project', dict=None):
@@ -243,7 +261,7 @@ class Project():
         :param n_envelope: int - compute envelope in n_envelope number of points, if none, return all data
         :return:
         '''
-
+        print('Project() get_data_from_range called for chanbel',channel,'; time range:', trange)
         if (animal is not None) and (animal is not self.current_animal):  # reset file buffer if animal has changed
             print('Clearing File Buffer')
             self.current_animal = animal
@@ -251,13 +269,14 @@ class Project():
 
         # First check if data is already buffered, most of the time this will be the case:
         if trange[0] >= self.file_buffer.range[0] and trange[1] <= self.file_buffer.range[1]:
+            print('Data already in buffer')
             return self.file_buffer.get_data_from_range(trange,channel,n_envelope)
 
         # Now clear buffer if range is not contiguous to previous range
         if trange[1] <= self.file_buffer.range[0] or trange[0] >= self.file_buffer.range[1]:
+            print('Non-contiguous data: restarting buffer...')
             self.file_buffer = file_buffer()
 
-        print(self.current_animal.eeg_files)
         for i, file in enumerate(self.current_animal.eeg_files):
             arange = [self.current_animal.eeg_init_time[i], self.current_animal.eeg_init_time[i] + self.current_animal.eeg_duration[i]]
             if (trange[0] <= arange[0] <= trange[1]) or (trange[0] <= arange[1] <= trange[1]):

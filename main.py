@@ -40,7 +40,7 @@ class MainModel(QObject):
         if abs(pos - self.time_position_emited) > .01: # only emit signal if time_position actually changed
             self.time_position_emited = pos
             self.sigTimeChanged.emit(pos)
-            # print('Current Time emited:', pos)
+            print('Current Time emited:', pos)
 
     def set_window_pos(self, pos):
         if pos != self.window:
@@ -51,7 +51,8 @@ class MainModel(QObject):
     def update_eeg_range(self,x_range):
         print('Updating data range...')
         if x_range[0]<self.time_range[0]:
-            dilated_x_range = np.array([x_range[0]-1,x_range[0]+1])  # dilate x_range to avoid too much repetitive loads in edge cases
+            dilated_x_range = np.array([x_range[0]-1,x_range[1]+1])  # dilate x_range to avoid too much repetitive loads in edge cases
+            dilated_x_range = np.array([x_range[0],x_range[1]])  # dilate x_range to avoid too much repetitive loads in edge cases
             self.data_eeg, self.time_range = self.project.current_animal.get_data_from_range(dilated_x_range)
 
 

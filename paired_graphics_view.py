@@ -104,21 +104,20 @@ class PairedGraphicsView():
         print('Items to delete')
         print(self.overview_plot.items)
         self.overview_plot.clear()
-        self.overview_plot.addItem(self.overviewROI) # put back the overview box
         print('Items after delete')
         print(self.overview_plot.items)
         self.insetview_plot.clear()
         print(overview_range)
         self.overview_plot.setXRange(*overview_range)
-
+        self.insetview_plot.vb.setXRange(overview_range[0],
+                                         overview_range[0] + min(30, overview_range[1] - overview_range[0]))
         if self.scale is None:  # running for the first time
             arr,tarr = self.main_model.project.get_data_from_range(self.overview_plot.vb.viewRange()[0])
             print(arr.shape, tarr.shape)
             self.n_channels = arr.shape[1]
             self.scale = 1 / (6 * np.mean(np.std(arr, axis=0, keepdims=True), axis=1))
-            self.insetview_plot.vb.setYRange(-2, arr.shape[1] + 1)
             self.overview_plot.vb.setYRange(-2, arr.shape[1] + 1)
-            self.insetview_plot.vb.setXRange(overview_range[0], overview_range[0] + min(30, overview_range[1]-overview_range[0]))
+            self.insetview_plot.vb.setYRange(-2, arr.shape[1] + 1)
 
         for i in range(self.n_channels):
             if pens is None:
@@ -130,13 +129,15 @@ class PairedGraphicsView():
         # prevent scrolling past 0 and end of data
         # self.insetview_plot.vb.setLimits(xMin=0, xMax=arr.shape[0] / fs)
         self.overview_plot.vb.setLimits(maxXRange=3600)
+        self.insetview_plot.vb.setLimits(maxXRange=3600)
         self.overview_plot.vb.setLimits(yMin=-3, yMax=self.n_channels + 3)
+
+        self.overview_plot.addItem(self.overviewROI) # put back the overview box
 
         self.inset_annotations = []
         self.overview_annotations = []
         self.set_scenes_plot_annotations_data(self.main_model.annotations)
         self.main_model.annotations.sigFocusOnAnnotation.connect(self.set_focus_on_annotation)
-        # FOR DEBUGGING ONLY:
         self.set_scene_window(self.main_model.window)
         self.set_scene_cursor()
 
@@ -323,7 +324,7 @@ class PairedGraphicsView():
     def overview_range_changed(self, mask):
         x_range, y_range = self.overview_plot.viewRange()
         # Check if data buffer covers the requested range and update data if necessary
-        self.main_model.update_eeg_range(x_range)
+        # self.main_model.update_eeg_range(x_range)
 
     def insetview_range_changed(self, mask):
         '''connected to signal from insetview_plot'''

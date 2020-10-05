@@ -111,13 +111,14 @@ class TreeModel(QtCore.QAbstractItemModel):
         if role == TreeModel.prepare_for_plot_role:
             if hasattr(node, 'prepare_for_plot'):
                 range = node.prepare_for_plot()
+                print('Emmiting plot_node_signal with range:',range)
                 if range is not None:
                     self.plot_node_signal.emit(range)
 
 
         if role == QtCore.Qt.DisplayRole or role == QtCore.Qt.EditRole:
             if index.column() == 0:
-                return node.name
+                return node.name.split('/')[-1]
             else:
                 return node.type_info()
 

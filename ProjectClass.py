@@ -216,8 +216,12 @@ class file_buffer():  # Consider translating this to cython
         print('env data shapes')
         print([data.shape for data in enveloped_data])
         print([data.shape for data in enveloped_time])
-        data = np.vstack(enveloped_data)
-        time = np.vstack(enveloped_time)
+        if len(enveloped_data)>0:
+            data = np.vstack(enveloped_data)
+            time = np.vstack(enveloped_time)
+        else:
+            data = np.array([0,0])
+            time = np.array(trange)
         return data, time
 
 class Project():
@@ -261,7 +265,7 @@ class Project():
         :param n_envelope: int - compute envelope in n_envelope number of points, if none, return all data
         :return:
         '''
-        print('Project() get_data_from_range called for chanbel',channel,'; time range:', trange)
+        print('Project() get_data_from_range called for chanbel',channel,'; time range:', trange, ', duration:',trange[1]-trange[0])
         if (animal is not None) and (animal is not self.current_animal):  # reset file buffer if animal has changed
             print('Clearing File Buffer')
             self.current_animal = animal
@@ -279,7 +283,8 @@ class Project():
 
         for i, file in enumerate(self.current_animal.eeg_files):
             arange = [self.current_animal.eeg_init_time[i], self.current_animal.eeg_init_time[i] + self.current_animal.eeg_duration[i]]
-            if (trange[0] <= arange[0] <= trange[1]) or (trange[0] <= arange[1] <= trange[1]):
+            if (arange[0] <= trange[0] <= arange[1]) or (arange[0] <= trange[1] <= arange[1]) or\
+                    (trange[0] <= arange[0] <= trange[1]) or (trange[0] <= arange[1] <= trange[1]):
                 print('Adding file to buffer: ', file)
                 self.file_buffer.add_file_to_buffer(file)
         print('files in buffer: ' , self.file_buffer.files)

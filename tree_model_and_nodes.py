@@ -175,9 +175,10 @@ class TreeModel(QtCore.QAbstractItemModel):
         self.endRemoveRows()# emit signal that is handled by the views
         return success
 
-class Node:
+class Node(QtWidgets.QTreeWidgetItem):
     '''Represents item of data in tree model'''
     def __init__(self,name,parent=None, path=None):
+        QtWidgets.QTreeWidgetItem.__init__(self)
         self.name = name
         if path is None:
             self.path = name

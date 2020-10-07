@@ -55,7 +55,8 @@ class PairedGraphicsView():
         overview_layout_widget.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
 
         insetview_layout_widget = pg.GraphicsLayoutWidget()
-        self.insetview_plot = insetview_layout_widget.addPlot()
+        insetview_date_axis = DateAxis(orientation='bottom')
+        self.insetview_plot = insetview_layout_widget.addPlot(axisItems={'bottom':insetview_date_axis})
         # self.insetview_plot.showAxis('left', show=False)
         self.insetview_plot.showGrid(x=True, y=True, alpha=0.15)
         self.insetview_plot.setLabel('bottom', text='Time', units='s')
@@ -70,7 +71,7 @@ class PairedGraphicsView():
         self.insetview_plot.sigRangeChanged.connect(self.insetview_range_changed)
         self.overview_plot.sigRangeChanged.connect(self.overview_range_changed)
         self.insetview_plot.vb.scene().sigMouseClicked.connect(self.inset_clicked) # Get original mouseclick signal with modifiers
-        self.overview_plot.vb.sigMouseLeftClick.connect(self.overview_clicked)
+        self.overview_plot.vb.scene().sigMouseClicked.connect(self.overview_clicked)
         # hacky use of self.vb, but just rolling with it
         self.is_setting_window_position = False
 
@@ -279,13 +280,14 @@ class PairedGraphicsView():
                                      yRange=(state['pos'][1], state['pos'][1] + state['size'][1]),
                                      padding=0)
 
-    def overview_clicked(self, ev_pos):
+    def overview_clicked(self, ev):
         '''
         ev pos is postion in 'scene' coords of mouse click
         '''
         # print('hit', ev_pos)
         # print(event, event.pos())
-        center = ev_pos
+        pos = self.overview_plot.vb.mapSceneToView(ev.scenePos())
+        center = pos
         xmin, xmax = self.insetview_plot.viewRange()[0]
         ymin, ymax = self.insetview_plot.viewRange()[1]
         # print(ymin, ymax, center.y())
@@ -301,7 +303,12 @@ class PairedGraphicsView():
                                      yRange=new_yrange,
                                      padding=0)
 
-    def inset_clicked(self,ev):
+        modifiers = ev.modifiers()
+        if modifiers == QtCore.Qt.ControlModifier:
+            self.main_model.annotations.focusOnAnnotation(None)
+            self.main_model.set_time_position(pos.x())
+
+    def inset_clicked(self, ev):
         pos = self.insetview_plot.vb.mapSceneToView(ev.scenePos())
         print('insetclicked ', pos)
         print('modifiers:',ev.modifiers())
@@ -323,8 +330,6 @@ class PairedGraphicsView():
 
     def overview_range_changed(self, mask):
         x_range, y_range = self.overview_plot.viewRange()
-        # Check if data buffer covers the requested range and update data if necessary
-        # self.main_model.update_eeg_range(x_range)
 
     def insetview_range_changed(self, mask):
         '''connected to signal from insetview_plot'''

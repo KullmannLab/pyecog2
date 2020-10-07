@@ -95,6 +95,14 @@ class MainWindow(QMainWindow):
         self.dock_list['File Tree'].setAllowedAreas(Qt.RightDockWidgetArea | Qt.LeftDockWidgetArea | Qt.TopDockWidgetArea | Qt.BottomDockWidgetArea)
         self.dock_list['File Tree'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
+        try:
+            self.main_model.project.load_from_json('/home/mfpleite/Shared/ele_data/proj.pyecog')
+            print(self.main_model.project.__dict__)
+            self.tree_element.set_rootnode_from_project(self.main_model.project)
+        except Exception as e:
+            print('ERROR in tree build')
+            print(e)
+
         self.dock_list['Text'] = QDockWidget("Text", self)
         self.dock_list['Text'].setWidget(QPlainTextEdit())
         self.dock_list['Text'].setObjectName("Text")
@@ -107,7 +115,7 @@ class MainWindow(QMainWindow):
         self.dock_list['Annotation Parameter Tree'].setWidget(AnnotationParameterTee(self.main_model.annotations))
         self.dock_list['Annotation Parameter Tree'].setObjectName("Annotation Parameter Tree")
 
-        self.video_element = VideoWindow()
+        self.video_element = VideoWindow(project=self.main_model.project)
         self.dock_list['Video'] = QDockWidget("Video", self)
         self.dock_list['Video'].setWidget(self.video_element)
         self.dock_list['Video'].setObjectName("Video")
@@ -115,8 +123,8 @@ class MainWindow(QMainWindow):
         self.dock_list['Video'].hide()
         self.video_element.mediaPlayer.setNotifyInterval(40) # 25 fps
         # Video units are in miliseconds, pyecog units are in seconds
-        self.video_element.mediaPlayer.positionChanged.connect(lambda pos: self.main_model.set_time_position(pos/1000))
-        self.main_model.sigTimeChanged.connect(lambda pos: self.video_element.setPosition(1000*pos))
+        self.video_element.sigTimeChanged.connect(self.main_model.set_time_position)
+        self.main_model.sigTimeChanged.connect(self.video_element.setGlobalPosition)
 
         self.dock_list['FFT'] = QDockWidget("FFT", self)
         self.dock_list['FFT'].setWidget(FFTwindow(self.main_model))
@@ -130,13 +138,6 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['Text'])
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['FFT'])
 
-        try:
-            self.main_model.project.load_from_json('/home/mfpleite/Shared/ele_data/proj.pyecog')
-            print(self.main_model.project.__dict__)
-            self.tree_element.set_rootnode_from_project(self.main_model.project)
-        except Exception as e:
-            print('ERROR in tree build')
-            print(e)
 
         settings = QSettings("PyEcog","PyEcog")
         settings.beginGroup("StandardMainWindow")

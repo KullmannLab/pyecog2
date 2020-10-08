@@ -6,6 +6,7 @@ import webbrowser
 from coding_tests.VideoPlayer import VideoWindow
 from coding_tests.AnnotationParameterTree import AnnotationParameterTee
 from coding_tests.FFT import FFTwindow
+from coding_tests.WaveletWidget import WaveletWindow
 import numpy as np
 import pyqtgraph_copy.pyqtgraph as pg
 
@@ -131,12 +132,18 @@ class MainWindow(QMainWindow):
         self.dock_list['FFT'].setObjectName("FFT")
         self.dock_list['FFT'].hide()
 
+        self.dock_list['Wavelet'] = QDockWidget("Wavelet", self)
+        self.dock_list['Wavelet'].setWidget(WaveletWindow(self.main_model))
+        self.dock_list['Wavelet'].setObjectName("Wavelet")
+        self.dock_list['Wavelet'].hide()
+
         self.setCentralWidget(self.paired_graphics_view.splitter)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['File Tree'])
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['Annotation Parameter Tree'])
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['Annotations Table'])
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['Text'])
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['FFT'])
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['Wavelet'])
 
 
         settings = QSettings("PyEcog","PyEcog")
@@ -267,6 +274,10 @@ class MainWindow(QMainWindow):
         self.dock_list['FFT'].show()
         self.show()
 
+    def open_wavelet_window(self):
+        self.dock_list['Wavelet'].show()
+        self.show()
+
     def build_menubar(self):
         self.menu_bar = self.menuBar()
 
@@ -315,7 +326,9 @@ class MainWindow(QMainWindow):
         # To do
         self.action_open_fft_window = self.menu_tools.addAction("FFT")
         self.action_open_fft_window.triggered.connect(self.open_fft_window)
+
         self.action_open_morlet_window = self.menu_tools.addAction("Morlet Wavelet Transform")
+        self.action_open_morlet_window.triggered.connect(self.open_wavelet_window)
 
         # HELP section
         self.menu_help = self.menu_bar.addMenu("Help")

@@ -34,6 +34,7 @@ def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=()):
 
     alfa = (maxf / minf) ** (1 / Nf) - 1  # According to the expression achived by fn = ((1+1/R)^n)*f0 where 1/R = alfa
     vf = ((1 + alfa) ** np.arange(0, Nf)) * minf
+    print(Nf,Ns)
     result = np.zeros((Nf, Ns), dtype='complex')
 
     for k in range(Nf):
@@ -48,22 +49,23 @@ def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=()):
         mask[k, :Nlist[k]] = True
         mask[k, -Nlist[k]:] = True
 
-    return result, mask
+    return result, mask, vf
 
 
 class WaveletWindow(pg.GraphicsLayoutWidget):
-    def __init__(self):
+    def __init__(self, main_model = None):
         super().__init__()
 
         # self.p3 = self.addPlot()
         # self.p3.setMaximumWidth(250)
         # self.resize(800, 800)
-
+        self.main_model = main_model
         self.setWindowTitle("Wavelet Analysis")
         self.p1 = self.addPlot()
         self.img = pg.ImageItem()
-        self.p1.addItem(self.img)
-        # self.p1.setLogMode(y=True)
+        # log_axis = LogAxis(orientation='left')
+        self.p1.addItem(self.img) #, axisItems = {'left': log_axis})
+        self.p1.setLogMode(y=True)
 
         # # Custom ROI for selecting an image region
         # self.roi = pg.ROI([0, 10], [60, 50])
@@ -107,21 +109,18 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
         # Generate image data
         self.update_data()
         self.vb = self.img.getViewBox()
-        self.vb.setLimits(xMin=0, xMax=self.data.shape[1], yMin=0, yMax=self.data.shape[0])
         self.p1.setLabel('left', 'Frequency', units = 'Hz')
         self.p1.setLabel('bottom', 'Time', units = 's')
 
         self.hist.setLevels(self.data.min(), self.data.max())
+        self.main_model.sigWindowChanged.connect(self.update_data)
 
         # build isocurves from smoothed data
         # iso.setData(pg.gaussianFilter(data, (2, 2)))
         # self.iso.setData(self.data)
 
         # set position and scale of image
-        self.img.scale(1, 1)
-        self.img.translate(0, 0)
 
-        self.show()
 
     #     # zoom to fit imageo
     #     self.p2.setLabel('left', 'Frequency', units = 'Hz')
@@ -141,11 +140,29 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
         # self.iso.setLevel(self.isoLine.value())
 
     def update_data(self):
-        self.time_series_data = np.random.randn(300*250)
-        self.time_series_data[200:800] += np.sin(np.arange(600)*10)
-        self.wav , self.coi = morlet_wavelet(self.time_series_data,dt = 1/250,R=14,freq_interval = (1,125))
-        self.data = np.log(np.abs(self.wav)+.001)
-        self.img.setImage(self.data)
+        self.data = np.zeros((1,1))
+        if self.isVisible():
+            if self.main_model is None:
+                data = np.random.randn(300*250)
+                data[200:800] += np.sin(np.arange(600)*10)
+                time = np.arange(300*250)/250
+                print('random data')
+            else:
+                data, time = self.main_model.project.get_data_from_range(self.main_model.window)
+
+            print('Wavelet data shape:',data.shape)
+            dt = (time[1]-time[0])
+            self.wav , self.coi, vf = morlet_wavelet(data.ravel(),dt = dt ,R=14,freq_interval = (1,125,100))
+            self.data = np.log(np.abs(self.wav)+.001)
+            self.img.setImage(self.data*(1-self.coi))
+            self.img.resetTransform()
+            ymin = np.log10(vf[0])
+            ymax = np.log10(vf[-1])
+            self.img.translate(0,ymin)
+            self.img.scale(dt,(ymax-ymin)/self.data.shape[0])
+            self.vb.setLimits(xMin=0, xMax=self.data.shape[1]*dt, yMin=ymin, yMax=ymax)
+            self.show()
+            print('Updated Wavelet')
 
 
 
@@ -165,3 +182,10 @@ if __name__ == '__main__':
 #     player.resize(640, 480)
 #     player.show()
 #     sys.exit(app.exec_())
+
+class LogAxis(pg.AxisItem):
+    def tickStrings(self, values, scale, spacing):
+        strns = []
+        for x in values:
+            strns.append('10<sup>'+str(x) + '</sup>')
+        return strns

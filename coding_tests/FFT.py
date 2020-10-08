@@ -7,7 +7,6 @@ import sys
 import numpy as np
 import pyqtgraph_copy.pyqtgraph as pg
 
-
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
 
@@ -25,9 +24,12 @@ class FFTwindow(pg.PlotWidget):
 
     def updateData(self):
         if self.isVisible():
-            data = np.random.randn(100)
-            vf   = np.arange(100)
-            self.p1.setData(x = vf, y = data)
-            self.setLimits(xMin=0,xMax=100)
+            data, time = self.main_model.project.get_data_from_range(self.main_model.window)
+            N = int(2**np.ceil(np.log2(len(data))))
+            dataf = np.fft.rfft(data.T,N)/N
+            vf = np.fft.rfftfreq(N)*1/(time[1]-time[0])
+            print('data shape:',data.shape,'FFT: dataf shape:',dataf.shape,'vf shape:',vf.shape)
+            self.p1.setData(x = vf, y = np.abs(dataf[0]))
+            self.setLimits(xMin=vf[0],xMax=vf[-1])
             print('Updated FFT')
 

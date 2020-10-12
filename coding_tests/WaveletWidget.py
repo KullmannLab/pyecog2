@@ -65,6 +65,8 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
         self.img = pg.ImageItem()
         # log_axis = LogAxis(orientation='left')
         self.p1.addItem(self.img) #, axisItems = {'left': log_axis})
+
+        self.p1.showGrid(x=False, y=True, alpha=0.15)
         self.p1.setLogMode(y=True)
 
         # # Custom ROI for selecting an image region
@@ -91,13 +93,13 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
         self.hist.gradient.loadPreset('viridis')
 
         # Draggable line for setting isocurve level
-        self.isoLine = pg.InfiniteLine(angle=0, movable=True, pen='g')
-        self.hist.vb.addItem(self.isoLine)
-        self.hist.vb.setMouseEnabled(y=False) # makes user interaction a little easier
-        self.isoLine.setValue(0.8)
-        self.isoLine.setZValue(1000) # bring iso line above contrast controls
-
-        self.isoLine.sigDragged.connect(self.updateIsocurve)
+        # self.isoLine = pg.InfiniteLine(angle=0, movable=True, pen='g')
+        # self.hist.vb.addItem(self.isoLine)
+        # self.hist.vb.setMouseEnabled(y=False) # makes user interaction a little easier
+        # self.isoLine.setValue(0.8)
+        # self.isoLine.setZValue(1000) # bring iso line above contrast controls
+        #
+        # self.isoLine.sigDragged.connect(self.updateIsocurve)
 
         # Another plot area for displaying ROI data
         # self.nextRow()
@@ -135,9 +137,9 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
     #         self.p3.plot(selected.mean(axis=1),selected.range(), clear=True)
 
     #
-    def updateIsocurve(self):
-        self.update_data()
-        # self.iso.setLevel(self.isoLine.value())
+    # def updateIsocurve(self):
+    #     self.update_data()
+    #     # self.iso.setLevel(self.isoLine.value())
 
     def update_data(self):
         self.data = np.zeros((1,1))

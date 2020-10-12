@@ -33,7 +33,7 @@ class MainModel(QObject):
         self.filenames_dict = {'eeg': '', 'meta' : '', 'anno': '', 'acc': ''}
         self.file_meta_dict = {}
         self.annotations = AnnotationPage()
-        self.project = Project()
+        self.project = Project(self)
 
     def set_time_position(self, pos):
         self.time_position = pos
@@ -49,6 +49,7 @@ class MainModel(QObject):
             self.sigWindowChanged.emit(pos)
             print('Window changesd to:', pos)
 
+    # I think this became obsolete after implementing the Project Class.
     def update_eeg_range(self,x_range):
         print('Updating data range...')
         if x_range[0]<self.time_range[0]:
@@ -76,14 +77,9 @@ class MainWindow(QMainWindow):
         self.setGeometry(0, 0, size.width(), size.height())
 
         self.main_model = MainModel()
-        # Just for testing purpouses
-        self.main_model.annotations = AnnotationPage(alist=[AnnotationElement(label='seizure', start=1, end=10),
-                                                            AnnotationElement(label='seizure', start=14, end=22),
-                                                            AnnotationElement(label='spike', start=23, end=25),
-                                                            AnnotationElement(label='artefact', start=26, end=26.5)])
 
         # Populate Main window with widgets
-        # self.createDockWidget()y
+        # self.createDockWidget()
         self.build_menubar()
         self.dock_list = {}
         self.paired_graphics_view = PairedGraphicsView(parent=self)
@@ -100,6 +96,12 @@ class MainWindow(QMainWindow):
             self.main_model.project.load_from_json('/home/mfpleite/Shared/ele_data/proj.pyecog')
             print(self.main_model.project.__dict__)
             self.tree_element.set_rootnode_from_project(self.main_model.project)
+            # # Just for testing purpouses
+            # self.main_model.annotations = AnnotationPage(alist=[AnnotationElement(label='seizure', start=1, end=10),
+            #                                                     AnnotationElement(label='seizure', start=14, end=22),
+            #                                                     AnnotationElement(label='spike', start=23, end=25),
+            #                                                     AnnotationElement(label='artefact', start=26, end=26.5)])
+
         except Exception as e:
             print('ERROR in tree build')
             print(e)
@@ -212,8 +214,45 @@ class MainWindow(QMainWindow):
     def load_liete_directory(self):
         print('Load new file types...')
 
+    def new_project(self):
+        self.main_model.project = Project(self.main_model)
+        self.tree_element.set_rootnode_from_project(self.main_model.project)
+
+    def load_project(self):
+        dialog = QFileDialog()
+        dialog.setWindowTitle('Load Project ...')
+        dialog.setFileMode(QFileDialog.AnyFile)
+        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setAcceptMode(QFileDialog.AcceptOpen)
+        dialog.setNameFilter('*.pyecog')
+        if dialog.exec():
+            fname = dialog.selectedFiles()[0]
+            print(fname)
+            self.main_model.project.load_from_json(fname)
+            self.tree_element.set_rootnode_from_project(self.main_model.project)
+
     def save(self):
         print('save action triggered')
+        fname = self.main_model.project.project_file
+        if not os.path.isfile(fname):
+            self.save_as()
+        else:
+            print('Saving project to:', fname)
+            self.main_model.project.save_to_json(fname)
+
+    def save_as(self):
+        dialog = QFileDialog()
+        dialog.setWindowTitle('Save as ...')
+        dialog.setFileMode(QFileDialog.AnyFile)
+        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setAcceptMode(QFileDialog.AcceptSave)
+        dialog.setNameFilter('*.pyecog')
+        if dialog.exec():
+            fname = dialog.selectedFiles()[0]
+            print(fname)
+            self.main_model.project.project_file = fname
+            print('Saving project to:', self.main_model.project.project_file)
+            self.main_model.project.save_to_json(fname)
 
     def load_general(self):
         selected_directory = self.select_directory()
@@ -272,21 +311,30 @@ class MainWindow(QMainWindow):
 
     def open_fft_window(self):
         self.dock_list['FFT'].show()
+        self.dock_list['FFT'].widget().updateData()
         self.show()
 
     def open_wavelet_window(self):
         self.dock_list['Wavelet'].show()
+        self.dock_list['Wavelet'].widget().update_data()
         self.show()
+
 
     def build_menubar(self):
         self.menu_bar = self.menuBar()
 
         # FILE section
         self.menu_file = self.menu_bar.addMenu("File")
+        self.action_new_project     = self.menu_file.addAction("New Project")
+        self.action_load_project    = self.menu_file.addAction("Load Project")
+        self.action_save       = self.menu_file.addAction("Save")
+        self.action_save.setShortcut('Ctrl+S')
+        self.action_save_as       = self.menu_file.addAction("Save as...")
+        self.action_save_as.setShortcut('Ctrl+Shift+S')
+        self.menu_file.addSeparator()
         self.action_load_general    = self.menu_file.addAction("(Tempory) Load directory")
         self.action_load_h5    = self.menu_file.addAction("Load h5 directory")
         self.action_load_liete = self.menu_file.addAction("Load leite directory")
-        self.action_save       = self.menu_file.addAction("Save")
         self.menu_file.addSeparator()
         self.actionLiveUpdate  = self.menu_file.addAction("Live Recording")
         self.actionLiveUpdate.setCheckable(True)
@@ -298,10 +346,13 @@ class MainWindow(QMainWindow):
 
         self.menu_file.addSeparator()
         self.action_quit       = self.menu_file.addAction("Quit")
+        self.action_new_project.triggered.connect(self.new_project)
+        self.action_load_project.triggered.connect(self.load_project)
         self.action_load_general.triggered.connect(self.load_general)
         self.action_load_h5.triggered.connect(self.load_h5_directory)
         self.action_load_liete.triggered.connect(self.load_liete_directory)
         self.action_save.triggered.connect(self.save)
+        self.action_save_as.triggered.connect(self.save_as)
         self.action_quit.triggered.connect(self.close)
         self.actionLiveUpdate.triggered.connect(self.load_live_recording)
 

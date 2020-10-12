@@ -84,7 +84,8 @@ class PairedGraphicsView():
                                       sideScalers=True, pen=penh, rotatable=False, removable=False)
         self.overviewROI.sigRegionChanged.connect(self.overviewROIchanged)
         self.overview_plot.addItem(self.overviewROI)
-
+        self.inset_annotations = []
+        self.overview_annotations = []
         # here we will store the plot items in nested dict form
         # {"1" : {'inset': obj,'overview':obj }
         # will be used for an ugly hack to snchonize across plots

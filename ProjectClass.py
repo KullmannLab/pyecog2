@@ -6,7 +6,7 @@ from collections import OrderedDict
 from h5loader import H5File
 import glob, os
 from datetime import datetime
-
+from annotations_module import AnnotationPage
 
 def create_metafile_from_h5(file):
     assert file.endswith('.h5')
@@ -33,6 +33,7 @@ class Animal():
     def __init__(self, id=None, eeg_folder=None, video_folder=None, dict={}):
         if dict != {}:
             self.__dict__ = dict
+            self.annotations = AnnotationPage(dict = dict['annotations'])
             return
 
         if eeg_folder is not None:
@@ -42,12 +43,15 @@ class Animal():
                     continue
                 create_metafile_from_h5(file)
             self.eeg_files = glob.glob(eeg_folder + '/*.meta')
-            self.annotation_files = glob.glob(eeg_folder + '/*.anno')
+            self.annotations = AnnotationPage()
+            annotation_files = glob.glob(eeg_folder + '/*.anno')
+            if annotation_files:
+                self.annotations.import_from_json(annotation_files[0])
             self.eeg_init_time = [json.load(file)['start_timestamp_unix'] for file in map(open, self.eeg_files)]
             self.eeg_duration = [json.load(file)['duration'] for file in map(open, self.eeg_files)]
         else:
             self.eeg_files = []
-            self.annotation_files = []
+            self.annotations = AnnotationPage()
             self.eeg_init_time = []
             self.eeg_duration = []
 
@@ -70,6 +74,10 @@ class Animal():
         else:
             self.id = id
 
+    def dict(self):
+        dict = self.__dict__.copy()
+        dict['annotations'] = self.annotations.dict()
+        return dict
 
 class file_buffer():  # Consider translating this to cython
     def __init__(self):
@@ -225,22 +233,41 @@ class file_buffer():  # Consider translating this to cython
         return data, time
 
 class Project():
-    def __init__(self, eeg_data_folder=None, video_data_folder=None, title='New Project', dict=None):
+    def __init__(self, main_model, eeg_data_folder=None, video_data_folder=None, title='New Project', project_file='',dict=None):
         if dict is not None:
             self.__dict__ = dict
+            self.animal_list = [Animal(dict = animal) for animal in dict['animal_list']]
+            self.current_animal = Animal(dict = dict['current_animal'])
+            self.main_model = main_model
             return
+        self.main_model = main_model
         self.animal_list = []
         self.eeg_root_folder = eeg_data_folder
         self.video_root_folder = video_data_folder
+        self.project_file = project_file
         self.title = title
         self.current_animal = Animal()  # start with empty animal
         self.file_buffer = file_buffer()
 
+    def set_current_animal(self, animal): # copy alterations made to annotations
+        self.current_animal.annotations.copy_from(self.main_model.annotations)
+        self.main_model.annotations.copy_from(animal.annotations)
+        self.current_animal = animal
+        self.main_model.annotations.sigLabelsChanged.emit('')
+
     def save_to_json(self, fname):
+        try:
+            self.current_animal.annotations.copy_from(
+                self.main_model.annotations)  # save alterations made to the current animal annotations
+        except:
+            print('no main model defined')
+
         dict = self.__dict__.copy()
-        dict['animal_list'] = [animal.__dict__ for animal in self.animal_list]  # make animals into dicts
-        dict['current_animal'] = self.current_animal.__dict__
+        del(dict['main_model'])
+        dict['animal_list'] = [animal.dict() for animal in self.animal_list]  # make animals into dicts
+        dict['current_animal'] = Animal().dict() # self.current_animal.dict() # Otherwise when loading the current animal would not be in the animal_list
         dict['file_buffer'] = None
+        print(dict)
         json.dump(dict, open(fname, 'w'), indent=4)
 
     def load_from_json(self, fname):
@@ -249,7 +276,9 @@ class Project():
         dict['animal_list'].sort(key=lambda animal: animal.id)
         dict['current_animal'] = Animal(dict = dict['current_animal'])
         dict['file_buffer'] = file_buffer()
+        main_model = self.main_model
         self.__dict__ = dict
+        self.main_model = main_model
 
     def get_animal(self, animal_id):
         for animal in self.animal_list:
@@ -268,7 +297,8 @@ class Project():
         print('Project() get_data_from_range called for chanbel',channel,'; time range:', trange, ', duration:',trange[1]-trange[0])
         if (animal is not None) and (animal is not self.current_animal):  # reset file buffer if animal has changed
             print('Clearing File Buffer')
-            self.current_animal = animal
+            self.set_current_animal(animal)
+            # self.current_animal = animal
             self.file_buffer = file_buffer()
 
         # First check if data is already buffered, most of the time this will be the case:

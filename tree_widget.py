@@ -21,10 +21,10 @@ class FileTreeView(QtWidgets.QTreeView):
         QtWidgets.QTreeView.__init__(self)
         # self.setSortingEnabled(True) # relies on proxy model
 
-    def mouseDoubleClickEvent(self, event):
-        print('double click event')
-        print(event)
-        node = self.currentIndex().internalPointer()
+    # def mouseDoubleClickEvent(self, event):
+    #     print('double click event')
+    #     print(event)
+    #     node = self.currentIndex().internalPointer()
 
     def selectionChanged(self, *args):
         print('selection changed', args)

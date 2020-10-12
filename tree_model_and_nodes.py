@@ -74,7 +74,9 @@ class TreeModel(QtCore.QAbstractItemModel):
         return 2
 
     def flags(self,index):
-        return QtCore.Qt.ItemIsEnabled| QtCore.Qt.ItemIsSelectable #| QtCore.Qt.ItemIsEditable
+        if index.column() ==0:
+            return self.get_node(index).flags()
+        return QtCore.Qt.ItemIsEnabled| QtCore.Qt.ItemIsSelectable # | QtCore.Qt.ItemIsEditable
         # we dont want them to be editable (at the moment)
 
     def headerData(self, section, orientation,role):
@@ -83,8 +85,9 @@ class TreeModel(QtCore.QAbstractItemModel):
                 return 'File list'
             if section == 1:
                 return 'Properties'
-    def doubleClicked(self,index):
-        print('Doublecklicked....', index)
+
+    # def doubleClicked(self,index):
+    #     print('Doublecklicked....', index)
 
     def setData(self,index,value,role=QtCore.Qt.EditRole):
         '''
@@ -179,6 +182,7 @@ class Node(QtWidgets.QTreeWidgetItem):
     '''Represents item of data in tree model'''
     def __init__(self,name,parent=None, path=None):
         QtWidgets.QTreeWidgetItem.__init__(self)
+        # self.setFlags(self.flags())
         self.name = name
         if path is None:
             self.path = name
@@ -186,7 +190,6 @@ class Node(QtWidgets.QTreeWidgetItem):
             self.path = path
         self.parent = parent
         self.children = []
-
         if parent is not None:
             parent.add_child(self)
 
@@ -325,7 +328,7 @@ class HDF5FileNode(Node):
         self.load_metadata()
         t0 = self.metadata['start_timestamp_unix']
         duration = self.metadata['duration']
-        self.parent.parent.project.current_animal = self.parent.animal
+        self.parent.parent.project.set_current_animal(self.parent.animal)
         # self.h5_file = H5File(self.get_full_path())
         # fs_dict = eval(self.h5_file.attributes['fs_dict'])
         # fs = fs_dict[int(self.h5_file.attributes['t_ids'][0])]
@@ -363,6 +366,7 @@ class AnimalNode(Node):
     def __init__(self, animal, parent=None,path=''):
         super(AnimalNode, self).__init__(str(animal.id),parent=parent,path=path)
         self.animal = animal
+        self.setFlags(QtCore.Qt.ItemIsEnabled| QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable)
         for file in animal.eeg_files:
             metadata = json.load(open(os.path.join(self.get_full_path(),file)))
             if metadata['data_format'] == 'h5':
@@ -384,7 +388,7 @@ class ProjectNode(Node):
     def __init__(self, project, parent=None):
         super(ProjectNode, self).__init__(str(project.title), parent=parent, path='')
         self.project = project
-
+        self.setFlags(QtCore.Qt.ItemIsEnabled| QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable)
         self.name = project.title
         for animal in self.project.animal_list:
             AnimalNode(animal, parent=self)

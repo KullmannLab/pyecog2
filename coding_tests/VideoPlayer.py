@@ -16,18 +16,7 @@ class VideoWindow(QWidget):
     def __init__(self, project=None, parent=None):
         super(VideoWindow, self).__init__(parent)
         self.project = project
-        if self.project.current_animal.video_files:
-            self.current_file = self.project.current_animal.video_files[0]
-            self.current_time_range = [self.project.current_animal.video_init_time[0],
-                                   self.project.current_animal.video_init_time[0] + self.project.current_animal.video_duration[0]]
-            self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(self.current_file)))
-            self.playButton.setEnabled(True)
-        else:
-            self.current_file = ''
-            self.current_time_range = [0,0]
-
         self.setWindowTitle("Video")
-
         self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
 
         videoWidget = QVideoWidget()
@@ -83,6 +72,16 @@ class VideoWindow(QWidget):
         self.mediaPlayer.positionChanged.connect(self.positionChanged)
         self.mediaPlayer.durationChanged.connect(self.durationChanged)
         self.mediaPlayer.error.connect(self.handleError)
+
+        if self.project.current_animal.video_files:
+            self.current_file = self.project.current_animal.video_files[0]
+            self.current_time_range = [self.project.current_animal.video_init_time[0],
+                                   self.project.current_animal.video_init_time[0] + self.project.current_animal.video_duration[0]]
+            self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(self.current_file)))
+            self.playButton.setEnabled(True)
+        else:
+            self.current_file = ''
+            self.current_time_range = [0,0]
 
         # ERASE THIS SECTION AFTER LAB MEETING!!! todo
         # self.mediaPlayer.setMedia(

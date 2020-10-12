@@ -41,19 +41,35 @@ class AnnotationParameterTee(ParameterTree):
     def __init__(self,annotations):
         ParameterTree.__init__(self)
         self.annotationPage = annotations
-        labels = annotations.labels
+        labels = self.annotationPage.labels
+        print('Labels:', labels)
         Label_initial_dict = [{'name': label,
                                'type': 'color',
-                               'value': annotations.label_color_dict[label],
+                               'value': self.annotationPage.label_color_dict[label],
                                'renamable': True,
                                'removable': True} for label in labels]
-        params = [ScalableGroup(name="Annotation Labels", children=Label_initial_dict)]
+        self.params = [ScalableGroup(name="Annotation Labels", children=Label_initial_dict)]
         ## Create tree of Parameter objects
-        self.p = Parameter.create(name='params', type='group', children=params)
+        self.p = Parameter.create(name='params', type='group', children=self.params)
         self.p.sigTreeStateChanged.connect(self.change)
         self.setParameters(self.p, showTop=False)
-        self.setWindowTitle('Parameter Tree')
         self.headerItem().setHidden(True)
+        self.annotationPage.sigLabelsChanged.connect(lambda s: self.re_init())
+
+
+    def re_init(self):
+        print('***************  Re_init Called ')
+        self.p.sigTreeStateChanged.disconnect()
+        Label_dict = [{'name': label,
+                               'type': 'color',
+                               'value': self.annotationPage.label_color_dict[label],
+                               'renamable': True,
+                               'removable': True} for label in self.annotationPage.labels]
+        self.p.clearChildren()
+        self.params = [ScalableGroup(name="Annotation Labels", children=Label_dict)]
+        self.p.addChildren(self.params)
+        self.p.sigTreeStateChanged.connect(self.change)
+
 
     ## If anything changes in the tree, print a message
     def change(self, param, changes):

@@ -7,7 +7,8 @@ from collections import OrderedDict
 
 # Function to generate nicely spaced colors (i.e. points around a ring)
 def i_spaced_nfold(i,n):
-    floorlog = max(np.floor(np.log2(2*(i-1)/n)),0)
+    n =max(n,1)
+    floorlog = np.floor(np.log2(max(2*(i-1)/n,1)))
     d = n*2**floorlog
     if d == n:
         h = i-1
@@ -98,14 +99,21 @@ class AnnotationElement(QObject):
     def __str__(self):
         return str(dict(self.element_dict))
 
+    def dict(self):
+        return self.element_dict.copy()
+
 class AnnotationPage(QObject):
     sigFocusOnAnnotation = QtCore.pyqtSignal(object)
     sigAnnotationAdded   = QtCore.pyqtSignal(object)
     sigLabelsChanged     = QtCore.pyqtSignal(object)
 
-    def __init__(self, alist=None, fname=None):
+    def __init__(self, alist=None, fname=None, dict=None):
         super().__init__()
-        if list is not None and self.checklist(alist):
+        if dict is not None:
+            self.annotations_list = [AnnotationElement(annotation) for annotation in dict['annotations_list']]
+            self.labels = dict['labels']
+            self.label_color_dict = dict['label_color_dict']
+        elif list is not None and self.checklist(alist):
             self.annotations_list = alist
             self.labels = list(set([annotation.getLabel() for annotation in alist]))
             self.label_color_dict = {}
@@ -120,6 +128,13 @@ class AnnotationPage(QObject):
             self.labels = []
             self.label_color_dict = {}  # dictionary to save label plotting colors
         self.focused_annotation = None
+
+    def copy_from(self, annotation_page):
+        self.__dict__ = annotation_page.__dict__
+        self.sigLabelsChanged.emit('')
+
+    def copy_to(self, annotation_page):
+        annotation_page.__dict__ = self.__dict__
 
     def focusOnAnnotation(self, annotation):
         if annotation != self.focused_annotation:
@@ -241,4 +256,8 @@ class AnnotationPage(QObject):
     def __str__(self):
         return str([json.loads(repr(a).replace('\'','\"')) for a in self.annotations_list])
 
-
+    def dict(self):
+        dict = self.__dict__.copy()
+        dict['annotations_list'] = [annotation.dict() for annotation in self.annotations_list]
+        dict['focused_annotation'] = None
+        return dict

@@ -367,7 +367,7 @@ class AnimalNode(Node):
         super(AnimalNode, self).__init__(str(animal.id),parent=parent,path=path)
         self.animal = animal
         self.setFlags(QtCore.Qt.ItemIsEnabled| QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable)
-        for file in animal.eeg_files:
+        for file in sorted(animal.eeg_files):
             metadata = json.load(open(os.path.join(self.get_full_path(),file)))
             if metadata['data_format'] == 'h5':
                 HDF5FileNode(file[:-4]+'h5',parent=self) # replace .meta for .h5 to get the h5 file name
@@ -380,6 +380,13 @@ class AnimalNode(Node):
 
     def type_info(self):
         return 'Animal: ' + self.name
+
+    def prepare_for_plot(self):
+        # plot the earliest file
+        children = self.children
+        if children:
+            child = min(children, key=lambda a: a.name)
+            return child.prepare_for_plot()
 
 class ProjectNode(Node):
     '''

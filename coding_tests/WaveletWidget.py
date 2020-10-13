@@ -12,7 +12,7 @@ from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QApplication
 import numpy as np
 import scipy.signal as sg
-
+from paired_graphics_view import DateAxis
 # Interpret image data as row-major instead of col-major
 pg.setConfigOptions(imageAxisOrder='row-major')
 
@@ -56,34 +56,18 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
     def __init__(self, main_model = None):
         super().__init__()
 
-        # self.p3 = self.addPlot()
-        # self.p3.setMaximumWidth(250)
-        # self.resize(800, 800)
         self.main_model = main_model
         self.setWindowTitle("Wavelet Analysis")
         self.p1 = self.addPlot()
         self.img = pg.ImageItem()
         # log_axis = LogAxis(orientation='left')
-        self.p1.addItem(self.img) #, axisItems = {'left': log_axis})
-
-        self.p1.showGrid(x=False, y=True, alpha=0.15)
+        self.p1.addItem(self.img, z=-1) #, axisItems = {'left': log_axis})
+        self.p1.getAxis('bottom').setZValue(1)
+        self.p1.getAxis('left').setZValue(1)
+        self.p1.getAxis('top').setZValue(1)
+        self.p1.getAxis('right').setZValue(1)
+        self.p1.showGrid(x=False, y=True, alpha=1) # Haven't been able to make this work
         self.p1.setLogMode(y=True)
-
-        # # Custom ROI for selecting an image region
-        # self.roi = pg.ROI([0, 10], [60, 50])
-        # self.roi.addScaleHandle([0.5, 1], [0.5, 0])
-        # self.roi.addScaleHandle([0.5, 0], [0.5, 1])
-        # self.roi.addScaleHandle([0, 0.5], [1, 0.5])
-        # self.roi.addScaleHandle([1, 0.5], [0, 0.5])
-        # self.p1.addItem(self.roi)
-        # self.roi.setZValue(10)  # make sure ROI is drawn above image
-        #
-        # self.roi.sigRegionChanged.connect(self.updatePlot)
-
-        # Isocurve drawing
-        # self.iso = pg.IsocurveItem(level=0.8, pen='g')
-        # self.iso.setParentItem(self.img)
-        # self.iso.setZValue(5)
 
         # Contrast/color control
         self.hist = pg.HistogramLUTItem()
@@ -91,22 +75,6 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
         self.addItem(self.hist)
         self.hist.axis.setLabel( text = 'Amplitude', units = 'Log<sub>10</sub> V')
         self.hist.gradient.loadPreset('viridis')
-
-        # Draggable line for setting isocurve level
-        # self.isoLine = pg.InfiniteLine(angle=0, movable=True, pen='g')
-        # self.hist.vb.addItem(self.isoLine)
-        # self.hist.vb.setMouseEnabled(y=False) # makes user interaction a little easier
-        # self.isoLine.setValue(0.8)
-        # self.isoLine.setZValue(1000) # bring iso line above contrast controls
-        #
-        # self.isoLine.sigDragged.connect(self.updateIsocurve)
-
-        # Another plot area for displaying ROI data
-        # self.nextRow()
-        # self.nextColumn()
-        # self.p2 = self.addPlot(colspan=1)
-        # self.p2.setMaximumHeight(250)
-        # self.resize(800, 800)
 
         # Generate image data
         self.update_data()
@@ -116,30 +84,6 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
 
         self.hist.setLevels(self.data.min(), self.data.max())
         self.main_model.sigWindowChanged.connect(self.update_data)
-
-        # build isocurves from smoothed data
-        # iso.setData(pg.gaussianFilter(data, (2, 2)))
-        # self.iso.setData(self.data)
-
-        # set position and scale of image
-
-
-    #     # zoom to fit imageo
-    #     self.p2.setLabel('left', 'Frequency', units = 'Hz')
-    #     self.p2.setLabel('bottom', 'Time', units = 's')
-    #     self.p2.autoRange()
-    #
-    # # Callbacks for handling user interaction
-    # def updatePlot(self):
-    #     if self.isVisible():
-    #         selected = self.roi.getArrayRegion(self.data, self.img)
-    #         self.p2.plot(selected.mean(axis=0), clear=True)
-    #         self.p3.plot(selected.mean(axis=1),selected.range(), clear=True)
-
-    #
-    # def updateIsocurve(self):
-    #     self.update_data()
-    #     # self.iso.setLevel(self.isoLine.value())
 
     def update_data(self):
         self.data = np.zeros((1,1))
@@ -151,10 +95,11 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
                 print('random data')
             else:
                 data, time = self.main_model.project.get_data_from_range(self.main_model.window)
-
+            if len(data) <= 10 :
+                return
             print('Wavelet data shape:',data.shape)
             dt = (time[1]-time[0])
-            self.wav , self.coi, vf = morlet_wavelet(data.ravel(),dt = dt ,R=14,freq_interval = (1,125,100))
+            self.wav , self.coi, vf = morlet_wavelet(data.ravel(),dt = dt ,R=14,freq_interval = (1,2/dt,100))
             self.data = np.log(np.abs(self.wav)+.001)
             self.img.setImage(self.data*(1-self.coi))
             self.img.resetTransform()

@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import QApplication
 import sys
 import numpy as np
 import pyqtgraph_copy.pyqtgraph as pg
+from scipy.signal import stft
 
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
@@ -25,11 +26,16 @@ class FFTwindow(pg.PlotWidget):
     def updateData(self):
         if self.isVisible():
             data, time = self.main_model.project.get_data_from_range(self.main_model.window)
+            if len(data) < 10:
+                return
             N = int(2**np.ceil(np.log2(len(data))))
-            dataf = np.fft.rfft(data.T,N)/N
-            vf = np.fft.rfftfreq(N)*1/(time[1]-time[0])
-            print('data shape:',data.shape,'FFT: dataf shape:',dataf.shape,'vf shape:',vf.shape)
-            self.p1.setData(x = vf, y = np.abs(dataf[0]))
-            self.setLimits(xMin=vf[0],xMax=vf[-1])
+            # dataf = np.fft.rfft(data.T,N)/N
+            # vf = np.fft.rfftfreq(N)*1/(time[1]-time[0])
+            vf,t,z = stft(data.T,fs = 1/(time[1]-time[0]),nfft=512)
+            dataf = np.mean(np.abs(z),axis=-1).ravel()
+            print('FFT: data shape:',data.shape,'FFT: dataf shape:',dataf.shape,'vf shape:',vf.shape,'z shape:',z.shape)
+            # self.p1.setData(x = vf, y = np.abs(dataf[0]))
+            self.p1.setData(x = vf, y = np.abs(dataf))
+            self.setLimits(xMin=vf[0],xMax=vf[-1],yMin=0,yMax = 1.1*max(dataf))
             print('Updated FFT')
 

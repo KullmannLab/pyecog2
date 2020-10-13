@@ -93,15 +93,14 @@ class MainWindow(QMainWindow):
         self.dock_list['File Tree'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
         try:
-            self.main_model.project.load_from_json('/home/mfpleite/Shared/ele_data/proj.pyecog')
+            settings = QSettings("PyEcog","PyEcog")
+            settings.beginGroup("ProjectSettings")
+            fname = settings.value("ProjectFileName")
+            print('Loading Projet:', fname)
+            self.main_model.project.load_from_json(fname)
+            # self.main_model.project.load_from_json('/home/mfpleite/Shared/ele_data/proj.pyecog')
             print(self.main_model.project.__dict__)
             self.tree_element.set_rootnode_from_project(self.main_model.project)
-            # # Just for testing purpouses
-            # self.main_model.annotations = AnnotationPage(alist=[AnnotationElement(label='seizure', start=1, end=10),
-            #                                                     AnnotationElement(label='seizure', start=14, end=22),
-            #                                                     AnnotationElement(label='spike', start=23, end=25),
-            #                                                     AnnotationElement(label='artefact', start=26, end=26.5)])
-
         except Exception as e:
             print('ERROR in tree build')
             print(e)
@@ -113,10 +112,12 @@ class MainWindow(QMainWindow):
         self.dock_list['Annotations Table'] = QDockWidget("Annotations Table", self)
         self.dock_list['Annotations Table'].setWidget(AnnotationTableWidget(self.main_model.annotations))
         self.dock_list['Annotations Table'].setObjectName("Annotations Table")
+        self.dock_list['Annotations Table'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
         self.dock_list['Annotation Parameter Tree'] = QDockWidget("Annotation Parameter Tree", self)
         self.dock_list['Annotation Parameter Tree'].setWidget(AnnotationParameterTee(self.main_model.annotations))
         self.dock_list['Annotation Parameter Tree'].setObjectName("Annotation Parameter Tree")
+        self.dock_list['Annotation Parameter Tree'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
         self.video_element = VideoWindow(project=self.main_model.project)
         self.dock_list['Video'] = QDockWidget("Video", self)
@@ -160,32 +161,6 @@ class MainWindow(QMainWindow):
         # print(self.settings.value("windowGeometry", type=QByteArray))
         self.restoreGeometry(self.settings.value("windowGeometry", type=QByteArray))
         self.restoreState(self.settings.value("windowState", type=QByteArray))
-        #
-        # for dock_name in self.dock_list.keys(): # This is unessecary, because restoreState of the parent window already works
-        #     self.settings.beginGroup(dock_name)
-        #     self.dock_list[dock_name].restoreGeometry(self.settings.value("windowGeometry", type=QByteArray))
-        #     # self.dock_list[dock_name].restoreState(self.settings.value("windowState", type=QByteArray))
-
-        # self.show()
-
-
-        ########################################################
-        # Below here we have code for debugging and development
-
-        #root_folder = self.tree_element.get_default_folder()
-        #folder = '/media/jonathan/DATA/seizure_data/gabrielle/All_DATA/EEG DATA CRISPRa Kcna1 2018/4_CRISP Oct-Nov 2018/CRISPRa_h5s BASELINE'
-        #folder = '/media/jonathan/DATA/seizure_data/gabrielle/All_DATA/EEG DATA CRISPRa Kcna1 2018/4_CRISP Oct-Nov 2018'
-
-        #self.tree_element.set_rootnode_from_folder(folder, filetype_restriction = '.h5')
-
-        #self.tree_element.set_rootnode_from_folder(os.getcwd())
-        #testing automatic selection
-        #self.tree_element.tree_view.setRootIndex()
-        #index = self.tree_element.tree_view.currentIndex()
-        #index = self.tree_element.model.createIndex(0,0)
-        #self.tree_element.tree_view.setTreePosition(0)
-        #index = QtCore.QModelIndex()
-        #self.tree_element.tree_view.setCurrentIndex(index)
 
     def get_available_screen(self):
         app = QApplication.instance()
@@ -403,6 +378,10 @@ class MainWindow(QMainWindow):
         settings.beginGroup("MainWindow")
         settings.setValue("windowGeometry", self.saveGeometry())
         settings.setValue("windowState", self.saveState())
+        settings.endGroup()
+
+        settings.beginGroup("ProjectSettings")
+        settings.setValue("ProjectFileName", self.main_model.project.project_file)
         settings.endGroup()
         #
         # for dock_name in self.dock_list.keys():

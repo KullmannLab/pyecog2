@@ -360,7 +360,7 @@ class MainWindow(QMainWindow):
         self.menu_help = self.menu_bar.addMenu("Help")
         self.action_reset_geometry    = self.menu_help.addAction("Reset Main Window layout")
         self.action_reset_geometry.triggered.connect(self.reset_geometry)
-
+        self.menu_help.addSeparator()
         self.action_go_to_git = self.menu_help.addAction("Go to Git Repository")
         self.action_go_to_git.triggered.connect(self.open_git_url)
 

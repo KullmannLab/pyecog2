@@ -232,7 +232,7 @@ class PairedGraphicsView():
             return
         state = self.overviewROI.getState()
         annotation_start = annotation.getStart()
-        self.main_model.set_time_position(annotation_start)
+        self.main_model.set_time_position(annotation_start-1)
         if annotation_start > state['pos'][0] and annotation_start < state['pos'][0] + state['size'][0]:
             return # skip if start of annotation is already in the plot area
 
@@ -266,10 +266,10 @@ class PairedGraphicsView():
         self.insetview_plot.addItem(window_item_i)
         window_item_i.sigRegionChangeFinished.connect(lambda: window_item_o.setRegion(window_item_i.getRegion()))
         window_item_i.sigRegionChangeFinished.connect(lambda: self.main_model.set_window_pos(window_item_i.getRegion()))
-        window_item_i.sigRegionChangeFinished.connect(lambda: self.main_model.annotations.focusOnAnnotation(None))
-        window_item_i.sigRegionChangeFinished.connect(lambda: self.main_model.set_time_position(self.main_model.window[0]))
+        # window_item_i.sigRegionChangeFinished.connect(lambda: self.main_model.annotations.focusOnAnnotation(None))
+        window_item_i.sigRegionChangeFinished.connect(lambda: self.main_model.set_time_position(self.main_model.window[0]-1))
         window_item_i.sigClicked.connect(lambda: self.main_model.annotations.focusOnAnnotation(None))
-        window_item_i.sigClicked.connect(lambda: self.main_model.set_time_position(self.main_model.window[0]))
+        window_item_i.sigClicked.connect(lambda: self.main_model.set_time_position(self.main_model.window[0]-1))
         self.main_model.sigWindowChanged.connect(window_item_i.setRegion)
 
     def graphics_object_xchanged(self):
@@ -306,7 +306,7 @@ class PairedGraphicsView():
 
         modifiers = ev.modifiers()
         if modifiers == QtCore.Qt.ControlModifier:
-            self.main_model.annotations.focusOnAnnotation(None)
+            # self.main_model.annotations.focusOnAnnotation(None)
             self.main_model.set_time_position(pos.x())
 
     def inset_clicked(self, ev):
@@ -315,18 +315,18 @@ class PairedGraphicsView():
         print('modifiers:',ev.modifiers())
         modifiers = ev.modifiers()
         if modifiers == QtCore.Qt.ShiftModifier:
-            self.main_model.annotations.focusOnAnnotation(None)
+            # self.main_model.annotations.focusOnAnnotation(None)
             if not self.is_setting_window_position:
                 self.main_model.set_window_pos([pos.x(), pos.x()])
                 self.is_setting_window_position = True
                 return
             else:
                 current_pos = self.main_model.window
-                self.main_model.set_window_pos([current_pos, pos.x()])
+                self.main_model.set_window_pos([current_pos[0], pos.x()])
         self.is_setting_window_position = False
 
         if modifiers == QtCore.Qt.ControlModifier:
-            self.main_model.annotations.focusOnAnnotation(None)
+            # self.main_model.annotations.focusOnAnnotation(None)
             self.main_model.set_time_position(pos.x())
 
     def overview_range_changed(self, mask):

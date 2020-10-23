@@ -12,24 +12,27 @@ from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QApplication
 import numpy as np
 import scipy.signal as sg
+from numba import jit
+from timeit import default_timer as timer
+
 from paired_graphics_view import DateAxis
 # Interpret image data as row-major instead of col-major
 pg.setConfigOptions(imageAxisOrder='row-major')
 
-
+# @jit(parallel=True)
 def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=()):
     Ns = len(input_signal)
-    try:
+    if len(freq_interval) > 0:
         minf = max(freq_interval[0], R / (Ns * dt))  # avoid wavelets with COI longer than the signal
-    except:
+    else:
         minf = R / (Ns * dt)
-    try:
+    if len(freq_interval) > 1:
         maxf = min(freq_interval[1], .5 / dt)  # avoid wavelets above the Nyquist frequency
-    except:
+    else:
         maxf = .5 / dt
-    try:
-        Nf = freq_interval[2]
-    except:
+    if len(freq_interval) > 2:
+            Nf = freq_interval[2]
+    else:
         Nf = int(np.ceil(np.log(maxf / minf) / np.log(1 / R + 1)))  # make spacing aproximately equal to sigma f
 
     alfa = (maxf / minf) ** (1 / Nf) - 1  # According to the expression achived by fn = ((1+1/R)^n)*f0 where 1/R = alfa
@@ -73,8 +76,10 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
         self.hist = pg.HistogramLUTItem()
         self.hist.setImageItem(self.img)
         self.addItem(self.hist)
-        self.hist.axis.setLabel( text = 'Amplitude', units = 'Log<sub>10</sub> V')
+        self.hist.axis.setLabel( text = 'Amplitude', units = 'Log<sub>10</sub> a.u.')
         self.hist.gradient.loadPreset('viridis')
+        self.hist_levels = None
+
 
         # Generate image data
         self.update_data()
@@ -86,7 +91,10 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
         self.main_model.sigWindowChanged.connect(self.update_data)
 
     def update_data(self):
-        self.data = np.zeros((1,1))
+        self.data = np.array([[1, 0], [0, 1]])
+        start_t = timer()
+        if self.hist_levels is not None:
+            self.hist_levels = self.hist.getLevels()
         if self.isVisible():
             if self.main_model is None:
                 data = np.random.randn(300*250)
@@ -94,10 +102,14 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
                 time = np.arange(300*250)/250
                 print('random data')
             else:
+                print('window' , self.main_model.window)
                 data, time = self.main_model.project.get_data_from_range(self.main_model.window)
             if len(data) <= 10 :
                 return
             print('Wavelet data shape:',data.shape)
+            # self.img.setImage(self.data)
+            # self.show()
+            print('Computing Wavelet...')
             dt = (time[1]-time[0])
             self.wav , self.coi, vf = morlet_wavelet(data.ravel(),dt = dt ,R=14,freq_interval = (1,2/dt,100))
             self.data = np.log(np.abs(self.wav)+.001)
@@ -108,8 +120,13 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
             self.img.translate(0,ymin)
             self.img.scale(dt,(ymax-ymin)/self.data.shape[0])
             self.vb.setLimits(xMin=0, xMax=self.data.shape[1]*dt, yMin=ymin, yMax=ymax)
+            if self.hist_levels is not None: # Mantain levels from previous view if they exist
+                self.hist.setLevels(*self.hist_levels)
+            else:
+                self.hist_levels = self.hist.getLevels()
             self.show()
-            print('Updated Wavelet')
+            end_t = timer()
+            print('Updated Wavelet in ',end_t-start_t, 'seconds')
 
 
 

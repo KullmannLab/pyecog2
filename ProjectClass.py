@@ -8,6 +8,10 @@ import glob, os
 from datetime import datetime
 from annotations_module import AnnotationPage
 
+
+def clip(x, a, b): # utility funciton for file buffer
+    return min(max(int(x), a), b)
+
 def create_metafile_from_h5(file):
     assert file.endswith('.h5')
     h5_file = H5File(file)
@@ -80,12 +84,13 @@ class Animal():
         return dict
 
 class file_buffer():  # Consider translating this to cython
-    def __init__(self):
+    def __init__(self, animal=None):
         self.files = []
         self.range = [np.Inf, -np.Inf]
         self.data = []
         self.data_ranges = []
         self.metadata = []
+        self.animal = animal
 
     def add_file_to_buffer(self, fname):
         if fname in self.files:  # skip if file is already buffered
@@ -135,8 +140,26 @@ class file_buffer():  # Consider translating this to cython
                 self.range = [min([r[0] for r in self.data_ranges]), max([r[1] for r in self.data_ranges])]
 
     def get_data_from_range(self, trange, channel=None, n_envelope=None):
-        def clip(x, a, b):
-            return min(max(int(x), a), b)
+        # First check if data is already buffered, most of the time this will be the case:
+        if trange[0] >= self.range[0] and trange[1] <= self.range[1]:
+            print('Data already in buffer')
+        else:
+            # Now clear buffer if range is not contiguous to previous range
+            if trange[1] <= self.range[0] or trange[0] >= self.range[1]:
+                print('Non-contiguous data: restarting buffer...')
+                self.files = []
+                self.range = [np.Inf, -np.Inf]
+                self.data = []
+                self.data_ranges = []
+                self.metadata = []
+            # fill buffer with the necessary files:
+            for i, file in enumerate(self.animal.eeg_files):
+                arange = [self.animal.eeg_init_time[i], self.animal.eeg_init_time[i] + self.animal.eeg_duration[i]]
+                if (arange[0] <= trange[0] <= arange[1]) or (arange[0] <= trange[1] <= arange[1]) or\
+                        (trange[0] <= arange[0] <= trange[1]) or (trange[0] <= arange[1] <= trange[1]):
+                    print('Adding file to buffer: ', file)
+                    self.add_file_to_buffer(file)
+            print('files in buffer: ' , self.files)
 
         #  Find sample ranges from data_ranges:
         sample_ranges = []
@@ -246,13 +269,15 @@ class Project():
         self.video_root_folder = video_data_folder
         self.project_file = project_file
         self.title = title
-        self.current_animal = Animal()  # start with empty animal
-        self.file_buffer = file_buffer()
+        self.current_animal = Animal()
+        self.set_current_animal(Animal()) # start with empty animal
+        self.file_buffer = file_buffer(self.current_animal)
 
     def set_current_animal(self, animal): # copy alterations made to annotations
         self.current_animal.annotations.copy_from(self.main_model.annotations)
         self.main_model.annotations.copy_from(animal.annotations)
         self.current_animal = animal
+        self.file_buffer = file_buffer(self.current_animal)
         self.main_model.annotations.sigLabelsChanged.emit('')
 
     def save_to_json(self, fname):
@@ -265,7 +290,7 @@ class Project():
         dict = self.__dict__.copy()
         del(dict['main_model'])
         dict['animal_list'] = [animal.dict() for animal in self.animal_list]  # make animals into dicts
-        dict['current_animal'] = Animal().dict() # self.current_animal.dict() # Otherwise when loading the current animal would not be in the animal_list
+        dict['current_animal'] = self.current_animal.id # Animal().dict() # self.current_animal.dict() # Otherwise when loading the current animal would not be in the animal_list
         dict['file_buffer'] = None
         print(dict)
         json.dump(dict, open(fname, 'w'), indent=4)
@@ -274,11 +299,15 @@ class Project():
         dict = json.load(open(fname))
         dict['animal_list'] = [Animal(dict=animal) for animal in dict['animal_list']]  # make dicts into animals
         dict['animal_list'].sort(key=lambda animal: animal.id)
-        dict['current_animal'] = Animal(dict = dict['current_animal'])
-        dict['file_buffer'] = file_buffer()
+        current_animal_id = dict['current_animal'] #save id
+        dict['current_animal'] = Animal() # pre-initialize with empty animal
         main_model = self.main_model
         self.__dict__ = dict
         self.main_model = main_model
+        print('looking for',current_animal_id)
+        self.set_current_animal(self.get_animal(current_animal_id))
+        print('current a',self.current_animal.id)
+        self.file_buffer = file_buffer(self.current_animal)
 
     def get_animal(self, animal_id):
         for animal in self.animal_list:
@@ -299,24 +328,7 @@ class Project():
             print('Clearing File Buffer')
             self.set_current_animal(animal)
             # self.current_animal = animal
-            self.file_buffer = file_buffer()
+            self.file_buffer = file_buffer(self.current_animal)
 
-        # First check if data is already buffered, most of the time this will be the case:
-        if trange[0] >= self.file_buffer.range[0] and trange[1] <= self.file_buffer.range[1]:
-            print('Data already in buffer')
-            return self.file_buffer.get_data_from_range(trange,channel,n_envelope)
-
-        # Now clear buffer if range is not contiguous to previous range
-        if trange[1] <= self.file_buffer.range[0] or trange[0] >= self.file_buffer.range[1]:
-            print('Non-contiguous data: restarting buffer...')
-            self.file_buffer = file_buffer()
-
-        for i, file in enumerate(self.current_animal.eeg_files):
-            arange = [self.current_animal.eeg_init_time[i], self.current_animal.eeg_init_time[i] + self.current_animal.eeg_duration[i]]
-            if (arange[0] <= trange[0] <= arange[1]) or (arange[0] <= trange[1] <= arange[1]) or\
-                    (trange[0] <= arange[0] <= trange[1]) or (trange[0] <= arange[1] <= trange[1]):
-                print('Adding file to buffer: ', file)
-                self.file_buffer.add_file_to_buffer(file)
-        print('files in buffer: ' , self.file_buffer.files)
         return self.file_buffer.get_data_from_range(trange, channel, n_envelope)
 

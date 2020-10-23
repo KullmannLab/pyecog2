@@ -329,10 +329,10 @@ class PairedGraphicsView():
             # self.main_model.annotations.focusOnAnnotation(None)
             self.main_model.set_time_position(pos.x())
 
-    def overview_range_changed(self, mask):
+    def overview_range_changed(self, mask=None):
         x_range, y_range = self.overview_plot.viewRange()
 
-    def insetview_range_changed(self, mask):
+    def insetview_range_changed(self, mask=None):
         '''connected to signal from insetview_plot'''
         x_range, y_range = self.insetview_plot.viewRange()
         self.overviewROI.setPos((x_range[0], y_range[0]))

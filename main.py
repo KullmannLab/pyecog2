@@ -1,7 +1,7 @@
 from PyQt5 import QtCore, QtWidgets, QtGui
 from PyQt5.QtWidgets import QMenuBar, QGridLayout, QApplication, QWidget, QPlainTextEdit, QDockWidget, QMainWindow, QFileDialog
 from PyQt5.QtCore import Qt, QSettings, QByteArray, QObject
-import sys, os
+import sys, os, time
 import webbrowser
 from coding_tests.VideoPlayer import VideoWindow
 from coding_tests.AnnotationParameterTree import AnnotationParameterTee
@@ -49,15 +49,6 @@ class MainModel(QObject):
             self.sigWindowChanged.emit(pos)
             print('Window changesd to:', pos)
 
-    # I think this became obsolete after implementing the Project Class.
-    def update_eeg_range(self,x_range):
-        print('Updating data range...')
-        if x_range[0]<self.time_range[0]:
-            dilated_x_range = np.array([x_range[0]-1,x_range[1]+1])  # dilate x_range to avoid too much repetitive loads in edge cases
-            dilated_x_range = np.array([x_range[0],x_range[1]])  # dilate x_range to avoid too much repetitive loads in edge cases
-            self.data_eeg, self.time_range = self.project.current_animal.get_data_from_range(dilated_x_range)
-
-
 
 class MainWindow(QMainWindow):
     '''
@@ -91,19 +82,6 @@ class MainWindow(QMainWindow):
         self.dock_list['File Tree'].setObjectName("File Tree")
         self.dock_list['File Tree'].setAllowedAreas(Qt.RightDockWidgetArea | Qt.LeftDockWidgetArea | Qt.TopDockWidgetArea | Qt.BottomDockWidgetArea)
         self.dock_list['File Tree'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
-
-        try:
-            settings = QSettings("PyEcog","PyEcog")
-            settings.beginGroup("ProjectSettings")
-            fname = settings.value("ProjectFileName")
-            print('Loading Projet:', fname)
-            self.main_model.project.load_from_json(fname)
-            # self.main_model.project.load_from_json('/home/mfpleite/Shared/ele_data/proj.pyecog')
-            print(self.main_model.project.__dict__)
-            self.tree_element.set_rootnode_from_project(self.main_model.project)
-        except Exception as e:
-            print('ERROR in tree build')
-            print(e)
 
         self.dock_list['Text'] = QDockWidget("Text", self)
         self.dock_list['Text'].setWidget(QPlainTextEdit())
@@ -162,6 +140,21 @@ class MainWindow(QMainWindow):
         self.restoreGeometry(self.settings.value("windowGeometry", type=QByteArray))
         self.restoreState(self.settings.value("windowState", type=QByteArray))
 
+        try:
+            settings = QSettings("PyEcog","PyEcog")
+            settings.beginGroup("ProjectSettings")
+            fname = settings.value("ProjectFileName")
+            print('Loading Projet:', fname)
+            self.show()
+            self.load_project(fname)
+            # self.main_model.project.load_from_json(fname)
+            # self.main_model.project.load_from_json('/home/mfpleite/Shared/ele_data/proj.pyecog')
+            # print(self.main_model.project.__dict__)
+            # self.tree_element.set_rootnode_from_project(self.main_model.project)
+        except Exception as e:
+            print('ERROR in tree build')
+            print(e)
+
     def get_available_screen(self):
         app = QApplication.instance()
         screen = app.primaryScreen()
@@ -190,21 +183,30 @@ class MainWindow(QMainWindow):
         print('Load new file types...')
 
     def new_project(self):
-        self.main_model.project = Project(self.main_model)
+        self.main_model.project.__init__(main_model=self.main_model)  #= Project(self.main_model)
         self.tree_element.set_rootnode_from_project(self.main_model.project)
 
-    def load_project(self):
-        dialog = QFileDialog()
-        dialog.setWindowTitle('Load Project ...')
-        dialog.setFileMode(QFileDialog.AnyFile)
-        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
-        dialog.setAcceptMode(QFileDialog.AcceptOpen)
-        dialog.setNameFilter('*.pyecog')
-        if dialog.exec():
-            fname = dialog.selectedFiles()[0]
+    def load_project(self,fname = None):
+        if type(fname) is not str:
+            dialog = QFileDialog()
+            dialog.setWindowTitle('Load Project ...')
+            dialog.setFileMode(QFileDialog.AnyFile)
+            dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+            dialog.setAcceptMode(QFileDialog.AcceptOpen)
+            dialog.setNameFilter('*.pyecog')
+            if dialog.exec():
+                fname = dialog.selectedFiles()[0]
+        if type(fname) is str:
             print(fname)
             self.main_model.project.load_from_json(fname)
             self.tree_element.set_rootnode_from_project(self.main_model.project)
+            init_time = min(self.main_model.project.current_animal.eeg_init_time)
+            plot_range = np.array([init_time, init_time+3600])
+            print('trying to plot ', plot_range)
+            self.paired_graphics_view.set_scenes_plot_channel_data(plot_range)
+            self.main_model.set_time_position(init_time)
+            self.main_model.set_window_pos([init_time,init_time])
+
 
     def save(self):
         print('save action triggered')

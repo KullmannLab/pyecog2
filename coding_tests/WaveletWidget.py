@@ -110,7 +110,7 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
             # self.img.setImage(self.data)
             # self.show()
             print('Computing Wavelet...')
-            dt = (time[1]-time[0])
+            dt = (time[10]-time[9])     # avoid time edge values
             self.wav , self.coi, vf = morlet_wavelet(data.ravel(),dt = dt ,R=14,freq_interval = (1,2/dt,100))
             self.data = np.log(np.abs(self.wav)+.001)
             self.img.setImage(self.data*(1-self.coi))

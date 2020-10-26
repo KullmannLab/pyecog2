@@ -9,8 +9,9 @@ from datetime import datetime
 from annotations_module import AnnotationPage
 
 
-def clip(x, a, b): # utility funciton for file buffer
+def clip(x, a, b):  # utility funciton for file buffer
     return min(max(int(x), a), b)
+
 
 def create_metafile_from_h5(file):
     assert file.endswith('.h5')
@@ -37,7 +38,7 @@ class Animal():
     def __init__(self, id=None, eeg_folder=None, video_folder=None, dict={}):
         if dict != {}:
             self.__dict__ = dict
-            self.annotations = AnnotationPage(dict = dict['annotations'])
+            self.annotations = AnnotationPage(dict=dict['annotations'])
             return
 
         if eeg_folder is not None:
@@ -83,7 +84,8 @@ class Animal():
         dict['annotations'] = self.annotations.dict()
         return dict
 
-class file_buffer():  # Consider translating this to cython
+
+class FileBuffer():  # Consider translating this to cython
     def __init__(self, animal=None):
         self.files = []
         self.range = [np.Inf, -np.Inf]
@@ -122,10 +124,10 @@ class file_buffer():  # Consider translating this to cython
             if len(self.data) > 3:  # buffer 3 files - consider having this as a variable...
                 i = max(range(len(self.data)),
                         key=lambda j: self.data_ranges[j][0])  # get the index of the latest starting buffered file
-                del(self.files[i])
-                del(self.data[i])
-                del(self.data_ranges[i])
-                del(self.metadata[i])
+                del (self.files[i])
+                del (self.data[i])
+                del (self.data_ranges[i])
+                del (self.metadata[i])
                 self.range = [min([r[0] for r in self.data_ranges]), max([r[1] for r in self.data_ranges])]
 
         if self.range[1] < trange[1]:  # buffering later file
@@ -133,10 +135,10 @@ class file_buffer():  # Consider translating this to cython
             if len(self.data) > 3:  # buffer 3 files - consider having this as a variable...
                 i = min(range(len(self.data)),
                         key=lambda j: self.data_ranges[j][0])  # get the index of the earliest starting buffered file
-                del(self.files[i])
-                del(self.data[i])
-                del(self.data_ranges[i])
-                del(self.metadata[i])
+                del (self.files[i])
+                del (self.data[i])
+                del (self.data_ranges[i])
+                del (self.metadata[i])
                 self.range = [min([r[0] for r in self.data_ranges]), max([r[1] for r in self.data_ranges])]
 
     def get_data_from_range(self, trange, channel=None, n_envelope=None):
@@ -155,34 +157,31 @@ class file_buffer():  # Consider translating this to cython
             # fill buffer with the necessary files:
             for i, file in enumerate(self.animal.eeg_files):
                 arange = [self.animal.eeg_init_time[i], self.animal.eeg_init_time[i] + self.animal.eeg_duration[i]]
-                if (arange[0] <= trange[0] <= arange[1]) or (arange[0] <= trange[1] <= arange[1]) or\
+                if (arange[0] <= trange[0] <= arange[1]) or (arange[0] <= trange[1] <= arange[1]) or \
                         (trange[0] <= arange[0] <= trange[1]) or (trange[0] <= arange[1] <= trange[1]):
                     print('Adding file to buffer: ', file)
                     self.add_file_to_buffer(file)
-            print('files in buffer: ' , self.files)
+            print('files in buffer: ', self.files)
 
-        #  Find sample ranges from data_ranges:
+        #  Find sample ranges from time data_ranges:
         sample_ranges = []
-        print('range:',self.range)
-        print('data ranges:',self.data_ranges)
+        print('range:', self.range)
+        print('data ranges:', self.data_ranges)
         for i, ranges in enumerate(self.data_ranges):
-            print('metadata',i,':',self.metadata[i])
+            print('metadata', i, ':', self.metadata[i])
             fs = self.metadata[i]['fs']
             print(((trange[0] - ranges[0]) * fs, 0, len(self.data[i])))
             sample_ranges.append([clip((trange[0] - ranges[0]) * fs, 0, len(self.data[i])),
                                   clip((trange[1] - ranges[0]) * fs, 0, len(self.data[i]))])
 
-        total_sample_range = max(sum([s[1] - s[0] for s in sample_ranges]),1)
+        total_sample_range = max(sum([s[1] - s[0] for s in sample_ranges]), 1)
         if n_envelope is None:
             n_envelope = total_sample_range
-        file_envlopes = [int(n_envelope * (s[1] - s[0]) / total_sample_range) +1  for s in
-                             sample_ranges]  # distribute samples between files
+        file_envlopes = [int(n_envelope * (s[1] - s[0]) / total_sample_range) + 1 for s in
+                         sample_ranges]  # distribute samples between files
 
         enveloped_data = []
         enveloped_time = []
-        # print('sample ranges: ', sample_ranges)
-        # print('data ranges: ', self.data_ranges)
-        # print('data: ', len(self.data))
         for i, data in enumerate(self.data):
             start = sample_ranges[i][0]
             stop = sample_ranges[i][1]
@@ -195,14 +194,13 @@ class file_buffer():  # Consider translating this to cython
                 if channel is None:
                     enveloped_data.append(data[start:stop, :])
                 else:
-                    enveloped_data.append(data[start:stop, channel].reshape(-1,1))
+                    enveloped_data.append(data[start:stop, channel].reshape(-1, 1))
 
             else:
                 # Here convert data into a down-sampled array suitable for visualizing.
                 # Must do this piecewise to limit memory usage.
                 samples = (1 + (stop - start) // ds)
-                # print('grabbing',samples,'samples from buffred file',i)
-                visible_data = np.zeros((samples * 2,1), dtype=data.dtype)
+                visible_data = np.zeros((samples * 2, 1), dtype=data.dtype)
                 sourcePtr = start
                 targetPtr = 0
                 try:
@@ -216,25 +214,24 @@ class file_buffer():  # Consider translating this to cython
                         mx_inds = np.argmax(chunk_data, axis=1)
                         mi_inds = np.argmin(chunk_data, axis=1)
                         row_inds = np.arange(chunk_data.shape[0])
-                        chunkMax_x = chunk_data[row_inds, mx_inds].reshape(len(chunk_data),1)
-                        chunkMin_x = chunk_data[row_inds, mi_inds].reshape(len(chunk_data),1)
+                        chunkMax_x = chunk_data[row_inds, mx_inds].reshape(len(chunk_data), 1)
+                        chunkMin_x = chunk_data[row_inds, mi_inds].reshape(len(chunk_data), 1)
                         visible_data[targetPtr:targetPtr + chunk_data.shape[0] * 2:2] = chunkMin_x
                         visible_data[1 + targetPtr:1 + targetPtr + chunk_data.shape[0] * 2:2] = chunkMax_x
                         targetPtr += chunk_data.shape[0] * 2
 
-                    enveloped_data.append(visible_data[:targetPtr,:].reshape((-1,1)))
-
+                    enveloped_data.append(visible_data[:targetPtr, :].reshape((-1, 1)))
                 except:
                     print('ERROR in downsampling')
                     raise
                     # throw_error()
                     # return 0
 
-            enveloped_time.append(np.linspace(start/fs + self.data_ranges[i][0], stop/fs + self.data_ranges[i][0],
-                                               len(enveloped_data[-1])).reshape(-1,1))
-            if len(enveloped_time[-1])==0:
-                del(enveloped_time[-1])
-                del(enveloped_data[-1])
+            enveloped_time.append(np.linspace(start / fs + self.data_ranges[i][0], stop / fs + self.data_ranges[i][0],
+                                              len(enveloped_data[-1])).reshape(-1, 1))
+            if len(enveloped_time[-1]) == 0:
+                del (enveloped_time[-1])
+                del (enveloped_data[-1])
             # print('env data shapes')
             # print([data.shape for data in enveloped_data])
             # print([data.shape for data in enveloped_time])
@@ -247,20 +244,22 @@ class file_buffer():  # Consider translating this to cython
         print('env data shapes')
         print([data.shape for data in enveloped_data])
         print([data.shape for data in enveloped_time])
-        if len(enveloped_data)>0:
+        if len(enveloped_data) > 0:
             data = np.vstack(enveloped_data)
             time = np.vstack(enveloped_time)
         else:
-            data = np.array([0,0])
+            data = np.array([0, 0])
             time = np.array(trange)
         return data, time
 
+
 class Project():
-    def __init__(self, main_model, eeg_data_folder=None, video_data_folder=None, title='New Project', project_file='',dict=None):
+    def __init__(self, main_model, eeg_data_folder=None, video_data_folder=None, title='New Project', project_file='',
+                 dict=None):
         if dict is not None:
             self.__dict__ = dict
-            self.animal_list = [Animal(dict = animal) for animal in dict['animal_list']]
-            self.current_animal = Animal(dict = dict['current_animal'])
+            self.animal_list = [Animal(dict=animal) for animal in dict['animal_list']]
+            self.current_animal = Animal(dict=dict['current_animal'])
             self.main_model = main_model
             return
         self.main_model = main_model
@@ -270,14 +269,14 @@ class Project():
         self.project_file = project_file
         self.title = title
         self.current_animal = Animal()
-        self.set_current_animal(Animal()) # start with empty animal
-        self.file_buffer = file_buffer(self.current_animal)
+        self.set_current_animal(Animal())  # start with empty animal
+        self.file_buffer = FileBuffer(self.current_animal)
 
-    def set_current_animal(self, animal): # copy alterations made to annotations
+    def set_current_animal(self, animal):  # copy alterations made to annotations
         self.current_animal.annotations.copy_from(self.main_model.annotations)
         self.main_model.annotations.copy_from(animal.annotations)
         self.current_animal = animal
-        self.file_buffer = file_buffer(self.current_animal)
+        self.file_buffer = FileBuffer(self.current_animal)
         self.main_model.annotations.sigLabelsChanged.emit('')
 
     def save_to_json(self, fname):
@@ -288,9 +287,10 @@ class Project():
             print('no main model defined')
 
         dict = self.__dict__.copy()
-        del(dict['main_model'])
+        del (dict['main_model'])
         dict['animal_list'] = [animal.dict() for animal in self.animal_list]  # make animals into dicts
-        dict['current_animal'] = self.current_animal.id # Animal().dict() # self.current_animal.dict() # Otherwise when loading the current animal would not be in the animal_list
+        dict[
+            'current_animal'] = self.current_animal.id  # Animal().dict() # self.current_animal.dict() # Otherwise when loading the current animal would not be in the animal_list
         dict['file_buffer'] = None
         print(dict)
         json.dump(dict, open(fname, 'w'), indent=4)
@@ -299,15 +299,15 @@ class Project():
         dict = json.load(open(fname))
         dict['animal_list'] = [Animal(dict=animal) for animal in dict['animal_list']]  # make dicts into animals
         dict['animal_list'].sort(key=lambda animal: animal.id)
-        current_animal_id = dict['current_animal'] #save id
-        dict['current_animal'] = Animal() # pre-initialize with empty animal
+        current_animal_id = dict['current_animal']  # save id
+        dict['current_animal'] = Animal()  # pre-initialize with empty animal
         main_model = self.main_model
         self.__dict__ = dict
         self.main_model = main_model
-        print('looking for',current_animal_id)
+        print('looking for', current_animal_id)
         self.set_current_animal(self.get_animal(current_animal_id))
-        print('current a',self.current_animal.id)
-        self.file_buffer = file_buffer(self.current_animal)
+        print('current a', self.current_animal.id)
+        self.file_buffer = FileBuffer(self.current_animal)
 
     def get_animal(self, animal_id):
         for animal in self.animal_list:
@@ -323,12 +323,12 @@ class Project():
         :param n_envelope: int - compute envelope in n_envelope number of points, if none, return all data
         :return:
         '''
-        print('Project() get_data_from_range called for chanbel',channel,'; time range:', trange, ', duration:',trange[1]-trange[0])
+        print('Project() get_data_from_range called for chanbel', channel, '; time range:', trange, ', duration:',
+              trange[1] - trange[0])
         if (animal is not None) and (animal is not self.current_animal):  # reset file buffer if animal has changed
             print('Clearing File Buffer')
             self.set_current_animal(animal)
             # self.current_animal = animal
-            self.file_buffer = file_buffer(self.current_animal)
+            self.file_buffer = FileBuffer(self.current_animal)
 
         return self.file_buffer.get_data_from_range(trange, channel, n_envelope)
-

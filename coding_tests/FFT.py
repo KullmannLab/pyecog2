@@ -32,7 +32,7 @@ class FFTwindow(pg.PlotWidget):
             N = int(2**np.ceil(np.log2(len(data))))
             # dataf = np.fft.rfft(data.T,N)/N
             # vf = np.fft.rfftfreq(N)*1/(time[1]-time[0])
-            vf,t,z = stft(data.T,fs = 1/(time[1]-time[0]),nfft=1024)
+            vf,t,z = stft(data.T,fs = 1/(time[10]-time[9]),nfft=1024) # avoid time edge values
             dataf = np.mean(np.abs(z),axis=-1).ravel()
             print('FFT: data shape:',data.shape,'FFT: dataf shape:',dataf.shape,'vf shape:',vf.shape,'z shape:',z.shape)
             # self.p1.setData(x = vf, y = np.abs(dataf[0]))

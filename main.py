@@ -16,7 +16,6 @@ from tree_widget import FileTreeElement
 from annotations_module import AnnotationElement, AnnotationPage
 from annotation_table_widget import AnnotationTableWidget
 from ProjectClass import Project, Animal
-
 #
 class MainModel(QObject):
     sigTimeChanged      = QtCore.Signal(object)

@@ -113,7 +113,7 @@ class AnnotationPage(QObject):
             self.annotations_list = [AnnotationElement(annotation) for annotation in dict['annotations_list']]
             self.labels = dict['labels']
             self.label_color_dict = dict['label_color_dict']
-        elif list is not None and self.checklist(alist):
+        elif alist is not None and self.checklist(alist):
             self.annotations_list = alist
             self.labels = list(set([annotation.getLabel() for annotation in alist]))
             self.label_color_dict = {}

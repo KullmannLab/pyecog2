@@ -144,7 +144,8 @@ class FileBuffer():  # Consider translating this to cython
     def get_data_from_range(self, trange, channel=None, n_envelope=None):
         # First check if data is already buffered, most of the time this will be the case:
         if trange[0] >= self.range[0] and trange[1] <= self.range[1]:
-            print('Data already in buffer')
+            # print('Data already in buffer')
+            pass
         else:
             # Now clear buffer if range is not contiguous to previous range
             if trange[1] <= self.range[0] or trange[0] >= self.range[1]:
@@ -165,12 +166,12 @@ class FileBuffer():  # Consider translating this to cython
 
         #  Find sample ranges from time data_ranges:
         sample_ranges = []
-        print('range:', self.range)
-        print('data ranges:', self.data_ranges)
+        # print('range:', self.range)
+        # print('data ranges:', self.data_ranges)
         for i, ranges in enumerate(self.data_ranges):
-            print('metadata', i, ':', self.metadata[i])
+            # print('metadata', i, ':', self.metadata[i])
             fs = self.metadata[i]['fs']
-            print(((trange[0] - ranges[0]) * fs, 0, len(self.data[i])))
+            # print(((trange[0] - ranges[0]) * fs, 0, len(self.data[i])))
             sample_ranges.append([clip((trange[0] - ranges[0]) * fs, 0, len(self.data[i])),
                                   clip((trange[1] - ranges[0]) * fs, 0, len(self.data[i]))])
 
@@ -241,9 +242,9 @@ class FileBuffer():  # Consider translating this to cython
         enveloped_data = [d[1] for d in start_times]
         enveloped_time = [d[2] for d in start_times]
 
-        print('env data shapes')
-        print([data.shape for data in enveloped_data])
-        print([data.shape for data in enveloped_time])
+        # print('env data shapes')
+        # print([data.shape for data in enveloped_data])
+        # print([data.shape for data in enveloped_time])
         if len(enveloped_data) > 0:
             data = np.vstack(enveloped_data)
             time = np.vstack(enveloped_time)
@@ -306,7 +307,7 @@ class Project():
         self.main_model = main_model
         print('looking for', current_animal_id)
         self.set_current_animal(self.get_animal(current_animal_id))
-        print('current a', self.current_animal.id)
+        print('current animal:', self.current_animal.id)
         self.file_buffer = FileBuffer(self.current_animal)
 
     def get_animal(self, animal_id):

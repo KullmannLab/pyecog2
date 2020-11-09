@@ -11,6 +11,16 @@ from scipy.signal import stft
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
 
+def reg_entropy(fdata):
+    # regularized entropy of spectral data
+    # fdata comes from rfft
+    fdata_x_f = np.abs(fdata)*np.arange(2,len(fdata)+2)
+    # print('fdata shape:',fdata_x_f.shape)
+    fdata_x_f = fdata_x_f+1e-9*np.max(fdata_x_f)
+    fdata_x_f = fdata_x_f/np.sum(fdata_x_f)
+    return np.sum(fdata_x_f*np.log(fdata_x_f))
+
+
 class FFTwindow(pg.PlotWidget):
     def __init__(self,main_model):
         super().__init__(name='FFT')
@@ -39,4 +49,5 @@ class FFTwindow(pg.PlotWidget):
             self.p1.setData(x = vf, y = np.abs(dataf))
             # self.setLimits(xMin=vf[0],xMax=vf[-1],yMin=min(0,min(np.abs(dataf))),yMax = 1.1*max(dataf))
             print('Updated FFT')
+            # print('Reg Entropy:',reg_entropy(dataf))
 

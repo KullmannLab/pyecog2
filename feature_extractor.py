@@ -12,7 +12,7 @@ from numba import jit
 
 # @jit(nopython=True)
 def rfft_band_power(fdata, fs, band):
-    return np.mean(np.abs(fdata[int(len(fdata)*band[0]/fs):int(len(fdata)*band[1]/fs)]))
+    return np.log(np.mean(np.abs(fdata[int(len(fdata)*band[0]/fs):int(len(fdata)*band[1]/fs)])))
 
 
 def powerf(bandi, bandf):
@@ -47,18 +47,21 @@ class FeatureExtractor():
                 window = 'rectangular',
                 power_bands = [(1, 4), (4, 8), (8, 12), (12, 30), (30, 50), (50, 70), (70, 120)],
                 number_of_features = 15,
-                feature_labels = ['min','max','mean','std','kurtosis','skewness','coastline (sum of abs diff)',
-                                  'powerf(1, 4)',
-                                  'powerf(4, 8)',
-                                  'powerf(8, 12)',
-                                  'powerf(12, 30)',
-                                  'powerf(30, 50)',
-                                  'powerf(50, 70)',
-                                  'powerf(70, 120)',
+                feature_labels = ['min','max','mean','log std','kurtosis','skewness','log coastline (log sum of abs diff)',
+                                  'log powerf(1, 4)',
+                                  'log powerf(4, 8)',
+                                  'log powerf(8, 12)',
+                                  'log powerf(12, 30)',
+                                  'log powerf(30, 50)',
+                                  'log powerf(50, 70)',
+                                  'log powerf(70, 120)',
                                   'fentropy'
                                   ],
-                feature_time_functions = [np.min,np.max,np.mean,np.std,stats.kurtosis,stats.skew,
-                                          lambda d:np.mean(np.abs(np.diff(d,axis=0)))],
+                feature_time_functions = [np.min,np.max,np.mean,
+                                          lambda x:np.std(x),
+                                          stats.kurtosis,
+                                          stats.skew,
+                                          lambda d:np.log(np.mean(np.abs(np.diff(d,axis=0))))],
                 feature_freq_functions=[powerf(1, 4),
                                         powerf(4, 8),
                                         powerf(8, 12),

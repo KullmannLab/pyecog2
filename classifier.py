@@ -8,6 +8,8 @@ from feature_extractor import FeatureExtractor
 from hmm_pyecog import HMM_LL
 import json
 from numba import jit
+from scipy.stats import chi2
+from annotations_module import AnnotationElement
 
 # @jit(nopython=True)
 def MVGD_LL_jit(fdata,mu,inv_cov,LL,no_scale):
@@ -169,24 +171,53 @@ class GaussianClassifier():
             LL = LL + bias_v.T
         return LL
 
-    def classify_animal(self,animal):
+    def classify_animal(self, animal):
         LLv = []
         R2v = []
-        eegfiles = animal.eeg_files
+        timev = []
+        eegfiles = animal.eeg_files.copy()
         eegfiles.sort()
         for eegfname in eegfiles:
             fname = '.'.join(eegfname.split('.')[:-1] + ['features'])
             f_vec = np.fromfile(fname, dtype='float64')
-            f_vec = f_vec.reshape((-1, fe.settings['number_of_features']))
-            #     f_vec = np.hstack([f_vec, np.vstack([np.zeros(f_vec.shape[1]), np.diff(f_vec, axis=0)])])
-            LL = self.log_likelyhoods(f_vec, bias=True, no_scale=False)
+            f_vec = f_vec.reshape((-1, self.Ndim))
+            fmeta_file = '.'.join(eegfname.split('.')[:-1] + ['fmeta'])
+            with open(fmeta_file) as f:
+                fmeta_dict = json.load(f)
+            LL = self.log_likelyhoods(f_vec, bias=False, no_scale=False)
             R2 = self.log_likelyhoods(f_vec, bias=False, no_scale=True)
+            start = fmeta_dict['start_timestamp_unix']
+            dt = 1/fmeta_dict['fs']
+            t  = np.arange(start,start+dt*len(f_vec),dt)
             LLv.append(LL)
             R2v.append(R2)
-            p = LL2prob(LL)
+            timev.append(t)
+
         LLv = np.vstack(LLv)
         R2v = np.vstack(R2v)
-        pv = LL2prob(LLv)
+        timev = np.hstack(timev)
+        pf = self.hmm.forward_backward(LLv.T)
+        # threshold to reject classifications outside .999 confidence interval of the class distribution
+        th = chi2.isf(1e-3,self.Ndim,scale=0.5)
+        for i2,label in enumerate(self.labels2classify):
+            i = i2+1
+            print(i,label)
+            starts = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > .5).astype('int')) > 0)[0]
+            ends = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > .5).astype('int')) < 0)[0]
+            alist = []
+            print('len starts',len(starts))
+            for j in range(len(starts)):
+                print('start,end', starts[j], ends[j])
+                c = np.sum(LLv[starts[j]:ends[j],i])-np.sum(LLv[starts[j]:ends[j],0])
+                a = AnnotationElement(label='(auto)'+label,start=timev[starts[j]],end=timev[ends[j]],confidence=c)
+                alist.append((c,a))
+
+            print(alist)
+            alist.sort()
+            for c,a in alist:
+                animal.annotations.add_annotation(a)
+
+        return (LLv,R2v,pf,timev)
 
                 
 

@@ -192,11 +192,12 @@ class AnnotationPage(QObject):
 
     def delete_label(self, label):
         print('labels before delete',self.labels)
-        self.delete_all_with_label(label)
-        del self.label_color_dict[label]
-        for i, l in reversed(list(enumerate(self.labels))):
-            if l == label:
-                del self.labels[i]
+        if label in self.labels:
+            self.delete_all_with_label(label)
+            del self.label_color_dict[label]
+            for i, l in reversed(list(enumerate(self.labels))):
+                if l == label:
+                    del self.labels[i]
         print('labels after', self.labels)
 
     def change_label_name(self,old_label, new_label):

@@ -214,6 +214,15 @@ class GaussianClassifier():
 
             print(alist)
             alist.sort()
+            animal.annotations.delete_label('(auto)'+label)
+            try:
+                old_color = animal.annotations.label_color_dict[label]
+                print('found color for ', label, old_color)
+            except:
+                print('did not find color for' , label)
+                old_color = (255,255,255)
+            new_color = tuple([ max(int(c*0.5),0) for c in old_color])
+            animal.annotations.add_label('(auto)'+label,color = new_color)
             for c,a in alist:
                 animal.annotations.add_annotation(a)
 

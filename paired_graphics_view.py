@@ -231,12 +231,13 @@ class PairedGraphicsView():
         if annotation is None:
             return
         state = self.overviewROI.getState()
-        annotation_start = annotation.getStart()
-        self.main_model.set_time_position(annotation_start-1)
-        if annotation_start > state['pos'][0] and annotation_start < state['pos'][0] + state['size'][0]:
+        annotation_pos = annotation.getPos()
+        self.main_model.set_time_position(annotation_pos[0]-1)
+        self.main_model.set_window_pos([annotation_pos[0]-1, annotation_pos[1]+1])
+        if annotation_pos[0] > state['pos'][0] and annotation_pos[0] < state['pos'][0] + state['size'][0]:
             return # skip if start of annotation is already in the plot area
 
-        state['pos'][0] = annotation_start - .25*(state['size'][0])  # put start of annotation in first quarter of screen
+        state['pos'][0] = annotation_pos[0] - .25*(state['size'][0])  # put start of annotation in first quarter of screen
         self.insetview_plot.setRange(xRange=(state['pos'][0], state['pos'][0] + state['size'][0]),
                                      yRange=(state['pos'][1], state['pos'][1] + state['size'][1]),
                                      padding=0)
@@ -262,7 +263,7 @@ class PairedGraphicsView():
         self.overview_plot.addItem(window_item_o)
         # window_item_i = pg.LinearRegionItem(window, brush=brush)
         window_item_i = PyecogLinearRegionItem(window, pen=pen, brush=brush, movable=True, id=None)
-        window_item_i.setZValue(0.11) # Bellow traces, but above annotations
+        window_item_i.setZValue(-2) # Bellow traces 0 and annotations -1
         self.insetview_plot.addItem(window_item_i)
         window_item_i.sigRegionChangeFinished.connect(lambda: window_item_o.setRegion(window_item_i.getRegion()))
         window_item_i.sigRegionChangeFinished.connect(lambda: self.main_model.set_window_pos(window_item_i.getRegion()))

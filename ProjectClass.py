@@ -309,6 +309,7 @@ class Project():
         self.set_current_animal(self.get_animal(current_animal_id))
         print('current animal:', self.current_animal.id)
         self.file_buffer = FileBuffer(self.current_animal)
+        self.project_file = fname
 
     def get_animal(self, animal_id):
         for animal in self.animal_list:

@@ -120,6 +120,7 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
             self.img.translate(0,ymin)
             self.img.scale(dt,(ymax-ymin)/self.data.shape[0])
             self.vb.setLimits(xMin=0, xMax=self.data.shape[1]*dt, yMin=ymin, yMax=ymax)
+            self.vb.setRange(xRange=[0,self.data.shape[1]*dt])
             if self.hist_levels is not None: # Mantain levels from previous view if they exist
                 self.hist.setLevels(*self.hist_levels)
             else:

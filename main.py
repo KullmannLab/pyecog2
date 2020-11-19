@@ -384,7 +384,7 @@ class MainWindow(QMainWindow):
         settings.beginGroup("ProjectSettings")
         settings.setValue("ProjectFileName", self.main_model.project.project_file)
         settings.endGroup()
-        #
+        print('current project filename:',self.main_model.project.project_file)
         # for dock_name in self.dock_list.keys():
         #     settings.beginGroup(dock_name)
         #     settings.setValue("windowGeometry", self.dock_list[dock_name].saveGeometry())

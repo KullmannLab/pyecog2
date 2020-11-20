@@ -10,10 +10,12 @@ over the user interface.
 import pyqtgraph_copy.pyqtgraph as pg
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QRunnable, pyqtSlot, QThreadPool, QThread
 import numpy as np
 import scipy.signal as sg
 from numba import jit
 from timeit import default_timer as timer
+import traceback, sys
 
 from paired_graphics_view import DateAxis
 # Interpret image data as row-major instead of col-major
@@ -21,6 +23,7 @@ pg.setConfigOptions(imageAxisOrder='row-major')
 
 # @jit(parallel=True)
 def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=()):
+    print('morlet_wavelet called')
     Ns = len(input_signal)
     if len(freq_interval) > 0:
         minf = max(freq_interval[0], R / (Ns * dt))  # avoid wavelets with COI longer than the signal
@@ -52,7 +55,45 @@ def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=()):
         mask[k, :Nlist[k]] = True
         mask[k, -Nlist[k]:] = True
 
-    return result, mask, vf
+    return (result, mask, vf)
+
+class WorkerSignals(QtCore.QObject):
+    finished = QtCore.Signal()
+    error = QtCore.Signal(tuple)
+    result = QtCore.Signal(tuple)
+    progress = QtCore.Signal(int)
+
+class Worker(QRunnable):
+    def __init__(self, fn, *args, **kwargs):
+        super(Worker, self).__init__()
+        # Store constructor arguments (re-used for processing)
+        self.fn = fn
+        self.args = args
+        self.kwargs = kwargs
+        self.signals = WorkerSignals()
+
+    @pyqtSlot()
+    def run(self):
+        '''
+        Initialise the runner function with passed args, kwargs.
+        '''
+
+        # Retrieve args/kwargs here; and fire processing using them
+        print('worker run called')
+        try:
+            print('calling worker function')
+            result = self.fn(*self.args, **self.kwargs)
+        except:
+            print('worker Error')
+            traceback.print_exc()
+            exctype, value = sys.exc_info()[:2]
+            self.signals.error.emit((exctype, value, traceback.format_exc()))
+        else:
+            print('worker emiting result')
+            self.signals.result.emit(result)  # Return the result of the processing
+        finally:
+            print('worker emiting finished')
+            self.signals.finished.emit()  # Done
 
 
 class WaveletWindow(pg.GraphicsLayoutWidget):
@@ -90,9 +131,11 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
         self.hist.setLevels(self.data.min(), self.data.max())
         self.main_model.sigWindowChanged.connect(self.update_data)
 
+        self.threadpool = QThreadPool()
+
     def update_data(self):
         self.data = np.array([[1, 0], [0, 1]])
-        start_t = timer()
+        self.start_t = timer()
         if self.hist_levels is not None:
             self.hist_levels = self.hist.getLevels()
         if self.isVisible():
@@ -107,27 +150,39 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
             if len(data) <= 10 :
                 return
             print('Wavelet data shape:',data.shape)
-            # self.img.setImage(self.data)
-            # self.show()
+            self.img.setImage(self.data*0)
+            if self.hist_levels is not None: # Mantain levels from previous view if they exist
+                self.hist.setLevels(*self.hist_levels)
+            self.p1.setLabel('bottom', 'Computing Wavelet tranform...', units='s')
+            self.show()
             print('Computing Wavelet...')
-            dt = (time[10]-time[9])     # avoid time edge values
-            self.wav , self.coi, vf = morlet_wavelet(data.ravel(),dt = dt ,R=14,freq_interval = (1,2/dt,100))
+            self.dt = (time[10]-time[9])     # avoid time edge values
+            worker = Worker(morlet_wavelet, data.ravel(),dt = self.dt ,R=14,freq_interval = (1,2/self.dt,100))
+            worker.signals.result.connect(self.update_image)
+            # Execute: restart threadpool and run worker
+            self.threadpool.start(worker)
+            # self.wav , self.coi, vf = morlet_wavelet(data.ravel(),dt = dt ,R=14,freq_interval = (1,2/dt,100))
+
+    def update_image(self,tuple):
+            print('updating wavelet result...')
+            self.wav, self.coi, vf = tuple
             self.data = np.log(np.abs(self.wav)+.001)
             self.img.setImage(self.data*(1-self.coi))
             self.img.resetTransform()
             ymin = np.log10(vf[0])
             ymax = np.log10(vf[-1])
             self.img.translate(0,ymin)
-            self.img.scale(dt,(ymax-ymin)/self.data.shape[0])
-            self.vb.setLimits(xMin=0, xMax=self.data.shape[1]*dt, yMin=ymin, yMax=ymax)
-            self.vb.setRange(xRange=[0,self.data.shape[1]*dt])
+            self.img.scale(self.dt,(ymax-ymin)/self.data.shape[0])
+            self.vb.setLimits(xMin=0, xMax=self.data.shape[1]*self.dt, yMin=ymin, yMax=ymax)
+            self.vb.setRange(xRange=[0,self.data.shape[1]*self.dt])
+            self.p1.setLabel('bottom', 'Time', units='s')
             if self.hist_levels is not None: # Mantain levels from previous view if they exist
                 self.hist.setLevels(*self.hist_levels)
             else:
                 self.hist_levels = self.hist.getLevels()
             self.show()
             end_t = timer()
-            print('Updated Wavelet in ',end_t-start_t, 'seconds')
+            print('Updated Wavelet in ',end_t-self.start_t, 'seconds')
 
 
 

@@ -101,7 +101,8 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
 
     def clear(self):
         """Clear all contents from the table."""
-        QtWidgets.QTableWidget.clearContents(self)
+        # QtWidgets.QTableWidget.clearContents(self)
+        QtWidgets.QTableWidget.clear(self)
         # self.verticalHeadersSet = False
         # self.horizontalHeadersSet = False
         self.items = []
@@ -120,7 +121,8 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         * dict-of-lists  {'x': [1,2,3], 'y': [4,5,6]}
         * list-of-dicts  [{'x': 1, 'y': 4}, {'x': 2, 'y': 5}, ...]
         """
-
+        print('*** Set Data called. Annotations page length:', len(self.annotationsPage.annotations_list),
+              'row count:', self.rowCount())
         ranges = self.selectedRanges()
         self.clear()
         self.appendData(data)
@@ -163,9 +165,19 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
 
     def myremoveRow(self,r):
         # couldn't figure out any other way apart from reseting all the data
-        self.setData(self.annotationsPage.annotations_list)
+        # plus when reseting the table, for some reason the annotations are not fully removed
+        print('Deleting annotation and reseting table data...',r,'(',self.rowCount(),')')
+        if len(self.annotationsPage.annotations_list)<self.rowCount():
+            self.setData(self.annotationsPage.annotations_list)
+        else:
+            print('Nothing to delete')
+        print('Finnished rebuilding Annotations Table')
 
-
+    def removeSelection(self):
+        annotations_to_remove = list(set([item.annotation for item in self.selectedItems()]))
+        for annotation in annotations_to_remove:
+            print('Removing annotation:', annotation.getLabel(),annotation.getPos())
+            self.annotationsPage.delete_annotation(annotation)
 
     def setEditable(self, editable=True):
         self.editable = editable

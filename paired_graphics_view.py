@@ -316,7 +316,7 @@ class PairedGraphicsView():
         print('modifiers:',ev.modifiers())
         modifiers = ev.modifiers()
         if modifiers == QtCore.Qt.ShiftModifier:
-            # self.main_model.annotations.focusOnAnnotation(None)
+            self.main_model.annotations.focusOnAnnotation(None)
             if not self.is_setting_window_position:
                 self.main_model.set_window_pos([pos.x(), pos.x()])
                 self.is_setting_window_position = True

@@ -60,11 +60,11 @@ class AnnotationParameterTee(ParameterTree):
     def re_init(self):
         print('***************  Re_init Called ')
         self.p.sigTreeStateChanged.disconnect()
-        Label_dict = [{'name': label,
+        Label_dict = [{'name': str(i+1) +': '+ label,
                                'type': 'color',
                                'value': self.annotationPage.label_color_dict[label],
                                'renamable': True,
-                               'removable': True} for label in self.annotationPage.labels]
+                               'removable': True} for i, label in enumerate(self.annotationPage.labels)]
         self.p.clearChildren()
         self.params = [ScalableGroup(name="Annotation Labels", children=Label_dict)]
         self.p.addChildren(self.params)
@@ -85,19 +85,20 @@ class AnnotationParameterTee(ParameterTree):
             print('  data:      %s' % str(data))
             print('  ----------')
             if change == 'value':
-                label = path[-1]
+                label = path[-1].split(': ')[-1]
                 color = (data.red(), data.green(), data.blue())
                 self.annotationPage.change_label_color(label,color)
             if change == 'name':
-                new_labels = [c.name() for c in self.p.child('Annotation Labels').children()]
+                new_labels = [c.name().split(': ')[-1] for c in self.p.child('Annotation Labels').children()]
+                print('new labels:',new_labels)
                 for old_label in self.annotationPage.labels:
                     if old_label not in new_labels:
-                        self.annotationPage.change_label_name(old_label, data)
+                        self.annotationPage.change_label_name(old_label, data.split(':')[-1])
             if change == 'childRemoved':
-                label = data.name()
+                label = data.name().split(': ')[-1]
                 self.annotationPage.delete_label(label)
             if change == 'childAdded':
-                label = data[0].name()
+                label = data[0].name().split(': ')[-1]
                 qcolor = data[0].value()
                 color = (qcolor.red(), qcolor.green(), qcolor.blue())
                 print('adding label', label, color)

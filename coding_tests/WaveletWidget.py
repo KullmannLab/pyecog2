@@ -15,14 +15,16 @@ import numpy as np
 import scipy.signal as sg
 from numba import jit
 from timeit import default_timer as timer
-import traceback, sys
+import traceback, sys, inspect
 
 from paired_graphics_view import DateAxis
 # Interpret image data as row-major instead of col-major
 pg.setConfigOptions(imageAxisOrder='row-major')
 
 # @jit(parallel=True)
-def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=()):
+def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), progress_signal = None, kill_switch = None):
+    if kill_switch is None:
+        kill_switch = [False]
     print('morlet_wavelet called')
     Ns = len(input_signal)
     if len(freq_interval) > 0:
@@ -44,18 +46,64 @@ def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=()):
     result = np.zeros((Nf, Ns), dtype='complex')
 
     for k in range(Nf):
-        N = int(2 * R / vf[k] / dt)  # Compute size of the wavelet
+        if kill_switch[0]:
+            break
+        N = int(2 * R / vf[k] / dt)  # Compute size of the wavelet: 2 standard deviations
         wave = sg.morlet(N, w=R, s=1, complete=0) / N * np.pi * 2  # Normalize de amplitude returned by sg.morlet
         result[k, :] = sg.fftconvolve(input_signal, wave, mode='same')
+        if progress_signal is not None:
+            progress_signal.emit(int(100*k/Nf))
 
-    mask = np.zeros(result.shape, dtype='bool')
+    mask = np.zeros(result.shape)
 
     Nlist = (.5 * R / vf / dt).astype('int')  # 3 sigma COI
     for k in range(len(Nlist)):
-        mask[k, :Nlist[k]] = True
-        mask[k, -Nlist[k]:] = True
+        mask[k, :Nlist[k]] = np.nan
+        mask[k, -Nlist[k]:] = np.nan
 
-    return (result, mask, vf)
+    return (result, mask, vf, kill_switch)
+
+
+def morlet_wavelet_fft(input_signal, dt=1, R=7, freq_interval=(), progress_signal=None, kill_switch=None):
+    if kill_switch is None:
+        kill_switch = [False]
+    print('morlet_wavelet called')
+    Ns = len(input_signal)
+    if len(freq_interval) > 0:
+        minf = max(freq_interval[0], R / (Ns * dt))  # avoid wavelets with COI longer than the signal
+    else:
+        minf = R / (Ns * dt)
+    if len(freq_interval) > 1:
+        maxf = min(freq_interval[1], .5 / dt)  # avoid wavelets above the Nyquist frequency
+    else:
+        maxf = .5 / dt
+    if len(freq_interval) > 2:
+        Nf = freq_interval[2]
+    else:
+        Nf = int(np.ceil(np.log(maxf / minf) / np.log(1 / R + 1)))  # make spacing aproximately equal to sigma f
+
+    alfa = (maxf / minf) ** (1 / Nf) - 1  # According to the expression achived by fn = ((1+1/R)^n)*f0 where 1/R = alfa
+    vf = ((1 + alfa) ** np.arange(0, Nf)) * minf
+    print(Nf, Ns)
+    result = np.zeros((Nf, Ns), dtype='complex')
+    input_signalf = np.fft.fft(input_signal)
+    Ni = len(input_signal)
+    for k in range(Nf):
+        if kill_switch[0]:
+            break
+        env = 2 * np.exp(-(np.arange(Ni)/Ni/dt - vf[k]) ** 2 / (2 * (vf[k] / R) ** 2)) / np.pi
+        result[k, :] = np.fft.ifft(input_signalf * env)
+        if progress_signal is not None:
+            progress_signal.emit(int(100 * k / Nf))
+
+    mask = np.zeros(result.shape)
+
+    Nlist = (.5 * R / vf / dt).astype('int')  # 3 sigma COI
+    for k in range(len(Nlist)):
+        mask[k, :Nlist[k]] = np.nan
+        mask[k, -Nlist[k]:] = np.nan
+
+    return (result, mask, vf, kill_switch)
 
 class WorkerSignals(QtCore.QObject):
     finished = QtCore.Signal()
@@ -71,6 +119,9 @@ class Worker(QRunnable):
         self.args = args
         self.kwargs = kwargs
         self.signals = WorkerSignals()
+        s = inspect.signature(fn)
+        if 'progress_signal' in s.parameters.keys():
+            self.kwargs['progress_signal'] = self.signals.progress
 
     @pyqtSlot()
     def run(self):
@@ -121,6 +172,9 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
         self.hist.gradient.loadPreset('viridis')
         self.hist_levels = None
 
+        # Multithread controls
+        self.threadpool = QThreadPool()
+        self.thread_killswitch_list = []
 
         # Generate image data
         self.update_data()
@@ -131,9 +185,11 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
         self.hist.setLevels(self.data.min(), self.data.max())
         self.main_model.sigWindowChanged.connect(self.update_data)
 
-        self.threadpool = QThreadPool()
 
     def update_data(self):
+        for s in self.thread_killswitch_list:  # Stop all previous wavelet computations
+            s[0] = True
+            print('Killswitch list:',self.thread_killswitch_list)
         self.data = np.array([[1, 0], [0, 1]])
         self.start_t = timer()
         if self.hist_levels is not None:
@@ -157,33 +213,49 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
             self.show()
             print('Computing Wavelet...')
             self.dt = (time[10]-time[9])     # avoid time edge values
-            worker = Worker(morlet_wavelet, data.ravel(),dt = self.dt ,R=14,freq_interval = (1,2/self.dt,100))
+            s = [False]
+            self.thread_killswitch_list.append(s)
+            print('Killswitch list:',self.thread_killswitch_list)
+            worker = Worker(morlet_wavelet_fft, data.ravel(),dt = self.dt ,R=14,freq_interval = (1,2/self.dt,100),
+                            kill_switch=s)
             worker.signals.result.connect(self.update_image)
+            worker.signals.progress.connect(self.update_progress)
             # Execute: restart threadpool and run worker
             self.threadpool.start(worker)
             # self.wav , self.coi, vf = morlet_wavelet(data.ravel(),dt = dt ,R=14,freq_interval = (1,2/dt,100))
 
-    def update_image(self,tuple):
-            print('updating wavelet result...')
-            self.wav, self.coi, vf = tuple
-            self.data = np.log(np.abs(self.wav)+.001)
-            self.img.setImage(self.data*(1-self.coi))
-            self.img.resetTransform()
-            ymin = np.log10(vf[0])
-            ymax = np.log10(vf[-1])
-            self.img.translate(0,ymin)
-            self.img.scale(self.dt,(ymax-ymin)/self.data.shape[0])
-            self.vb.setLimits(xMin=0, xMax=self.data.shape[1]*self.dt, yMin=ymin, yMax=ymax)
-            self.vb.setRange(xRange=[0,self.data.shape[1]*self.dt])
-            self.p1.setLabel('bottom', 'Time', units='s')
-            if self.hist_levels is not None: # Mantain levels from previous view if they exist
-                self.hist.setLevels(*self.hist_levels)
-            else:
-                self.hist_levels = self.hist.getLevels()
-            self.show()
-            end_t = timer()
-            print('Updated Wavelet in ',end_t-self.start_t, 'seconds')
+    def update_progress(self,n):
+        if n < 100:
+            self.p1.setLabel('bottom', 'Computing Wavelet tranform:' + str(n) + '%', units='s')
 
+    def update_image(self,tuple):
+        print('updating wavelet result...')
+        self.wav, self.coi, vf, ks = tuple
+        for i, s in enumerate(self.thread_killswitch_list): # clean up killswitch list
+            if s is ks:
+                del self.thread_killswitch_list[i]
+                print(self.thread_killswitch_list)
+        if ks[0]:  # If the task was killed do not update the plot
+            print('Wavelet process killed: not ploting data')
+            print('Killswitch list:', self.thread_killswitch_list)
+            return
+        self.data = np.log(np.abs(self.wav)+.001)
+        self.img.setImage(self.data*(1-self.coi))
+        self.img.resetTransform()
+        ymin = np.log10(vf[0])
+        ymax = np.log10(vf[-1])
+        self.img.translate(0,ymin)
+        self.img.scale(self.dt,(ymax-ymin)/self.data.shape[0])
+        self.vb.setLimits(xMin=0, xMax=self.data.shape[1]*self.dt, yMin=ymin, yMax=ymax)
+        self.vb.setRange(xRange=[0,self.data.shape[1]*self.dt])
+        self.p1.setLabel('bottom', 'Time', units='s')
+        if self.hist_levels is not None:  # Mantain levels from previous view if they exist
+            self.hist.setLevels(*self.hist_levels)
+        else:
+            self.hist_levels = self.hist.getLevels()
+        self.show()
+        end_t = timer()
+        print('Updated Wavelet in ',end_t-self.start_t, 'seconds')
 
 
 ## Start Qt event loop unless running in interactive mode or using pyside.

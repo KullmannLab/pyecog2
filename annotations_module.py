@@ -20,7 +20,7 @@ def i_spaced_nfold(i,n):
 class AnnotationElement(QObject):
     sigAnnotationElementChanged = QtCore.pyqtSignal(object) # emited when any attribute is changed
     sigAnnotationElementDeleted = QtCore.pyqtSignal(object) # emited when all references to annotation are deleted
-    def __init__(self, dictionary=None, label='', start=0, end=0, confidence=1, notes=''):
+    def __init__(self, dictionary=None, label='', start=0, end=0, confidence=float('inf'), notes=''):
         super().__init__()
         if dictionary is not None:
             header = ['label', 'start', 'end', 'confidence', 'notes']
@@ -36,6 +36,7 @@ class AnnotationElement(QObject):
                                              ('end', float(end)),
                                              ('confidence', float(confidence)),
                                              ('notes', notes)])  # To be used by classifier predictions
+        self._is_deleted = False # Avoid multiple deletions
 
     def getKey(self,key):
         return self.element_dict[key]
@@ -88,10 +89,14 @@ class AnnotationElement(QObject):
         self.sigAnnotationElementChanged.emit(self)
 
     def delete(self):
-        self.sigAnnotationElementDeleted.emit(self)
+        if not self._is_deleted:
+            self._is_deleted = True
+            print('Emiting deletion signal from annotation:', self.getLabel(),self.getStart())
+            print('receivers:', QObject.receivers(self,self.sigAnnotationElementDeleted))
+            self.sigAnnotationElementDeleted.emit(self)
 
-    # def __del__(self):
-    #      self.sigAnnotationElementDeleted.emit(self)
+    def __del__(self):
+         print('Annotation completely removed')
 
     def __repr__(self):
         return repr(dict(self.element_dict))

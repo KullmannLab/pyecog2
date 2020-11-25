@@ -86,8 +86,9 @@ class MainWindow(QMainWindow):
         self.dock_list['Text'].setWidget(QPlainTextEdit())
         self.dock_list['Text'].setObjectName("Text")
 
+        self.annotation_table = AnnotationTableWidget(self.main_model.annotations)
         self.dock_list['Annotations Table'] = QDockWidget("Annotations Table", self)
-        self.dock_list['Annotations Table'].setWidget(AnnotationTableWidget(self.main_model.annotations))
+        self.dock_list['Annotations Table'].setWidget(self.annotation_table)
         self.dock_list['Annotations Table'].setObjectName("Annotations Table")
         self.dock_list['Annotations Table'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
@@ -401,7 +402,8 @@ class MainWindow(QMainWindow):
             return
 
         if evt.key() == QtCore.Qt.Key_Delete:
-            self.main_model.annotations.delete_annotation(self.main_model.annotations.focused_annotation)
+            # self.main_model.annotations.delete_annotation(self.main_model.annotations.focused_annotation)
+            self.annotation_table.removeSelection()
             return
 
         numbered_keys = [QtCore.Qt.Key_1,QtCore.Qt.Key_2,QtCore.Qt.Key_3,QtCore.Qt.Key_4,QtCore.Qt.Key_5,

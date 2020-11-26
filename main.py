@@ -413,6 +413,7 @@ class MainWindow(QMainWindow):
             if evt.key() == numbered_keys[i]:
                 print(i+1,'pressed')
                 if self.main_model.annotations.focused_annotation is None:
+                    print('Adding new annotation')
                     new_annotation = AnnotationElement(label = self.main_model.annotations.labels[i],
                                                        start = self.main_model.window[0],
                                                        end = self.main_model.window[1],
@@ -420,11 +421,11 @@ class MainWindow(QMainWindow):
                     self.main_model.annotations.add_annotation(new_annotation)
                     self.main_model.annotations.focusOnAnnotation(new_annotation)
                 else:
-                    annotation = self.main_model.annotations.focused_annotation
-                    annotation.setLabel(self.main_model.annotations.labels[i])
-                    # a bit of a pity that this signal cannot be emited by the anotation
-                    self.main_model.annotations.sigLabelsChanged.emit(self.main_model.annotations.labels[i])
-                    self.main_model.annotations.focusOnAnnotation(annotation)
+                    print('Calling annotation_table changeSelectionLabel')
+                    self.annotation_table.changeSelectionLabel(self.main_model.annotations.labels[i])
+                    # annotation = self.main_model.annotations.focused_annotation
+                    # annotation.setLabel(self.main_model.annotations.labels[i])
+                    # self.main_model.annotations.focusOnAnnotation(annotation)
                 return
 
 if __name__ == '__main__':

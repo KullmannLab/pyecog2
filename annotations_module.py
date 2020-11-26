@@ -48,8 +48,8 @@ class AnnotationElement(QObject):
     def getLabel(self):
         return self.element_dict['label']
 
-    def setLabel(self, start):
-        self.element_dict['label'] = start
+    def setLabel(self, label):
+        self.element_dict['label'] = label
         self.sigAnnotationElementChanged.emit(self)
 
     def getStart(self):

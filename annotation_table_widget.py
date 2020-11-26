@@ -179,6 +179,15 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
             print('Removing annotation:', annotation.getLabel(),annotation.getPos())
             self.annotationsPage.delete_annotation(annotation)
 
+
+    def changeSelectionLabel(self,label):
+        annotations_to_change = list(set([item.annotation for item in self.selectedItems()]))
+        for annotation in annotations_to_change:
+            print('changing annotation label', annotation.getLabel(),annotation.getPos())
+            annotation.setLabel(label)
+        # a bit of a pity that this signal cannot be emited by the anotationPage
+        self.annotationsPage.sigLabelsChanged.emit(label)
+
     def setEditable(self, editable=True):
         self.editable = editable
         for item in self.items:
@@ -395,7 +404,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
             ev.accept()
             self.copySel()
             return
-        # Now follows a very dirty piece of code because QTableWidget handles kyepresses in very inconsistent ways
+        # # Now follows a very dirty piece of code because QTableWidget handles kyepresses in very inconsistent ways
         numbered_keys = [QtCore.Qt.Key_1, QtCore.Qt.Key_2, QtCore.Qt.Key_3, QtCore.Qt.Key_4, QtCore.Qt.Key_5,
                          QtCore.Qt.Key_6, QtCore.Qt.Key_7, QtCore.Qt.Key_8, QtCore.Qt.Key_9, QtCore.Qt.Key_0]
 
@@ -403,17 +412,10 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
             if ev.key() == numbered_keys[i]:
                 print(i + 1, 'pressed')
                 if self.annotationsPage.focused_annotation is not None:
-                    annotation = self.annotationsPage.focused_annotation
-                    annotation.setLabel(self.annotationsPage.labels[i])
-                    # a bit of a pity that this signal cannot be emited by the anotation
-                    self.annotationsPage.sigLabelsChanged.emit(self.annotationsPage.labels[i])
-                    self.annotationsPage.focusOnAnnotation(annotation)
+                    self.changeSelectionLabel(self.annotationsPage.labels[i])
                 return
 
         QtWidgets.QTableWidget.keyPressEvent(self, ev)
-
-
-
 
 
     def handleItemChanged(self, item):

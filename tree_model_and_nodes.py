@@ -3,6 +3,7 @@ from PyQt5 import QtGui, QtCore, QtWidgets, uic
 import h5py
 import numpy as np
 import json
+from ProjectClass import create_metafile_from_h5
 from h5loader import H5File
 
 # rename module to be filetree model?
@@ -322,6 +323,10 @@ class HDF5FileNode(Node):
     def __init__(self, name, parent=None,path=None):
         super(HDF5FileNode, self).__init__(name,parent,path)
         self.name = name
+        meta_filepath = self.get_full_path()[:-3] + '.meta'
+        if not os.path.isfile(meta_filepath):
+            create_metafile_from_h5(self.get_full_path())
+
 
     def prepare_for_plot(self):
         '''maybe change name?'''

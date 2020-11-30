@@ -36,7 +36,7 @@ class FFTwindow(pg.PlotWidget):
     def updateData(self):
         if self.isVisible():
             print('window', self.main_model.window)
-            data, time = self.main_model.project.get_data_from_range(self.main_model.window)
+            data, time = self.main_model.project.get_data_from_range(self.main_model.window,channel = 0)
             if len(data) < 10:
                 return
             N = int(2**np.ceil(np.log2(len(data))))

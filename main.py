@@ -177,7 +177,12 @@ class MainWindow(QMainWindow):
     def load_h5_directory(self):
         print('0penening only folders with h5 files')
         selected_directory = self.select_directory()
-        self.tree_element.set_rootnode_from_folder(selected_directory,'.h5')
+        temp_animal = Animal(id='-', eeg_folder=selected_directory)
+        temp_project = Project(self.main_model,eeg_data_folder=selected_directory, title=selected_directory)
+        temp_project.add_animal(temp_animal)
+        # self.tree_element.set_rootnode_from_folder(selected_directory,'.h5')
+        self.tree_element.set_rootnode_from_project(temp_project)
+        self.main_model.project = temp_project
 
     def load_liete_directory(self):
         print('Load new file types...')

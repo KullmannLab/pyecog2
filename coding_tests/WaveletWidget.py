@@ -202,7 +202,7 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
                 print('random data')
             else:
                 print('window' , self.main_model.window)
-                data, time = self.main_model.project.get_data_from_range(self.main_model.window)
+                data, time = self.main_model.project.get_data_from_range(self.main_model.window,channel = 0)
             if len(data) <= 10 :
                 return
             print('Wavelet data shape:',data.shape)

@@ -114,6 +114,7 @@ class PairedGraphicsView():
         self.insetview_plot.vb.setXRange(overview_range[0],
                                          overview_range[0] + min(30, overview_range[1] - overview_range[0]))
         if self.scale is None:  # running for the first time
+            print('Getting data to compute plot scale factors')
             arr,tarr = self.main_model.project.get_data_from_range(self.overview_plot.vb.viewRange()[0])
             print(arr.shape, tarr.shape)
             self.n_channels = arr.shape[1]
@@ -126,8 +127,10 @@ class PairedGraphicsView():
                 pen = pg.mkPen('k')
             else:
                 pen = pen[i]
+            print('Setting plotitem channel data')
             self.set_plotitem_channel_data(pen, i, self.scale)
 
+        print('settng up extra plot parameters...')
         # prevent scrolling past 0 and end of data
         # self.insetview_plot.vb.setLimits(xMin=0, xMax=arr.shape[0] / fs)
         self.overview_plot.vb.setLimits(maxXRange=3600)

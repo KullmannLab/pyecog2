@@ -91,12 +91,12 @@ class AnnotationElement(QObject):
     def delete(self):
         if not self._is_deleted:
             self._is_deleted = True
-            print('Emiting deletion signal from annotation:', self.getLabel(),self.getStart())
-            print('receivers:', QObject.receivers(self,self.sigAnnotationElementDeleted))
+            # print('Emiting deletion signal from annotation:', self.getLabel(),self.getStart())
+            # print('receivers:', QObject.receivers(self,self.sigAnnotationElementDeleted))
             self.sigAnnotationElementDeleted.emit(self)
 
-    def __del__(self):
-         print('Annotation completely removed')
+    # def __del__(self):
+    #      print('Annotation completely removed')
 
     def __repr__(self):
         return repr(dict(self.element_dict))

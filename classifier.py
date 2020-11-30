@@ -11,14 +11,17 @@ from numba import jit
 from scipy.stats import chi2
 from annotations_module import AnnotationElement
 
-# @jit(nopython=True)
+@jit(nopython=True)
 def MVGD_LL_jit(fdata,mu,inv_cov,LL,no_scale):
     # Calculate Multivariate gaussian distribution log-likelihood
     k = fdata.shape[1]
     N = fdata.shape[0]
     scale = (1-no_scale)*((-k/2)*np.log(2*np.pi)+1/2*np.log(np.linalg.det(inv_cov[:,:])))
+    i = 0
+    # print('LL shape:',LL[i].shape)
+    # print('set item shape:',(scale - 0.5*(fdata[i,:]-mu)@(inv_cov[:,:] @(fdata[i,:]-mu).T)).shape)
     for i in range(N):
-        LL[i] = scale - 0.5*(fdata[i,:]-mu)@(inv_cov[:,:] @(fdata[i,:]-mu).T)
+        LL[i] =( scale - 0.5*(fdata[i,:]-mu)@(inv_cov[:,:] @(fdata[i,:]-mu).T))[0,0]  # the [0,0] is for numba wizzardry to work
 
 
 def MVGD_LL(fdata,mu,inv_cov,no_scale = False):
@@ -184,6 +187,7 @@ class GaussianClassifier():
             fmeta_file = '.'.join(eegfname.split('.')[:-1] + ['fmeta'])
             with open(fmeta_file) as f:
                 fmeta_dict = json.load(f)
+            print('Classifying',fname)
             LL = self.log_likelyhoods(f_vec, bias=False, no_scale=False)
             R2 = self.log_likelyhoods(f_vec, bias=False, no_scale=True)
             start = fmeta_dict['start_timestamp_unix']
@@ -193,6 +197,7 @@ class GaussianClassifier():
             R2v.append(R2)
             timev.append(t)
 
+        print('Combining results and generating annotations...')
         LLv = np.vstack(LLv)
         R2v = np.vstack(R2v)
         timev = np.hstack(timev)

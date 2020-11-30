@@ -317,6 +317,13 @@ class Project():
                 return animal
         return None  # return if animal not found
 
+    def add_animal(self, animal):
+        if self.get_animal(animal.id) is None:
+            print('Added animal', animal.id, 'to project')
+            self.animal_list.append(animal)
+        else:
+            print('Animal with id:', animal.id, 'already exists in project: nothing added')
+
     def get_data_from_range(self, trange, channel=None, animal=None, n_envelope=None):
         '''
         :param trange: list of length 2 - [init_time, end_time] for the data to get

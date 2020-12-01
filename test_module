@@ -1,6 +1,0 @@
-import numpy as np
-
-class dummy:
-    def __init__(self):
-        d = np.randomm.randn()
-        print('dummy', d)

@@ -9,7 +9,7 @@ over the user interface.
 
 import pyqtgraph_copy.pyqtgraph as pg
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtCore import QRunnable, pyqtSlot, QThreadPool, QThread
 import numpy as np
 import scipy.signal as sg
@@ -147,7 +147,7 @@ class Worker(QRunnable):
             self.signals.finished.emit()  # Done
 
 
-class WaveletWindow(pg.GraphicsLayoutWidget):
+class WaveletWindowItem(pg.GraphicsLayoutWidget):
     def __init__(self, main_model = None):
         super().__init__()
 
@@ -163,6 +163,8 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
         self.p1.getAxis('right').setZValue(1)
         self.p1.showGrid(x=False, y=True, alpha=1) # Haven't been able to make this work
         self.p1.setLogMode(y=True)
+        self.channel = 0
+        self.R = 14
 
         # Contrast/color control
         self.hist = pg.HistogramLUTItem()
@@ -171,6 +173,18 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
         self.hist.axis.setLabel( text = 'Amplitude', units = 'Log<sub>10</sub> a.u.')
         self.hist.gradient.loadPreset('viridis')
         self.hist_levels = None
+        #
+        # self.addItem(QtGui.QLabel("Wavelet factor R"))
+        # spin = pg.SpinBox(value=self.R, bounds=[0, None])
+        # self.addItem(spin)
+        # spin.sigValueChanged.connect(lambda s: self.setR(s.value()))
+        #
+        # self.addWidget(QtGui.QLabel("Wavelet channel"))
+        # spin = pg.SpinBox(value=self.channel, int=True, dec=True, minStep=1, step=1)
+        # self.addItem(spin)
+        # spin.sigValueChanged.connect(lambda s: self.setChannel(s.value()))
+
+
 
         # Multithread controls
         self.threadpool = QThreadPool()
@@ -185,6 +199,15 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
         self.hist.setLevels(self.data.min(), self.data.max())
         self.main_model.sigWindowChanged.connect(self.update_data)
 
+    def setR(self,r):
+        self.R = r
+        print('Waelet R set to',r)
+        self.update_data()
+
+    def setChannel(self,c):
+        self.channel = int(c)
+        print('Wavlet channel set to ',c)
+        self.update_data()
 
     def update_data(self):
         for s in self.thread_killswitch_list:  # Stop all previous wavelet computations
@@ -202,7 +225,7 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
                 print('random data')
             else:
                 print('window' , self.main_model.window)
-                data, time = self.main_model.project.get_data_from_range(self.main_model.window,channel = 0)
+                data, time = self.main_model.project.get_data_from_range(self.main_model.window,channel = self.channel)
             if len(data) <= 10 :
                 return
             print('Wavelet data shape:',data.shape)
@@ -216,7 +239,7 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
             s = [False]
             self.thread_killswitch_list.append(s)
             print('Killswitch list:',self.thread_killswitch_list)
-            worker = Worker(morlet_wavelet_fft, data.ravel(),dt = self.dt ,R=14,freq_interval = (1,2/self.dt,100),
+            worker = Worker(morlet_wavelet_fft, data.ravel(),dt = self.dt ,R=self.R,freq_interval = (1,2/self.dt),
                             kill_switch=s)
             worker.signals.result.connect(self.update_image)
             worker.signals.progress.connect(self.update_progress)
@@ -257,6 +280,28 @@ class WaveletWindow(pg.GraphicsLayoutWidget):
         end_t = timer()
         print('Updated Wavelet in ',end_t-self.start_t, 'seconds')
 
+
+class WaveletWindow(QWidget):
+    def __init__(self, main_model = None):
+        QWidget.__init__(self)
+        self.layout = QtGui.QGridLayout()
+        self.setLayout(self.layout)
+        self.wavelet_item = WaveletWindowItem(main_model)
+
+        self.controls_widget = QWidget()
+        self.controls_layout = QtGui.QGridLayout()
+        self.controls_widget.setLayout(self.controls_layout)
+        self.channel_spin = pg.SpinBox(value=0,bounds=[0,None], int=True, minStep=1, step=1)
+        self.channel_spin.valueChanged.connect(self.wavelet_item.setChannel)
+        self.R_spin = pg.SpinBox(value=14.0, bounds=[5, None],step=1)
+        self.R_spin.valueChanged.connect(self.wavelet_item.setR)
+        self.controls_layout.addWidget(QtGui.QLabel('Channel'),0,0)
+        self.controls_layout.addWidget(self.channel_spin,0,1)
+        self.controls_layout.addWidget(QtGui.QLabel('Wavelet factor R'),0,2)
+        self.controls_layout.addWidget(self.R_spin,0,3)
+
+        self.layout.addWidget(self.controls_widget,1,0)
+        self.layout.addWidget(self.wavelet_item,0,0)
 
 ## Start Qt event loop unless running in interactive mode or using pyside.
 if __name__ == '__main__':

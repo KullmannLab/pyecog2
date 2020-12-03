@@ -1,7 +1,7 @@
 # this file is stitched together from pyecog 1 it deserves a good revision and cleanup at some point
 import sys
 import struct
-import os
+import os,re
 import time
 import logging
 
@@ -149,7 +149,6 @@ class NdfFile:
         self._e_bit_reads = np.fromfile(f, dtype = 'u1')
         self.transmitter_id_bytes = self._e_bit_reads[::4]
         tid_message_counts = pd.Series(self.transmitter_id_bytes).value_counts()  # count how many different ids exist
-
         for tid, count in tid_message_counts.iteritems():
             if count > message_threshold and tid != 0:
                 if self.fs == 'auto':
@@ -390,9 +389,9 @@ class NdfFile:
         t_clock_data = np.zeros(self.voltage_messages.shape, dtype='float32')
         t_clock_indices = np.where(self.transmitter_id_bytes == 0)[0]
         t_clock_data[t_clock_indices] = 1 # this is big ticks
-        coarse_time_vector = np.multiply(np.cumsum(t_clock_data), self.clock_tick_cycle)
-        fine_time_vector   = np.multiply(self.t_stamps_8bit, self.clock_division)
-        self.time_array    = np.add(fine_time_vector,coarse_time_vector)
+        coarse_time_vector = np.cumsum(t_clock_data)*self.clock_tick_cycle
+        fine_time_vector   = self.t_stamps_8bit*self.clock_division
+        self.time_array    = fine_time_vector + coarse_time_vector
 
         # here account for occasions when transmitter with reset clock comes before clock 0 message
         try:
@@ -584,7 +583,7 @@ class DataHandler:
                 tids = [tids]
         self.tids_for_parallel_conversion = tids
 
-        print(str(len(files)) + ' Files for conversion. Transmitters: ' + str(self.tids_for_parallel_conversion))
+        # print(str(len(files)) + ' Files for conversion. Transmitters: ' + str(self.tids_for_parallel_conversion))
 
         # set n_cores
         if n_cores == -1:
@@ -605,7 +604,7 @@ class DataHandler:
             gui_object.set_progress_bar.emit(str(0))
             gui_object.update_progress_label.emit('Progress: ' + str(0) + ' / ' + str(len(files)))
 
-        # run parallel conversion
+        # # run parallel conversion
         pool = multiprocessing.Pool(n_cores)
         l = len(files)
         self.printProgress(0, l, prefix='Progress:', suffix='Complete', barLength=50)
@@ -616,6 +615,11 @@ class DataHandler:
                 gui_object.update_progress_label.emit('Progress: ' + str(i) + ' / ' + str(len(files)))
         pool.close()
         pool.join()
+
+        # run sequential conversion for debugging purposes
+        # for file in files:
+        #     self.convert_ndf(file)
+
         if gui_object:
             gui_object.update_progress_label.emit('Progress: Done')
         self.gui_object = False
@@ -650,6 +654,69 @@ class DataHandler:
         return 0 # don't think i actually use this
         # Print iterations progress
 
+    def get_time_from_filename_with_mcode(self, filepath, return_string=True, split_on_underscore=False):
+        # convert m name
+        filename = os.path.split(filepath)[1]
+        tstamp = int(re.findall(r'[0-9]{10}', filename)[0])  # move to re for future proofing
+
+        if return_string:
+            ndf_time = str(pd.Timestamp.fromtimestamp(tstamp)).replace(':', '-')
+            ndf_time = ndf_time.replace(' ', '-')
+            return ndf_time
+        else:
+            ndf_time = pd.Timestamp.fromtimestamp(tstamp)
+            return ndf_time
+
+    def add_seconds_to_pandas_timestamp(self, seconds, timestamp):
+
+        new_stamp = timestamp + pd.Timedelta(seconds=float(seconds))
+        return new_stamp
+
+    def get_time_from_seconds_and_filepath(self, filepath, seconds, split_on_underscore=False):
+        '''
+        Args:
+            filepath:
+            seconds:
+            split_on_underscore:
+
+        Returns:
+            a pandas timestamp
+
+        '''
+        f_stamp = self.get_time_from_filename_with_mcode(filepath, return_string=False,
+                                                         split_on_underscore=split_on_underscore)
+        time_stamp_combined = self.add_seconds_to_pandas_timestamp(seconds, f_stamp)
+        return time_stamp_combined
+
+    @staticmethod
+    def fullpath_listdir(d):
+        ''' returns full filepath,  excludes hidden files, starting with .'''
+        return [os.path.join(d, f) for f in os.listdir(d) if not f.startswith('.')]
+
+
+    def printProgress(self, iteration, total, prefix='', suffix='', decimals=1, barLength=100):
+        """
+        Call in a loop to create terminal progress bar
+        @params:
+            iteration   - Required  : current iteration (Int)
+            total       - Required  : total iterations (Int)
+            prefix      - Optional  : prefix string (Str)
+            suffix      - Optional  : suffix string (Str)
+            decimals    - Optional  : positive number of decimals in percent complete (Int)
+            bar_length  - Optional  : character length of bar (Int)
+        """
+        str_format = "{0:." + str(decimals) + "f}"
+        percents = str_format.format(100 * (iteration / float(total)))
+        filled_length = int(round(barLength * iteration / float(total)))
+        bar = '*' * filled_length + '-' * (barLength - filled_length)
+
+        sys.stdout.write('\r%s |%s| %s%s %s' % (prefix, bar, percents, '%', suffix)),
+
+        if iteration == total:
+            sys.stdout.write('\n')
+        sys.stdout.flush()
+
+
 import multiprocessing as mp
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QMenuBar, QGridLayout, QApplication, QWidget, QPlainTextEdit, QMainWindow
@@ -665,8 +732,7 @@ class GuiMain(QMainWindow):
         proc1.start()
 
 
-class OpenWindowProcess(mp.Process)
-
+class OpenWindowProcess(mp.Process):
     def __init__(self):
         mp.Process.__init__(self)
         print("Process PID: " + self.pid)

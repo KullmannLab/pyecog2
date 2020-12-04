@@ -557,7 +557,7 @@ class DataHandler:
         Converts a folder of ndf files to h5 files
 
         Args:
-            ndf_dir  : Directory to convert
+            ndf_dir  : Directory to convert, or list of files
             tids     : Transmitter ids to convert. Default is 'all'. Pass integer or list of integers.
             save_dir : optional save directory, will default to appending converted_h5s after current ndf
             n_cores  : number of cores to use, -1 will use all cores.
@@ -573,7 +573,12 @@ class DataHandler:
         if gui_object:  # if been called from the gui
             gui_object = gui_object
 
-        files = [f for f in self.fullpath_listdir(ndf_dir) if f.endswith('.ndf')]
+        # allow ndf_dir to be a list of files
+        if type(ndf_dir) is str:
+            files = [f for f in self.fullpath_listdir(ndf_dir) if f.endswith('.ndf')]
+        elif type(ndf_dir) is list:
+            files = [f for f in ndf_dir if f.endswith('.ndf')]
+
         if type(tids) == 'tid': tids = tids.strip(' ')
 
         if not tids == 'all':

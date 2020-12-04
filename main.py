@@ -7,6 +7,7 @@ from coding_tests.VideoPlayer import VideoWindow
 from coding_tests.AnnotationParameterTree import AnnotationParameterTee
 from coding_tests.FFT import FFTwindow
 from coding_tests.WaveletWidget import WaveletWindow
+from coding_tests.convert_ndf_folder_gui import NDFConverterWindow
 import numpy as np
 import pyqtgraph_copy.pyqtgraph as pg
 
@@ -184,7 +185,7 @@ class MainWindow(QMainWindow):
         self.tree_element.set_rootnode_from_project(temp_project)
         self.main_model.project = temp_project
 
-    def load_liete_directory(self):
+    def load_bin_directory(self):
         print('Load new file types...')
 
     def new_project(self):
@@ -301,12 +302,18 @@ class MainWindow(QMainWindow):
         self.dock_list['Wavelet'].widget().update_data()
         self.show()
 
+    def openNDFconverter(self):
+        print('opening NDF converter')
+        self.ndf_converter = NDFConverterWindow()
+        self.ndf_converter.show()
 
     def build_menubar(self):
         self.menu_bar = self.menuBar()
 
         # FILE section
         self.menu_file = self.menu_bar.addMenu("File")
+        self.action_NDF_converter     = self.menu_file.addAction("Open NDF converter")
+        self.menu_file.addSeparator()
         self.action_new_project     = self.menu_file.addAction("New Project")
         self.action_load_project    = self.menu_file.addAction("Load Project")
         self.action_save       = self.menu_file.addAction("Save")
@@ -314,9 +321,9 @@ class MainWindow(QMainWindow):
         self.action_save_as       = self.menu_file.addAction("Save as...")
         self.action_save_as.setShortcut('Ctrl+Shift+S')
         self.menu_file.addSeparator()
-        self.action_load_general    = self.menu_file.addAction("(Tempory) Load directory")
+        self.action_load_general    = self.menu_file.addAction("(Temporya) Load directory")
         self.action_load_h5    = self.menu_file.addAction("Load h5 directory")
-        self.action_load_liete = self.menu_file.addAction("Load leite directory")
+        self.action_load_bin = self.menu_file.addAction("Load bin directory")
         self.menu_file.addSeparator()
         self.actionLiveUpdate  = self.menu_file.addAction("Live Recording")
         self.actionLiveUpdate.setCheckable(True)
@@ -328,11 +335,12 @@ class MainWindow(QMainWindow):
 
         self.menu_file.addSeparator()
         self.action_quit       = self.menu_file.addAction("Quit")
+        self.action_NDF_converter.triggered.connect(self.openNDFconverter)
         self.action_new_project.triggered.connect(self.new_project)
         self.action_load_project.triggered.connect(self.load_project)
         self.action_load_general.triggered.connect(self.load_general)
         self.action_load_h5.triggered.connect(self.load_h5_directory)
-        self.action_load_liete.triggered.connect(self.load_liete_directory)
+        self.action_load_bin.triggered.connect(self.load_bin_directory)
         self.action_save.triggered.connect(self.save)
         self.action_save_as.triggered.connect(self.save_as)
         self.action_quit.triggered.connect(self.close)

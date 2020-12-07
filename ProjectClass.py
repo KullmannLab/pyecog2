@@ -12,7 +12,6 @@ from annotations_module import AnnotationPage
 def clip(x, a, b):  # utility funciton for file buffer
     return min(max(int(x), a), b)
 
-
 def create_metafile_from_h5(file):
     assert file.endswith('.h5')
     h5_file = H5File(file)
@@ -42,33 +41,19 @@ class Animal():
             return
 
         if eeg_folder is not None:
-            for file in glob.glob(eeg_folder + '/*.h5'):
-                if os.path.isfile(file[:-2] + 'meta'):
-                    print(file[:-2] + 'meta already exists')
-                    continue
-                create_metafile_from_h5(file)
-            self.eeg_files = glob.glob(eeg_folder + '/*.meta')
+            self.update_eeg_folder(eeg_folder)
             self.annotations = AnnotationPage()
-            annotation_files = glob.glob(eeg_folder + '/*.anno')
-            if annotation_files:
-                self.annotations.import_from_json(annotation_files[0])
-            self.eeg_init_time = [json.load(file)['start_timestamp_unix'] for file in map(open, self.eeg_files)]
-            self.eeg_duration = [json.load(file)['duration'] for file in map(open, self.eeg_files)]
         else:
+            self.eeg_folder = ''
             self.eeg_files = []
             self.annotations = AnnotationPage()
             self.eeg_init_time = []
             self.eeg_duration = []
 
         if video_folder is not None:
-            self.video_files = glob.glob(video_folder + '/*.mp4')
-            self.video_init_time = [
-                datetime(*map(int, [fname[-18:-14], fname[-14:-12], fname[-12:-10], fname[-10:-8], fname[-8:-6],
-                                    fname[-6:-4]])).timestamp()
-                for fname in self.video_files]
-            self.video_duration = [15 * 60 for file in
-                                   self.video_files]  # this should be replaced in the future to account flexible video durations
+            self.update_video_folder(video_folder)
         else:
+            self.video_folder = ''
             self.video_files = []
             self.video_init_time = []
             self.video_duration = []
@@ -78,6 +63,27 @@ class Animal():
             self.id = metadata['transmitter_id']
         else:
             self.id = id
+
+    def update_eeg_folder(self,eeg_folder):
+        self.eeg_folder = eeg_folder
+        for file in glob.glob(eeg_folder + '/*.h5'):
+            if os.path.isfile(file[:-2] + 'meta'):
+                # print(file[:-2] + 'meta already exists')
+                continue
+            create_metafile_from_h5(file)
+        self.eeg_files = glob.glob(eeg_folder + '/*.meta')
+        self.eeg_init_time = [json.load(file)['start_timestamp_unix'] for file in map(open, self.eeg_files)]
+        self.eeg_duration = [json.load(file)['duration'] for file in map(open, self.eeg_files)]
+
+    def update_video_folder(self,video_folder):
+        self.video_folder = video_folder
+        self.video_files = glob.glob(video_folder + '/*.mp4')
+        self.video_init_time = [
+            datetime(*map(int, [fname[-18:-14], fname[-14:-12], fname[-12:-10], fname[-10:-8], fname[-8:-6],
+                                fname[-6:-4]])).timestamp()
+            for fname in self.video_files]
+        self.video_duration = [15 * 60 for file in
+                               self.video_files]  # this should be replaced in the future to account flexible video durations
 
     def dict(self):
         dict = self.__dict__.copy()
@@ -323,6 +329,34 @@ class Project():
             self.animal_list.append(animal)
         else:
             print('Animal with id:', animal.id, 'already exists in project: nothing added')
+
+    def delete_animal(self,animal_id):
+        for animal in self.animal_list:
+            if animal.id == animal_id:
+                self.animal_list.remove(animal)
+
+    def update_files_from_animal_directories(self):
+        for animal in self.animal_list:
+            animal.update_eeg_folder(animal.eeg_folder)
+            animal.update_video_folder(animal.video_folder)
+
+    def update_project_from_root_directories(self):
+        self.update_files_from_animal_directories()  # first update already existing animals
+        existing_eeg_dir = [animal.eeg_folder for animal in self.animal_list]
+        eeg_dir_list = glob.glob(self.eeg_root_folder + '/*/')  # then check for new animals
+        video_dir_list = glob.glob(self.video_root_folder + '/*/')
+        for directory in eeg_dir_list:
+            if directory not in existing_eeg_dir:
+                id = directory.split('/')[-2]
+                print('Creating animal from directory:' ,directory)
+                print('Adding animal with id:',id)
+                video_dir = self.video_root_folder + '/' + id
+                if video_dir not in video_dir_list:
+                    video_dir = None  # check if compatible video dir exists
+                self.add_animal(Animal(id=id,eeg_folder=directory,video_folder=video_dir))
+
+
+
 
     def get_data_from_range(self, trange, channel=None, animal=None, n_envelope=None):
         '''

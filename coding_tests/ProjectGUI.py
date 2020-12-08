@@ -4,7 +4,7 @@ from PyQt5 import QtGui, QtCore
 from PyQt5.QtWidgets import QMenuBar, QGridLayout, QApplication, QWidget, QPlainTextEdit, QMainWindow, QVBoxLayout, \
     QTextBrowser, QPushButton, QFileDialog
 from ProjectClass import Animal, Project
-from main import MainModel
+# from main import MainModel
 
 import pyqtgraph_copy.pyqtgraph.parametertree.parameterTypes as pTypes
 from pyqtgraph_copy.pyqtgraph.parametertree import Parameter, ParameterTree
@@ -84,9 +84,9 @@ class ProjecEditWindow(QMainWindow):
         widget = QWidget(self)
         layout = QGridLayout(widget)
         self.project = project
-        if self.project is None:
-            self.project = Project(main_model=MainModel())
-            self.project.add_animal(Animal(id='0'))
+        # if self.project is None:
+        #     self.project = Project(main_model=MainModel())
+        #     self.project.add_animal(Animal(id='0'))
         self.setCentralWidget(widget)
         self.terminal = QTextBrowser(self)
         self._err_color = QtCore.Qt.red

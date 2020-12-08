@@ -80,7 +80,7 @@ class Animal():
         self.video_files = glob.glob(video_folder + '/*.mp4')
         self.video_init_time = [
             datetime(*map(int, [fname[-18:-14], fname[-14:-12], fname[-12:-10], fname[-10:-8], fname[-8:-6],
-                                fname[-6:-4]])).timestamp()
+                                fname[-6:-4]])).timestamp()+3600
             for fname in self.video_files]
         self.video_duration = [15 * 60 for file in
                                self.video_files]  # this should be replaced in the future to account flexible video durations
@@ -280,6 +280,8 @@ class Project():
         self.file_buffer = FileBuffer(self.current_animal)
 
     def set_current_animal(self, animal):  # copy alterations made to annotations
+        if animal is None:
+            return
         self.current_animal.annotations.copy_from(self.main_model.annotations)
         self.main_model.annotations.copy_from(animal.annotations)
         self.current_animal = animal

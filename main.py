@@ -8,6 +8,7 @@ from coding_tests.AnnotationParameterTree import AnnotationParameterTee
 from coding_tests.FFT import FFTwindow
 from coding_tests.WaveletWidget import WaveletWindow
 from coding_tests.convert_ndf_folder_gui import NDFConverterWindow
+from coding_tests.ProjectGUI import ProjecEditWindow
 import numpy as np
 import pyqtgraph_copy.pyqtgraph as pg
 
@@ -17,6 +18,7 @@ from tree_widget import FileTreeElement
 from annotations_module import AnnotationElement, AnnotationPage
 from annotation_table_widget import AnnotationTableWidget
 from ProjectClass import Project, Animal
+from feature_extractor import FeatureExtractor
 #
 class MainModel(QObject):
     sigTimeChanged      = QtCore.Signal(object)
@@ -307,19 +309,17 @@ class MainWindow(QMainWindow):
         self.ndf_converter = NDFConverterWindow()
         self.ndf_converter.show()
 
+    def openProjectEditor(self):
+        print('opening Project Editor')
+        self.projectEditor = ProjecEditWindow(self.main_model.project)
+        self.projectEditor.show()
+
     def build_menubar(self):
         self.menu_bar = self.menuBar()
 
         # FILE section
         self.menu_file = self.menu_bar.addMenu("File")
         self.action_NDF_converter     = self.menu_file.addAction("Open NDF converter")
-        self.menu_file.addSeparator()
-        self.action_new_project     = self.menu_file.addAction("New Project")
-        self.action_load_project    = self.menu_file.addAction("Load Project")
-        self.action_save       = self.menu_file.addAction("Save Project")
-        self.action_save.setShortcut('Ctrl+S')
-        self.action_save_as       = self.menu_file.addAction("Save Project as...")
-        self.action_save_as.setShortcut('Ctrl+Shift+S')
         self.menu_file.addSeparator()
         self.action_load_general    = self.menu_file.addAction("(Temporary) Load directory")
         self.action_load_h5    = self.menu_file.addAction("Load h5 directory")
@@ -336,15 +336,28 @@ class MainWindow(QMainWindow):
         self.menu_file.addSeparator()
         self.action_quit       = self.menu_file.addAction("Quit")
         self.action_NDF_converter.triggered.connect(self.openNDFconverter)
-        self.action_new_project.triggered.connect(self.new_project)
-        self.action_load_project.triggered.connect(self.load_project)
         self.action_load_general.triggered.connect(self.load_general)
         self.action_load_h5.triggered.connect(self.load_h5_directory)
         self.action_load_bin.triggered.connect(self.load_bin_directory)
-        self.action_save.triggered.connect(self.save)
-        self.action_save_as.triggered.connect(self.save_as)
         self.action_quit.triggered.connect(self.close)
         self.actionLiveUpdate.triggered.connect(self.load_live_recording)
+
+        # PROJECT section
+        self.menu_project = self.menu_bar.addMenu("Project")
+        self.action_edit_project = self.menu_project.addAction("Edit Project Settings")
+        self.action_edit_project.triggered.connect(self.openProjectEditor)
+
+        self.menu_project.addSeparator()
+        self.action_new_project = self.menu_project.addAction("New Project")
+        self.action_load_project = self.menu_project.addAction("Load Project")
+        self.action_save = self.menu_project.addAction("Save Project")
+        self.action_save.setShortcut('Ctrl+S')
+        self.action_save_as = self.menu_project.addAction("Save Project as...")
+        self.action_save_as.setShortcut('Ctrl+Shift+S')
+        self.action_new_project.triggered.connect(self.new_project)
+        self.action_load_project.triggered.connect(self.load_project)
+        self.action_save.triggered.connect(self.save)
+        self.action_save_as.triggered.connect(self.save_as)
 
         # ANNOTATIONS section
         self.menu_annotations = self.menu_bar.addMenu("Annotations")
@@ -355,6 +368,7 @@ class MainWindow(QMainWindow):
         # CLASSIFIER section
         self.menu_classifier = self.menu_bar.addMenu("Classifier")
         self.action_setup_feature_extractor = self.menu_classifier.addAction("Setup feature extractor")
+        self.action_run_feature_extractor = self.menu_classifier.addAction("Run feature extractor")
         self.action_setup_classifier = self.menu_classifier.addAction("Setup classifier")
         self.action_train_classifier = self.menu_classifier.addAction("Train classifier")
         self.action_run_classifier   = self.menu_classifier.addAction("Run classifier")

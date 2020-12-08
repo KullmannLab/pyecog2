@@ -74,7 +74,7 @@ class FileTreeElement():
 
         tree_layout = QtWidgets.QVBoxLayout()
         #tree_layout.addWidget(menu_bar, 0)
-        tree_layout.addWidget(filter_widget)
+        # tree_layout.addWidget(filter_widget)
         tree_layout.addWidget(self.tree_view)
 
         self.widget = QtWidgets.QWidget()

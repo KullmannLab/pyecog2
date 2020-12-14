@@ -153,7 +153,7 @@ class MainWindow(QMainWindow):
             # self.main_model.project.load_from_json(fname)
             # self.main_model.project.load_from_json('/home/mfpleite/Shared/ele_data/proj.pyecog')
             # print(self.main_model.project.__dict__)
-            # self.tree_element.set_rootnode_from_project(self.main_model.project)
+            self.tree_element.set_rootnode_from_project(self.main_model.project)
         except Exception as e:
             print('ERROR in tree build')
             print(e)

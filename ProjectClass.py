@@ -12,7 +12,7 @@ from annotations_module import AnnotationPage
 def clip(x, a, b):  # utility funciton for file buffer
     return min(max(int(x), a), b)
 
-def create_metafile_from_h5(file):
+def create_metafile_from_h5(file,duration = 3600):
     assert file.endswith('.h5')
     h5_file = H5File(file)
     fs_dict = eval(h5_file.attributes['fs_dict'])
@@ -25,7 +25,7 @@ def create_metafile_from_h5(file):
                            volts_per_bit=0,
                            transmitter_id=str(h5_file.attributes['t_ids']),
                            start_timestamp_unix=int(file.split('/')[-1].split('_')[0][1:]),
-                           duration=3600,  # assume all h5 files have 1hr duration
+                           duration=duration,  # assume all h5 files have 1hr duration
                            channel_labels=[str(label) for label in h5_file.attributes['t_ids']],
                            experiment_metadata_str='')
     metafile = file[:-2] + 'meta'
@@ -66,12 +66,21 @@ class Animal():
 
     def update_eeg_folder(self,eeg_folder):
         self.eeg_folder = eeg_folder
-        for file in glob.glob(eeg_folder + '/*.h5'):
+        h5files = glob.glob(eeg_folder + '/*.h5')
+        h5files.sort()
+        for i,file in enumerate(h5files):
             if os.path.isfile(file[:-2] + 'meta'):
                 # print(file[:-2] + 'meta already exists')
                 continue
-            create_metafile_from_h5(file)
+            start = int(file.split('/')[-1].split('_')[0][1:])
+            try:
+                next_start = int(h5files[i+1].split('/')[-1].split('_')[0][1:])
+                duration = min(next_start-start,3600)
+            except:
+                duration = 3600
+            create_metafile_from_h5(file,duration)
         self.eeg_files = glob.glob(eeg_folder + '/*.meta')
+        self.eeg_files.sort()
         self.eeg_init_time = [json.load(file)['start_timestamp_unix'] for file in map(open, self.eeg_files)]
         self.eeg_duration = [json.load(file)['duration'] for file in map(open, self.eeg_files)]
 
@@ -147,6 +156,12 @@ class FileBuffer():  # Consider translating this to cython
                 del (self.metadata[i])
                 self.range = [min([r[0] for r in self.data_ranges]), max([r[1] for r in self.data_ranges])]
 
+    def get_nchannels(self):
+        if self.data:
+            return max([data.shape[1] for data in self.data])
+        else:
+            return 0
+
     def get_data_from_range(self, trange, channel=None, n_envelope=None):
         # First check if data is already buffered, most of the time this will be the case:
         if trange[0] >= self.range[0] and trange[1] <= self.range[1]:
@@ -178,8 +193,11 @@ class FileBuffer():  # Consider translating this to cython
             # print('metadata', i, ':', self.metadata[i])
             fs = self.metadata[i]['fs']
             # print(((trange[0] - ranges[0]) * fs, 0, len(self.data[i])))
-            sample_ranges.append([clip((trange[0] - ranges[0]) * fs, 0, len(self.data[i])),
-                                  clip((trange[1] - ranges[0]) * fs, 0, len(self.data[i]))])
+            # sample_ranges.append([clip((trange[0] - ranges[0]) * fs, 0, len(self.data[i])),
+            #                       clip((trange[1] - ranges[0]) * fs, 0, len(self.data[i]))])  # this does not work because len of data might be larger than falid h5durations
+
+            sample_ranges.append([int(clip((trange[0] - ranges[0]) * fs, 0, (ranges[1] - ranges[0]) * fs)),
+                                  int(clip((trange[1] - ranges[0]) * fs, 0,  (ranges[1] - ranges[0]) * fs))])
 
         total_sample_range = max(sum([s[1] - s[0] for s in sample_ranges]), 1)
         if n_envelope is None:
@@ -234,7 +252,7 @@ class FileBuffer():  # Consider translating this to cython
                     # throw_error()
                     # return 0
 
-            enveloped_time.append(np.linspace(start / fs + self.data_ranges[i][0], stop / fs + self.data_ranges[i][0],
+            enveloped_time.append(np.linspace(start / fs + self.data_ranges[i][0], (stop-1) / fs + self.data_ranges[i][0],
                                               len(enveloped_data[-1])).reshape(-1, 1))
             if len(enveloped_time[-1]) == 0:
                 del (enveloped_time[-1])
@@ -244,6 +262,11 @@ class FileBuffer():  # Consider translating this to cython
             # print([data.shape for data in enveloped_time])
         # sort vectors with enveloped_time:
         start_times = [(t[0], enveloped_data[i], t) for (i, t) in enumerate(enveloped_time)]
+        # print('***debug***',len(start_times))
+        # if len(start_times) ==2:
+        #     print('***debug***',start_times[0][0][0],start_times[1][0][0])
+        #     print('***debug***',self.data_ranges)
+        #     print('***debug***', self.files)
         start_times.sort()
         enveloped_data = [d[1] for d in start_times]
         enveloped_time = [d[2] for d in start_times]

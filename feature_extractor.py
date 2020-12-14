@@ -72,7 +72,7 @@ class FeatureExtractor():
                                         reg_entropy]
             )
 
-    def extract_features_from_animal(self,animal):
+    def extract_features_from_animal(self,animal,re_write = False):
         # Create feature files for each eeg file
         file_buffer = FileBuffer(animal)
         # Identify the time intervals and filenames to extract features
@@ -80,8 +80,11 @@ class FeatureExtractor():
             feature_fname = '.'.join(eeg_fname.split('.')[:-1] + ['features'])
             feature_metafname = '.'.join(eeg_fname.split('.')[:-1] + ['fmeta'])
             time_range = [animal.eeg_init_time[i], animal.eeg_init_time[i]+animal.eeg_duration[i]]
-            print('Extracting features for file',i+1,'of',len(animal.eeg_files),':',eeg_fname)
-            self.extract_features_from_time_range(file_buffer, time_range, feature_fname, feature_metafname)
+            if re_write or not os.path.isfile(feature_fname):
+                print('Extracting features for file',i+1,'of',len(animal.eeg_files),':',eeg_fname)
+                self.extract_features_from_time_range(file_buffer, time_range, feature_fname, feature_metafname)
+            else:
+                print(feature_fname,'already exists')
 
     def extract_features_from_time_range(self, file_buffer, time_range, feature_fname, feature_metafname):
         print('time_range:',time_range,feature_fname,feature_metafname)

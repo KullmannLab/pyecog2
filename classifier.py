@@ -97,8 +97,11 @@ class GaussianClassifier():
         self.blank_npoints = 0
         self.hmm           = HMM_LL()
 
-    def train(self):
-        for animal in self.project.animal_list:
+    def train(self,animal_list=None):
+        if animal_list is None:
+            animal_list = self.project.animal_list
+
+        for animal in animal_list:
             '''
             A scaling matrix should be implemented to allow for differences in animal recordings.
             Something that would standardize blank feature standard deviations, i.e. sqrt(diag(blank_cov)).
@@ -108,14 +111,15 @@ class GaussianClassifier():
             for label in self.labels2classify:
                 labeled_positions[label] = np.array([a.getPos() for a in animal.annotations.get_all_with_label(label)])
 
-            for eeg_file in animal.eeg_files:
+            for i,eeg_file in enumerate(animal.eeg_files[:200]):
                 feature_file = '.'.join(eeg_file.split('.')[:-1] + ['features'])
-                print('Animal:', animal.id, 'file:', feature_file)
+                print('Animal:', animal.id, 'file:',i,'of',len(animal.eeg_files), feature_file,end='\r')
                 fmeta_file = '.'.join(eeg_file.split('.')[:-1] + ['fmeta'])
                 with open(fmeta_file) as f:
                     fmeta_dict = json.load(f)
                 f_vec = np.fromfile(feature_file, dtype=fmeta_dict['data_format'])
                 f_vec_d = f_vec.reshape((-1, self.Ndim))
+                np.nan_to_num(f_vec_d,copy=False)
                 f_label = np.zeros(f_vec_d.shape[0])
 
                 for i, label in enumerate(self.labels2classify):
@@ -125,7 +129,7 @@ class GaussianClassifier():
                         lp[:, 1] = np.ceil(lp[:, 1])
                         lp = lp[(lp[:,0]>=0)&(lp[:,1]<=f_vec_d.shape[0])]  # select annotations within the present file
                     for loc in lp.astype('int'):
-                        print(label,loc)
+                        # print(label,loc)
                         f_label[loc[0]:loc[1]] = i+1  # label 0 is reserved for blanks
                     locs = f_label == (i + 1)
                     n_labeled = np.sum(locs)  # number of datapoints labled with label
@@ -174,20 +178,21 @@ class GaussianClassifier():
             LL = LL + bias_v.T
         return LL
 
-    def classify_animal(self, animal):
+    def classify_animal(self, animal,max_annotations=-1):
         LLv = []
         R2v = []
         timev = []
         eegfiles = animal.eeg_files.copy()
         eegfiles.sort()
-        for eegfname in eegfiles:
+        for i,eegfname in enumerate(eegfiles):
             fname = '.'.join(eegfname.split('.')[:-1] + ['features'])
             f_vec = np.fromfile(fname, dtype='float64')
             f_vec = f_vec.reshape((-1, self.Ndim))
+            np.nan_to_num(f_vec, copy=False)
             fmeta_file = '.'.join(eegfname.split('.')[:-1] + ['fmeta'])
             with open(fmeta_file) as f:
                 fmeta_dict = json.load(f)
-            print('Classifying',fname)
+            print('Animal:', animal.id, 'file:', i, 'of', len(eegfiles), fmeta_file, end='\r')
             LL = self.log_likelyhoods(f_vec, bias=False, no_scale=False)
             R2 = self.log_likelyhoods(f_vec, bias=False, no_scale=True)
             start = fmeta_dict['start_timestamp_unix']
@@ -219,7 +224,7 @@ class GaussianClassifier():
 
             print(alist)
             alist.sort()
-            animal.annotations.delete_label('(auto)'+label)
+            animal.annotations.delete_label('(auto)'+label)  # Delete all previous auto generated labels
             try:
                 old_color = animal.annotations.label_color_dict[label]
                 print('found color for ', label, old_color)
@@ -228,7 +233,7 @@ class GaussianClassifier():
                 old_color = (255,255,255)
             new_color = tuple([ max(int(c*0.5),0) for c in old_color])
             animal.annotations.add_label('(auto)'+label,color = new_color)
-            for c,a in alist:
+            for c,a in alist[:max_annotations]:
                 animal.annotations.add_annotation(a)
 
         return (LLv,R2v,pf,timev)

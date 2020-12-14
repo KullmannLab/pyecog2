@@ -113,7 +113,8 @@ class PairedGraphicsView():
         self.overview_plot.setXRange(*overview_range)
         self.insetview_plot.vb.setXRange(overview_range[0],
                                          overview_range[0] + min(30, overview_range[1] - overview_range[0]))
-        if self.scale is None:  # running for the first time
+        # if self.scale is None:  # running for the first time
+        if True:  # running for the first time
             print('Getting data to compute plot scale factors')
             arr,tarr = self.main_model.project.get_data_from_range(self.overview_plot.vb.viewRange()[0])
             print(arr.shape, tarr.shape)

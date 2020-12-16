@@ -1,6 +1,6 @@
 import h5py
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import time
 import sys
 import pandas as pd
@@ -63,7 +63,7 @@ class H5Dataset():
                 time_arr_info_dict =  eval(tid_dataset.attrs['time_arr_info_dict'])
                 self.time = np.linspace(time_arr_info_dict['min_t'],
                                         time_arr_info_dict['max_t'],
-                                        num= time_arr_info_dict['max_t'] * time_arr_info_dict['fs'])
+                                        num= int(time_arr_info_dict['max_t'] * time_arr_info_dict['fs']))
             if self.features is not None:
                 self.features_df = pd.DataFrame(self.features, columns = [b.decode("utf-8") for b in self.feature_col_names])
 

@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtCore import QRunnable, pyqtSlot, QThreadPool, QThread
 import numpy as np
 import scipy.signal as sg
-from numba import jit
+# from numba import jit
 from timeit import default_timer as timer
 import traceback, sys, inspect
 

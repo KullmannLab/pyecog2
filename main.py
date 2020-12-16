@@ -5,10 +5,11 @@ import sys, os, time
 import webbrowser
 from coding_tests.VideoPlayer import VideoWindow
 from coding_tests.AnnotationParameterTree import AnnotationParameterTee
-from coding_tests.FFT import FFTwindow
 from coding_tests.WaveletWidget import WaveletWindow
 from coding_tests.convert_ndf_folder_gui import NDFConverterWindow
 from coding_tests.ProjectGUI import ProjecEditWindow
+from coding_tests.FFT import FFTwindow
+
 import numpy as np
 import pyqtgraph_copy.pyqtgraph as pg
 

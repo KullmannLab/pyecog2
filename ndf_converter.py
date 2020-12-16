@@ -7,7 +7,7 @@ import logging
 
 import pandas as pd
 import h5py
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal, stats
 
@@ -178,12 +178,12 @@ class NdfFile:
             self._glitch_count        = 0
             self._plot_each_glitch = plot_sub_glitches
 
-            if plot_glitches:
-                plt.figure(figsize = (15, 4))
-                plt.plot(self.time_to_deglitch , self.data_to_deglitch, 'k')
-                plt.title('Full raw trace');plt.xlabel('Time (seconds)')
-                plt.xlim(0,self.time_to_deglitch[-1])
-                plt.show()
+            # if plot_glitches:
+            #     plt.figure(figsize = (15, 4))
+            #     plt.plot(self.time_to_deglitch , self.data_to_deglitch, 'k')
+            #     plt.title('Full raw trace');plt.xlabel('Time (seconds)')
+            #     plt.xlim(0,self.time_to_deglitch[-1])
+            #     plt.show()
 
             n_passes = 5
             passn = 1
@@ -200,13 +200,13 @@ class NdfFile:
                 if self.verbose:
                     print('Tid '+str(tid)+' pass ' + str(passn) + ': glitches found - ' + str(self.n_glitches) +
                           ' (max:' + str(max_glitches) + ')')
-                    if plot_glitches:
-                        plt.figure(figsize=(15, 4))
-                        plt.plot(self.time_to_deglitch, self.data_to_deglitch, 'k')
-                        plt.title('De-glitched trace')
-                        plt.xlabel('Time (seconds)')
-                        plt.xlim(0, self.time_to_deglitch[-1])
-                        plt.show()
+                    # if plot_glitches:
+                    #     plt.figure(figsize=(15, 4))
+                    #     plt.plot(self.time_to_deglitch, self.data_to_deglitch, 'k')
+                    #     plt.title('De-glitched trace')
+                    #     plt.xlabel('Time (seconds)')
+                    #     plt.xlim(0, self.time_to_deglitch[-1])
+                    #     plt.show()
 
             logging.debug('Tid '+str(tid)+': removed '+str(self._glitch_count)+' datapoints as glitches. There were '
                           +str(self._n_possible_glitches)+' possible glitches.')
@@ -265,12 +265,12 @@ class NdfFile:
                     if abs(self.data_to_deglitch[i] - self.data_to_deglitch[ii])< 2*diff_threshold * self.stddiff_data_to_deglitch:
 
                         # plot glitches to be removed if plotting option is on
-                        if self._plot_each_glitch:
-                            plt.figure(figsize = (15, 4))
-                            ax1 = plt.subplot2grid((1, 1), (0, 0), colspan=3)
-                            ax1.plot(self.time_to_deglitch[i:ii+1],
-                                     self.data_to_deglitch[i:ii+1], 'r.-', zorder = 2)
-                            ax1.set_xlabel('Time (s)'); ax1.set_title('Glitch '+str(glitch_count+1))
+                        # if self._plot_each_glitch:
+                        #     plt.figure(figsize = (15, 4))
+                        #     ax1 = plt.subplot2grid((1, 1), (0, 0), colspan=3)
+                        #     ax1.plot(self.time_to_deglitch[i:ii+1],
+                        #              self.data_to_deglitch[i:ii+1], 'r.-', zorder = 2)
+                        #     ax1.set_xlabel('Time (s)'); ax1.set_title('Glitch '+str(glitch_count+1))
 
                         try:
                             removed = 'False'
@@ -286,8 +286,8 @@ class NdfFile:
                         except IndexError:
                             print('IndexError')
                             pass
-                        if self._plot_each_glitch:
-                            plt.show()
+                        # if self._plot_each_glitch:
+                        #     plt.show()
 
             except IndexError:
                 print('IndexError')

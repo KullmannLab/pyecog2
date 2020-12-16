@@ -1,9 +1,10 @@
+
+from scipy.signal import stft
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtWidgets import QApplication
 import sys
 import numpy as np
 import pyqtgraph_copy.pyqtgraph as pg
-from scipy.signal import stft
 
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')

@@ -6,10 +6,6 @@ from datetime import datetime
 from PyQt5 import QtGui, QtCore, QtWidgets, uic, Qt
 from PyQt5.QtGui import QPainter, QBrush, QPen
 
-# import pyqtgraph as pg
-# from .utils import Point, rect_to_range
-# from .graphics_view import PyecogGraphicsView
-# temp
 from datetime import datetime
 import pyqtgraph_copy.pyqtgraph as pg
 import colorsys
@@ -66,7 +62,7 @@ class PairedGraphicsView():
 
         self.splitter.addWidget(overview_layout_widget)
         self.splitter.addWidget(insetview_layout_widget)
-        self.splitter.setStretchFactor(1, 6)  # make inset view 6 times larger
+        # self.splitter.setStretchFactor(1, 6)  # make inset view 6 times larger
 
         self.insetview_plot.sigRangeChanged.connect(self.insetview_range_changed)
         self.overview_plot.sigRangeChanged.connect(self.overview_range_changed)

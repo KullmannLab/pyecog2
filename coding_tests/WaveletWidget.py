@@ -1,19 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Demonstrates common image analysis tools.
-
-Many of the features demonstrated here are already provided by the ImageView
-widget, but here we present a lower-level approach that provides finer control
-over the user interface.
+Wavelet widget for EEG signals in pyecog
 """
 
 import pyqtgraph_copy.pyqtgraph as pg
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QApplication, QWidget
-from PyQt5.QtCore import QRunnable, pyqtSlot, QThreadPool, QThread
+from PyQt5.QtCore import QRunnable, pyqtSlot, QThreadPool
 import numpy as np
 import scipy.signal as sg
-# from numba import jit
+from numba import jit
 from timeit import default_timer as timer
 import traceback, sys, inspect
 
@@ -250,6 +246,9 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
     def update_progress(self,n):
         if n < 100:
             self.p1.setLabel('bottom', 'Computing Wavelet tranform:' + str(n) + '%', units='s')
+        else:
+
+            self.p1.setLabel('bottom', 'Time', units='s')
 
     def update_image(self,tuple):
         print('updating wavelet result...')

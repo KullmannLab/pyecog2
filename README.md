@@ -1,4 +1,4 @@
-# pyecog2
+# Pyecog2
 
 
 Changes to pyqtgraph

@@ -1,7 +1,8 @@
 from PyQt5 import QtGui, QtWidgets, QtCore
 from PyQt5.QtCore import QThread, pyqtSignal, Qt, QRect, QTimer
 from scipy import signal, stats
-import pyqtgraph_copy.pyqtgraph as pg
+# import pyqtgraph_copy.pyqtgraph as pg
+import pyqtgraph as pg
 import numpy as np
 
 

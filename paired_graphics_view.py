@@ -3,11 +3,12 @@ import os
 import numpy as np
 import time
 from datetime import datetime
-from PyQt5 import QtGui, QtCore, QtWidgets, uic, Qt
+from PyQt5 import QtGui, QtCore, QtWidgets #, uic, Qt
 from PyQt5.QtGui import QPainter, QBrush, QPen
 
 from datetime import datetime
-import pyqtgraph_copy.pyqtgraph as pg
+# import pyqtgraph_copy.pyqtgraph as pg
+import pyqtgraph as pg
 import colorsys
 
 from pyecog_plot_item import PyecogPlotCurveItem, PyecogLinearRegionItem, PyecogCursorItem

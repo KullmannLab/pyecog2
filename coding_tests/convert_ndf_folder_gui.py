@@ -5,8 +5,8 @@ from PyQt5.QtWidgets import QMenuBar, QGridLayout, QApplication, QWidget, QPlain
     QTextBrowser, QPushButton, QFileDialog
 
 
-import pyqtgraph_copy.pyqtgraph.parametertree.parameterTypes as pTypes
-from pyqtgraph_copy.pyqtgraph.parametertree import Parameter, ParameterTree
+import pyqtgraph.parametertree.parameterTypes as pTypes
+from pyqtgraph.parametertree import Parameter, ParameterTree
 from ndf_converter import NdfFile, DataHandler
 from coding_tests.WaveletWidget import Worker
 

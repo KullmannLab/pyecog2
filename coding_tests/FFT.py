@@ -4,7 +4,7 @@ from PyQt5 import QtGui, QtCore
 from PyQt5.QtWidgets import QApplication
 import sys
 import numpy as np
-import pyqtgraph_copy.pyqtgraph as pg
+import pyqtgraph as pg
 
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')

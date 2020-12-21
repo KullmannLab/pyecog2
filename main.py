@@ -1,25 +1,26 @@
-from PyQt5 import QtCore, QtWidgets, QtGui
-from PyQt5.QtWidgets import QMenuBar, QGridLayout, QApplication, QWidget, QPlainTextEdit, QDockWidget, QMainWindow, QFileDialog
-from PyQt5.QtCore import Qt, QSettings, QByteArray, QObject
-import sys, os, time
+import os
+import sys
 import webbrowser
-from coding_tests.VideoPlayer import VideoWindow
-from coding_tests.AnnotationParameterTree import AnnotationParameterTee
-from coding_tests.WaveletWidget import WaveletWindow
-from coding_tests.convert_ndf_folder_gui import NDFConverterWindow
-from coding_tests.ProjectGUI import ProjecEditWindow
-from coding_tests.FFT import FFTwindow
 
 import numpy as np
-import pyqtgraph_copy.pyqtgraph as pg
+from PyQt5 import QtCore, QtGui
+from PyQt5.QtCore import Qt, QSettings, QByteArray, QObject
+from PyQt5.QtWidgets import QApplication, QPlainTextEdit, QDockWidget, QMainWindow, QFileDialog
 
-from tree_model_and_nodes import FileTreeProxyModel, TreeModel, FileNode, DirectoryNode
-from paired_graphics_view import PairedGraphicsView
-from tree_widget import FileTreeElement
-from annotations_module import AnnotationElement, AnnotationPage
-from annotation_table_widget import AnnotationTableWidget
 from ProjectClass import Project, Animal
-from feature_extractor import FeatureExtractor
+from annotation_table_widget import AnnotationTableWidget
+from annotations_module import AnnotationElement, AnnotationPage
+from coding_tests.AnnotationParameterTree import AnnotationParameterTee
+from coding_tests.FFT import FFTwindow
+from coding_tests.ProjectGUI import ProjecEditWindow
+from coding_tests.VideoPlayer import VideoWindow
+from coding_tests.WaveletWidget import WaveletWindow
+from coding_tests.convert_ndf_folder_gui import NDFConverterWindow
+from paired_graphics_view import PairedGraphicsView
+from tree_model_and_nodes import TreeModel
+from tree_widget import FileTreeElement
+
+
 #
 class MainModel(QObject):
     sigTimeChanged      = QtCore.Signal(object)

@@ -9,8 +9,8 @@ as well as some customized parameter types
 import numpy as np
 import colorsys
 from annotations_module import i_spaced_nfold
-import pyqtgraph_copy.pyqtgraph.parametertree.parameterTypes as pTypes
-from pyqtgraph_copy.pyqtgraph.parametertree import Parameter, ParameterTree
+import pyqtgraph.parametertree.parameterTypes as pTypes
+from pyqtgraph.parametertree import Parameter, ParameterTree
 
 ## this group includes a menu allowing the user to add new parameters into its child list
 class ScalableGroup(pTypes.GroupParameter):

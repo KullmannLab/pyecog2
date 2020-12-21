@@ -3,7 +3,7 @@
 Wavelet widget for EEG signals in pyecog
 """
 
-import pyqtgraph_copy.pyqtgraph as pg
+import pyqtgraph as pg
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtCore import QRunnable, pyqtSlot, QThreadPool
@@ -46,7 +46,8 @@ def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), progress_signal = 
             break
         N = int(2 * R / vf[k] / dt)  # Compute size of the wavelet: 2 standard deviations
         wave = sg.morlet(N, w=R, s=1, complete=0) / N * np.pi * 2  # Normalize de amplitude returned by sg.morlet
-        result[k, :] = sg.fftconvolve(input_signal, wave, mode='same')
+        # result[k, :] = sg.fftconvolve(input_signal, wave, mode='same')
+        result[k, :] = sg.oaconvolve(input_signal, wave, mode='same')
         if progress_signal is not None:
             progress_signal.emit(int(100*k/Nf))
 
@@ -228,10 +229,13 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             self.img.setImage(self.data*0)
             if self.hist_levels is not None: # Mantain levels from previous view if they exist
                 self.hist.setLevels(*self.hist_levels)
-            self.p1.setLabel('bottom', 'Computing Wavelet tranform...', units='s')
+            self.p1.setLabel('bottom', 'Computing Wavelet tranform...', units='')
             self.show()
             print('Computing Wavelet...')
-            self.dt = (time[10]-time[9])     # avoid time edge values
+            if len(time.shape)==1:
+                self.dt = (time[10]-time[9])  # avoid time edge values
+            else:
+                self.dt = (time[10] - time[9])[0]
             s = [False]
             self.thread_killswitch_list.append(s)
             print('Killswitch list:',self.thread_killswitch_list)
@@ -247,7 +251,6 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         if n < 100:
             self.p1.setLabel('bottom', 'Computing Wavelet tranform:' + str(n) + '%', units='s')
         else:
-
             self.p1.setLabel('bottom', 'Time', units='s')
 
     def update_image(self,tuple):

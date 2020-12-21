@@ -8,14 +8,14 @@ from PyQt5.QtCore import Qt, QSettings, QByteArray, QObject
 from PyQt5.QtWidgets import QApplication, QPlainTextEdit, QDockWidget, QMainWindow, QFileDialog
 
 from ProjectClass import Project, Animal
-from annotation_table_widget import AnnotationTableWidget
-from annotations_module import AnnotationElement, AnnotationPage
-from coding_tests.AnnotationParameterTree import AnnotationParameterTee
-from coding_tests.FFT import FFTwindow
-from coding_tests.ProjectGUI import ProjecEditWindow
-from coding_tests.VideoPlayer import VideoWindow
-from coding_tests.WaveletWidget import WaveletWindow
-from coding_tests.convert_ndf_folder_gui import NDFConverterWindow
+from pyecog2.annotation_table_widget import AnnotationTableWidget
+from pyecog2.annotations_module import AnnotationElement, AnnotationPage
+from pyecog2.coding_tests.AnnotationParameterTree import AnnotationParameterTee
+from pyecog2.coding_tests.FFT import FFTwindow
+from pyecog2.coding_tests.ProjectGUI import ProjecEditWindow
+from pyecog2.coding_tests.VideoPlayer import VideoWindow
+from pyecog2.coding_tests.WaveletWidget import WaveletWindow
+from pyecog2.coding_tests.convert_ndf_folder_gui import NDFConverterWindow
 from paired_graphics_view import PairedGraphicsView
 from tree_model_and_nodes import TreeModel
 from tree_widget import FileTreeElement

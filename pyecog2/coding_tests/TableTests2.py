@@ -1,7 +1,7 @@
-from annotation_table_widget import AnnotationTableWidget
-from PyQt5 import QtCore, QtGui, QtWidgets
+from pyecog2.annotation_table_widget import AnnotationTableWidget
+from PyQt5 import QtCore, QtWidgets
 import numpy as np
-from annotations_module import AnnotationElement, AnnotationPage
+from pyecog2.annotations_module import AnnotationElement, AnnotationPage
 
 app = QtWidgets.QApplication([])
 

@@ -1,10 +1,9 @@
-import sys, os
-from PyQt5 import QtGui, QtCore, QtWidgets, uic
-import h5py
+import os
+from PyQt5 import QtGui, QtCore, QtWidgets
 import numpy as np
 import json
 from ProjectClass import create_metafile_from_h5
-from h5loader import H5File
+
 
 # rename module to be filetree model?
 # maybe split file into one that has nodes seperately

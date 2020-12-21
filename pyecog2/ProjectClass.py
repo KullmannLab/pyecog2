@@ -1,12 +1,10 @@
 import json
-from PyQt5 import QtCore
-from PyQt5.QtCore import QObject
 import numpy as np
 from collections import OrderedDict
-from h5loader import H5File
+from pyecog2.h5loader import H5File
 import glob, os
 from datetime import datetime
-from annotations_module import AnnotationPage
+from pyecog2.annotations_module import AnnotationPage
 
 
 def clip(x, a, b):  # utility funciton for file buffer

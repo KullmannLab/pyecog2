@@ -9,11 +9,9 @@ from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtCore import QRunnable, pyqtSlot, QThreadPool
 import numpy as np
 import scipy.signal as sg
-from numba import jit
 from timeit import default_timer as timer
-import traceback, sys, inspect
+import traceback, inspect
 
-from paired_graphics_view import DateAxis
 # Interpret image data as row-major instead of col-major
 pg.setConfigOptions(imageAxisOrder='row-major')
 

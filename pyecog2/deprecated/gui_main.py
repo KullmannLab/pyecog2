@@ -1,18 +1,14 @@
 import sys
 import os
 import numpy as np
-import pandas as pd
-import pickle as p
 
-
-from PyQt5 import QtGui, QtWidgets, QtCore#,# uic
-from PyQt5.QtCore import QThread, pyqtSignal, Qt, QRect, QTimer
+from PyQt5 import QtWidgets, QtCore#,# uic
 
 import pyqtgraph_copy.pyqtgraph as pg
 
 
-from paired_graphics_view import PairedGraphicsView
-from tree_model_and_nodes import FileTreeProxyModel, TreeModel, FileNode, DirectoryNode
+from pyecog2.paired_graphics_view import PairedGraphicsView
+from pyecog2.tree_model_and_nodes import FileTreeProxyModel, TreeModel, FileNode, DirectoryNode
 
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')

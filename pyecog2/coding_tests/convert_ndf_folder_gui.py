@@ -1,14 +1,13 @@
 import sys, os, glob
 from datetime import datetime
 from PyQt5 import QtGui, QtCore
-from PyQt5.QtWidgets import QMenuBar, QGridLayout, QApplication, QWidget, QPlainTextEdit, QMainWindow, QVBoxLayout, \
-    QTextBrowser, QPushButton, QFileDialog
+from PyQt5.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog
 
 
 import pyqtgraph.parametertree.parameterTypes as pTypes
 from pyqtgraph.parametertree import Parameter, ParameterTree
-from ndf_converter import NdfFile, DataHandler
-from coding_tests.WaveletWidget import Worker
+from pyecog2.ndf_converter import NdfFile, DataHandler
+from pyecog2.coding_tests.WaveletWidget import Worker
 
 
 class OutputWrapper(QtCore.QObject):

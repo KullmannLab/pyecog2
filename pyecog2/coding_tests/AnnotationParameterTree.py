@@ -8,7 +8,7 @@ as well as some customized parameter types
 """
 import numpy as np
 import colorsys
-from annotations_module import i_spaced_nfold
+from pyecog2.annotations_module import i_spaced_nfold
 import pyqtgraph.parametertree.parameterTypes as pTypes
 from pyqtgraph.parametertree import Parameter, ParameterTree
 

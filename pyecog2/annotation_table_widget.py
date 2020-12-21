@@ -1,5 +1,5 @@
 from PyQt5 import QtGui, QtCore, QtWidgets
-from annotations_module import AnnotationPage
+from pyecog2.annotations_module import AnnotationPage
 import numpy as np
 
 basestring = str

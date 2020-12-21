@@ -11,7 +11,7 @@ from datetime import datetime
 import pyqtgraph as pg
 import colorsys
 
-from pyecog_plot_item import PyecogPlotCurveItem, PyecogLinearRegionItem, PyecogCursorItem
+from pyecog2.pyecog_plot_item import PyecogPlotCurveItem, PyecogLinearRegionItem, PyecogCursorItem
 
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')

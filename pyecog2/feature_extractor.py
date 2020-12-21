@@ -1,11 +1,11 @@
 import numpy as np
-from ProjectClass import FileBuffer
 import os
 import numpy as np
 import scipy.stats as stats
 from collections import OrderedDict
 import json
 from numba import jit
+from pyecog2.ProjectClass import FileBuffer
 
 
 # constructors for functions that grab the power from frequency bands

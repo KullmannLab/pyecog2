@@ -10,7 +10,7 @@ from PyQt5.QtGui import QPainter, QBrush, QPen
 #from .graphics_view import PyecogGraphicsView
 # temp
 from datetime import datetime
-import pyqtgraph_copy.pyqtgraph as pg
+import pyqtgraph as pg
 
 from pyecog_plot_item import PyecogPlotCurveItem
 

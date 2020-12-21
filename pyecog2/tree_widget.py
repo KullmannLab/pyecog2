@@ -12,8 +12,8 @@ from PyQt5.QtCore import QThread, pyqtSignal, Qt, QRect, QTimer
 # import pyqtgraph_copy.pyqtgraph as pg
 import pyqtgraph as pg
 
-from tree_model_and_nodes import FileTreeProxyModel, TreeModel
-from tree_model_and_nodes import FileNode, DirectoryNode, ChannelNode, HDF5FileNode, LieteNode, ProjectNode
+from pyecog2.tree_model_and_nodes import FileTreeProxyModel, TreeModel
+from pyecog2.tree_model_and_nodes import FileNode, DirectoryNode, ChannelNode, HDF5FileNode, LieteNode, ProjectNode
 
 class FileTreeView(QtWidgets.QTreeView):
 

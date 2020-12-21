@@ -2,7 +2,7 @@ import os
 from PyQt5 import QtGui, QtCore, QtWidgets
 import numpy as np
 import json
-from ProjectClass import create_metafile_from_h5
+from pyecog2.ProjectClass import create_metafile_from_h5
 
 
 # rename module to be filetree model?

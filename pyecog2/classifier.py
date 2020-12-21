@@ -9,7 +9,7 @@ from hmm_pyecog import HMM_LL
 import json
 from numba import jit
 from scipy.stats import chi2
-from annotations_module import AnnotationElement
+from pyecog2.annotations_module import AnnotationElement
 
 @jit(nopython=True)
 def MVGD_LL_jit(fdata,mu,inv_cov,LL,no_scale):

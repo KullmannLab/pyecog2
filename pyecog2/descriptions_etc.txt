@@ -1,0 +1,15 @@
+'''
+-------------
+Tree based filetree
+-------------
+
+Basically built from these guys
+https://www.youtube.com/watch?v=k102fYZBdh0&list=PL8B63F2091D787896&index=21
+https://www.youtube.com/watch?v=IKqkOI_o6_A
+https://www.youtube.com/watch?v=mnYRRhKotbQ&list=PLQVvvaa0QuDdVpDFNq4FwY9APZPGSUyR4&index=8
+
+
+uesfull website:
+https://www.learnpyqt.com/
+'''
+

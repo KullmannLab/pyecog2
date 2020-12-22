@@ -31,6 +31,38 @@ def create_metafile_from_h5(file,duration = 3600):
         json.dump(metadata, json_file, indent=2, sort_keys=True)
 
 
+def read_neuropixels_metadata(fname):
+    d = {}
+    with open(fname) as f:
+        while True:
+            line =f.readline()
+            if line == '':
+                break
+            linesplit = line.split('=')
+            d[linesplit[0]]=linesplit[1][:-1]
+
+    m = {'no_channels':int(d['nSavedChans']),
+         'fs':float(d['imSampRate']),
+         'start_timestamp_unix':datetime.timestamp(datetime.strptime(d['fileCreateTime'],'%Y-%m-%dT%H:%M:%S')),
+         'duration':float(d['fileTimeSecs']),
+         'data_format':'int16',
+         'volts_per_bit': 0}
+    return m
+
+
+def load_metadata_file(fname):
+    try:
+        with open(fname, 'r') as json_file:
+            metadata = json.load(json_file)
+    except:
+        try:
+            metadata = read_neuropixels_metadata(fname)
+        except:
+            metadata = None
+            print('Unrecognized metafile format')
+    return metadata
+
+
 class Animal():
     def __init__(self, id=None, eeg_folder=None, video_folder=None, dict={}):
         if dict != {}:
@@ -79,8 +111,12 @@ class Animal():
             create_metafile_from_h5(file,duration)
         self.eeg_files = glob.glob(eeg_folder + '/*.meta')
         self.eeg_files.sort()
-        self.eeg_init_time = [json.load(file)['start_timestamp_unix'] for file in map(open, self.eeg_files)]
-        self.eeg_duration = [json.load(file)['duration'] for file in map(open, self.eeg_files)]
+        self.eeg_init_time = []
+        self.eeg_duration  = []
+        for fname in self.eeg_files:
+            metadata = load_metadata_file(fname)
+            self.eeg_init_time.append(metadata['start_timestamp_unix'])
+            self.eeg_duration.append(metadata['duration'])
 
     def update_video_folder(self,video_folder):
         self.video_folder = video_folder
@@ -113,10 +149,8 @@ class FileBuffer():  # Consider translating this to cython
         else:
             self.files.append(fname)
 
-        with open(fname, 'r') as json_file:
-            metadata = json.load(json_file)
+        metadata = load_metadata_file(fname)
         self.metadata.append(metadata)
-
         if metadata['data_format'] == 'h5':
             h5file = H5File(fname[:-4] + 'h5')
             channels = []
@@ -126,7 +160,8 @@ class FileBuffer():  # Consider translating this to cython
             self.data.append(arr)
 
         else:  # it is a bin file and can be mememaped
-            m = np.memmap(fname[:4] + 'bin', mode='r+', shape=(-1, metadata['no_channels']))
+            m = np.memmap(fname[:-4] + 'bin', mode='r+', dtype =metadata['data_format'] )
+            m = m.reshape((-1, metadata['no_channels']))
             self.data.append(m)
 
         trange = [metadata['start_timestamp_unix'], metadata['start_timestamp_unix'] + metadata['duration']]

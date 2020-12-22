@@ -12,14 +12,48 @@ import pyqtgraph as pg
 import colorsys
 
 from pyecog2.pyecog_plot_item import PyecogPlotCurveItem, PyecogLinearRegionItem, PyecogCursorItem
+from pyqtgraph import functions as fn
+from pyqtgraph.Point import Point
 
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
 
 
-# from .lines import InfiniteOrthogonalLine
+def wheelEvent(self, ev, axis=None):
+    if axis in (0, 1):
+        mask = [False, False]
+        mask[axis] = self.state['mouseEnabled'][axis]
+    else:
+        mask = self.state['mouseEnabled'][:]
+    s = 1.02 ** (ev.delta() * self.state['wheelScaleFactor'])  # actual scaling factor
+    s = [(None if m is False else s) for m in mask]
+    center = Point(fn.invertQTransform(self.childGroup.transform()).map(ev.pos()))
+    # JC added
+    if ev.modifiers() == QtCore.Qt.ShiftModifier:
+        for child in self.childGroup.childItems()[:]:
+            if hasattr(child, 'accept_mousewheel_transformations'):
+                m_old = child.transform()
+                m = QtGui.QTransform()
+                m.scale(1, m_old.m22() * s[1])
+                child.setTransform(m)
+        ev.accept()
+        child_group_transformation = self.childGroup.transform()
+        # self.childGroup.update()
+        # self.autoRange()
+        # self.updateAutoRange()
+        # self.sigTransformChanged.emit(self)  ## segfaults here: 1
+        print(self.viewRange())
+        print(self.targetRange())
+        return
+    self._resetTarget()
+    self.scaleBy(s, center)
+    ev.accept()
+    self.sigRangeChangedManually.emit(mask)
 
-# lets get linear region working?y
+def wheelEventWrapper(s):
+    def wrappedWheelEvent(ev,axis=None):
+        return wheelEvent(s,ev,axis=axis)
+    return wrappedWheelEvent
 
 class PairedGraphicsView():
     '''
@@ -91,6 +125,11 @@ class PairedGraphicsView():
         self.main_model.annotations.sigAnnotationAdded.connect(self.add_annotaion_plot)
         self.main_model.annotations.sigLabelsChanged.connect(
             lambda: self.set_scenes_plot_annotations_data(self.main_model.annotations))
+
+         # now overide the viewbox wheel event to allow shift wheel to zoom
+        self.overview_plot.vb.wheelEvent = wheelEventWrapper(self.overview_plot.vb)
+        self.insetview_plot.vb.wheelEvent = wheelEventWrapper(self.insetview_plot.vb)
+
 
     def set_scenes_plot_channel_data(self, overview_range = [0,3600], pens=None):
         '''

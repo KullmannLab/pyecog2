@@ -2,7 +2,7 @@ import os
 from PyQt5 import QtGui, QtCore, QtWidgets
 import numpy as np
 import json
-from pyecog2.ProjectClass import create_metafile_from_h5
+from pyecog2.ProjectClass import create_metafile_from_h5, load_metadata_file
 
 
 # rename module to be filetree model?
@@ -294,29 +294,19 @@ class LieteNode(Node):
         self.old_memmap_shape = None
 
     def prepare_for_plot(self):
-        if self.metadata is None:
-            self.load_metadata()
-            self.n_channels = self.metadata['no_channels']
-            self.fs = self.metadata['fs']
-            self.dtype = self.metadata['data_format']
-            t0 = self.metadata['start_timestamp_unix']
-
-        m = np.memmap(self.get_full_path(),dtype=self.dtype, mode= 'r')
-        if self.old_memmap_shape == m.shape:
-            return None, None
-
-        self.old_memmap_shape = m.shape
-        return m.reshape((-1,self.n_channels)), self.fs, t0
+        self.load_metadata()
+        t0 = self.metadata['start_timestamp_unix']
+        duration = self.metadata['duration']
+        self.parent.parent.project.set_current_animal(self.parent.animal)
+        return np.array([t0, t0+duration])
 
     def load_metadata(self):
         '''Demo file creation notebook'''
-        meta_filepath = self.get_full_path().split('.')[:-1] + '.meta'
-
-        with open(meta_filepath, 'r') as json_file:
-            self.metadata = json.load(json_file)
+        meta_filepath = '.'.join(self.get_full_path().split('.')[:-1]) + '.meta'
+        self.metadata = load_metadata_file(meta_filepath)
 
     def type_info(self):
-        return 'Leite DataFile'
+        return 'bin DataFile'
 
 class HDF5FileNode(Node):
     def __init__(self, name, parent=None,path=None):
@@ -345,10 +335,8 @@ class HDF5FileNode(Node):
 
     def load_metadata(self):
         '''Demo file creation notebook'''
-        meta_filepath = self.get_full_path()[:-3] + '.meta'
-
-        with open(meta_filepath, 'r') as json_file:
-            self.metadata = json.load(json_file)
+        meta_filepath = '.'.join(self.get_full_path().split('.')[:-1]) + '.meta'
+        self.metadata = load_metadata_file(meta_filepath)
 
     def type_info(self):
         return 'HDF5 File'
@@ -372,7 +360,7 @@ class AnimalNode(Node):
         self.animal = animal
         self.setFlags(QtCore.Qt.ItemIsEnabled| QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable)
         for file in sorted(animal.eeg_files):
-            metadata = json.load(open(os.path.join(self.get_full_path(),file)))
+            metadata = load_metadata_file(os.path.join(self.get_full_path(),file))
             if metadata['data_format'] == 'h5':
                 HDF5FileNode(file[:-4]+'h5',parent=self) # replace .meta for .h5 to get the h5 file name
             else:

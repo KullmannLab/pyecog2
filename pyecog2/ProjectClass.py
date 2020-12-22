@@ -414,8 +414,6 @@ class Project():
                 self.add_animal(Animal(id=id,eeg_folder=directory,video_folder=video_dir))
 
 
-
-
     def get_data_from_range(self, trange, channel=None, animal=None, n_envelope=None):
         '''
         :param trange: list of length 2 - [init_time, end_time] for the data to get
@@ -433,3 +431,13 @@ class Project():
             self.file_buffer = FileBuffer(self.current_animal)
 
         return self.file_buffer.get_data_from_range(trange, channel, n_envelope)
+
+    def get_project_time_range(self):
+        if not self.animal_list:
+            return np.array([0,0])
+        i=np.Inf
+        e=-np.Inf
+        for animal in self.animal_list:
+            i = min(min(animal.eeg_init_time),i)
+            e = max(max(np.array(animal.eeg_init_time) + np.array(animal.eeg_duration)),e)
+        return np.array([i,e])

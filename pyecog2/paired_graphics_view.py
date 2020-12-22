@@ -173,6 +173,11 @@ class PairedGraphicsView():
         self.overview_plot.vb.setLimits(maxXRange=3600)
         self.insetview_plot.vb.setLimits(maxXRange=3600)
         self.overview_plot.vb.setLimits(yMin=-3, yMax=self.n_channels + 3)
+        max_range = self.main_model.project.get_project_time_range()
+        print('Project time range:', max_range)
+        self.overview_plot.vb.setLimits(xMin=max_range[0], xMax=max_range[1])
+        self.insetview_plot.vb.setLimits(xMin=max_range[0], xMax=max_range[1])
+
 
         self.overview_plot.addItem(self.overviewROI) # put back the overview box
 

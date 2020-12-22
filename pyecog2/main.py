@@ -179,18 +179,14 @@ class MainWindow(QMainWindow):
         self.restoreState(self.settings.value("windowState", type=QByteArray))
         self.show()
 
-    def load_h5_directory(self):
+    def load_directory(self):
         print('0penening only folders with h5 files')
         selected_directory = self.select_directory()
         temp_animal = Animal(id='-', eeg_folder=selected_directory)
         temp_project = Project(self.main_model,eeg_data_folder=selected_directory, title=selected_directory)
         temp_project.add_animal(temp_animal)
-        # self.tree_element.set_rootnode_from_folder(selected_directory,'.h5')
         self.tree_element.set_rootnode_from_project(temp_project)
         self.main_model.project = temp_project
-
-    def load_bin_directory(self):
-        print('Load new file types...')
 
     def new_project(self):
         self.main_model.project.__init__(main_model=self.main_model)  #= Project(self.main_model)
@@ -240,10 +236,6 @@ class MainWindow(QMainWindow):
             self.main_model.project.project_file = fname
             print('Saving project to:', self.main_model.project.project_file)
             self.main_model.project.save_to_json(fname)
-
-    def load_general(self):
-        selected_directory = self.select_directory()
-        self.tree_element.set_rootnode_from_folder(selected_directory)
 
     def select_directory(self, label_text='Select a directory'):
         '''
@@ -323,9 +315,7 @@ class MainWindow(QMainWindow):
         self.menu_file = self.menu_bar.addMenu("File")
         self.action_NDF_converter     = self.menu_file.addAction("Open NDF converter")
         self.menu_file.addSeparator()
-        self.action_load_general    = self.menu_file.addAction("(Temporary) Load directory")
-        self.action_load_h5    = self.menu_file.addAction("Load h5 directory")
-        self.action_load_bin = self.menu_file.addAction("Load bin directory")
+        self.action_load_directory    = self.menu_file.addAction("Load directory")
         self.menu_file.addSeparator()
         self.actionLiveUpdate  = self.menu_file.addAction("Live Recording")
         self.actionLiveUpdate.setCheckable(True)
@@ -338,9 +328,7 @@ class MainWindow(QMainWindow):
         self.menu_file.addSeparator()
         self.action_quit       = self.menu_file.addAction("Quit")
         self.action_NDF_converter.triggered.connect(self.openNDFconverter)
-        self.action_load_general.triggered.connect(self.load_general)
-        self.action_load_h5.triggered.connect(self.load_h5_directory)
-        self.action_load_bin.triggered.connect(self.load_bin_directory)
+        self.action_load_directory.triggered.connect(self.load_directory)
         self.action_quit.triggered.connect(self.close)
         self.actionLiveUpdate.triggered.connect(self.load_live_recording)
 

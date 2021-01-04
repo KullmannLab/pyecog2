@@ -144,8 +144,8 @@ class NDFConverterWindow(QMainWindow):
             print('Folder does not have *.ndf files to convert!')
             return
 
-        start_timestamp = int(ndf_files[0].split('/')[-1][1:-4])
-        end_timestamp = int(ndf_files[-1].split('/')[-1][1:-4])
+        start_timestamp = int(ndf_files[0].split('\\')[-1][1:-4])
+        end_timestamp = int(ndf_files[-1].split('\\')[-1][1:-4])
         self.p.param('Date Range','Start').setValue(datetime.fromtimestamp(start_timestamp).strftime(self.dfrmt))
         self.p.param('Date Range','End').setValue(datetime.fromtimestamp(end_timestamp).strftime(self.dfrmt))
         print('testing file',ndf_files[0])
@@ -195,9 +195,10 @@ class NDFConverterWindow(QMainWindow):
                               if (start_file_name <= f <= end_file_name)]
         print(len(self.files2convert), 'files between:', start_file_name, 'and', end_file_name)
 
-        for a in self.p.param.get:
-            print('***\n Starting to convert', a['name'], a['value'],'\n***')
-            tids = a['value']
+        for a in self.p.param('Animal id: [TID1,TID2,...]').children():
+
+            print('***\n Starting to convert', a.name(), a.value(),'\n***')
+            tids = a.value()
             dh.convert_ndf_directory_to_h5(self.files2convert,tids=tids,save_dir=self.destination_folder)
         return (1,1) # wavelet worker expects to emit tuple when done...
 

@@ -12,6 +12,8 @@ import scipy.signal as sg
 from timeit import default_timer as timer
 import traceback, inspect
 
+
+
 # Interpret image data as row-major instead of col-major
 pg.setConfigOptions(imageAxisOrder='row-major')
 
@@ -123,7 +125,7 @@ class Worker(QRunnable):
         '''
         Initialise the runner function with passed args, kwargs.
         '''
-
+        import sys
         # Retrieve args/kwargs here; and fire processing using them
         print('worker run called')
         try:

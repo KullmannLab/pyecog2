@@ -22,7 +22,7 @@ def create_metafile_from_h5(file,duration = 3600):
                            data_format='h5',
                            volts_per_bit=0,
                            transmitter_id=str(h5_file.attributes['t_ids']),
-                           start_timestamp_unix=int(file.split('/')[-1].split('_')[0][1:]),
+                           start_timestamp_unix=int(file.split('\\')[-1].split('_')[0][1:]),
                            duration=duration,  # assume all h5 files have 1hr duration
                            channel_labels=[str(label) for label in h5_file.attributes['t_ids']],
                            experiment_metadata_str='')
@@ -102,7 +102,7 @@ class Animal():
             if os.path.isfile(file[:-2] + 'meta'):
                 # print(file[:-2] + 'meta already exists')
                 continue
-            start = int(file.split('/')[-1].split('_')[0][1:])
+            start = int(file.split('\\')[-1].split('_')[0][1:])
             try:
                 next_start = int(h5files[i+1].split('/')[-1].split('_')[0][1:])
                 duration = min(next_start-start,3600)

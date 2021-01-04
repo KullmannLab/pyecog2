@@ -119,7 +119,7 @@ class NdfFile:
 
     def set_modified_time_to_old(self):
         """ This function sets the ndf files modified and access times to those read in self.read_file_metadata"""
-        mcode  = float(self.filepath.split('.')[0][-10:])
+        mcode  = float(self.filepath.split('.')[-2][-10:])
         os.utime(self.filepath, times = (self.file_access_time, mcode))
         #os.utime(self.filepath, times = (self.file_access_time, self.file_modified_time))
 
@@ -142,7 +142,7 @@ class NdfFile:
     def get_valid_tids_and_fs(self, message_threshold=20000):
         """
         - Here work out which t_ids are in the file and their
-          sampling frequency. Arbitary threshold of at least 20,000 datapoints!
+          sampling frequency. Arbitrary threshold of at least 20,000 datapoints!
         """
         f = open(self.filepath, 'rb')
         f.seek(self.data_address)

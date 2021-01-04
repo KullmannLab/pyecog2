@@ -18,7 +18,7 @@ from pyqtgraph.Point import Point
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
 
-
+# Function to overide pyqtgraph ViewBox wheel events
 def wheelEvent(self, ev, axis=None):
     if axis in (0, 1):
         mask = [False, False]

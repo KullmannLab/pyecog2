@@ -308,6 +308,19 @@ class MainWindow(QMainWindow):
         self.projectEditor = ProjecEditWindow(self.main_model.project)
         self.projectEditor.show()
 
+    def export_annotations(self):
+        dialog = QFileDialog()
+        dialog.setWindowTitle('Export annotations as ...')
+        dialog.setFileMode(QFileDialog.AnyFile)
+        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setAcceptMode(QFileDialog.AcceptSave)
+        dialog.setNameFilter('*.csv')
+        if dialog.exec():
+            fname = dialog.selectedFiles()[0]
+            print(fname)
+            print('Exporting annotations to:', fname)
+            self.main_model.project.export_annotations(fname)
+
     def build_menubar(self):
         self.menu_bar = self.menuBar()
 
@@ -351,8 +364,8 @@ class MainWindow(QMainWindow):
 
         # ANNOTATIONS section
         self.menu_annotations = self.menu_bar.addMenu("Annotations")
-        self.action_save_annotations = self.menu_annotations.addAction("Save annotations")
         self.action_export_annotations = self.menu_annotations.addAction("Export annotations")
+        self.action_export_annotations.triggered.connect(self.export_annotations)
         self.action_import_annotations = self.menu_annotations.addAction("Import annotations")
 
         # CLASSIFIER section

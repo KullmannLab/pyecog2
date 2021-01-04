@@ -43,7 +43,7 @@ def read_neuropixels_metadata(fname):
 
     m = {'no_channels':int(d['nSavedChans']),
          'fs':float(d['imSampRate']),
-         'start_timestamp_unix':datetime.timestamp(datetime.strptime(d['fileCreateTime'],'%Y-%m-%dT%H:%M:%S')),
+         'start_timestamp_unix': datetime.timestamp(datetime.strptime(d['fileCreateTime'],'%Y-%m-%dT%H:%M:%S')),
          'duration':float(d['fileTimeSecs']),
          'data_format':'int16',
          'volts_per_bit': 0}
@@ -375,6 +375,14 @@ class Project():
         self.file_buffer = FileBuffer(self.current_animal)
         self.project_file = fname
 
+    def export_annotations(self, fname):
+        with open(fname, 'w') as f:
+            f.write('Animal ID,label,' + 'start,stop\n')
+            for animal in self.animal_list:
+                for a in animal.annotations.annotations_list:
+                    f.write(animal.id + ',' + a.getLabel() + ',' + str(a.getStart()) + ',' + str(a.getEnd()) + '\n')
+        return
+
     def get_animal(self, animal_id):
         for animal in self.animal_list:
             if animal.id == animal_id:
@@ -422,8 +430,8 @@ class Project():
         :param n_envelope: int - compute envelope in n_envelope number of points, if none, return all data
         :return:
         '''
-        print('Project() get_data_from_range called for chanbel', channel, '; time range:', trange, ', duration:',
-              trange[1] - trange[0])
+        # print('Project() get_data_from_range called for chanbel', channel, '; time range:', trange, ', duration:',
+        #       trange[1] - trange[0])
         if (animal is not None) and (animal is not self.current_animal):  # reset file buffer if animal has changed
             print('Clearing File Buffer')
             self.set_current_animal(animal)

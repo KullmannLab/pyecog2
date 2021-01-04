@@ -15,7 +15,7 @@ from pyqtgraph_copy.pyqtgraph.parametertree import Parameter, ParameterTree, Par
 import json
 import glob
 
-fname = glob.glob('../Notebooks/*meta')[0]
+fname = glob.glob('../../Notebooks/*meta')[0]
 with open(fname,'r') as metafile:
     meta_data = json.load(metafile)
 

@@ -10,7 +10,7 @@ from PyQt5.QtCore import Qt, QSettings, QByteArray
 import json
 import glob
 from collections import OrderedDict
-fname = glob.glob('../Notebooks/*meta')[0]
+fname = glob.glob('../../Notebooks/*meta')[0]
 with open(fname,'r') as metafile:
     meta_data = OrderedDict(json.load(metafile))
 

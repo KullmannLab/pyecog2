@@ -29,11 +29,12 @@ def wheelEvent(self, ev, axis=None):
     s = [(None if m is False else s) for m in mask]
     center = Point(fn.invertQTransform(self.childGroup.transform()).map(ev.pos()))
     # JC added
-    if ev.modifiers() == QtCore.Qt.ShiftModifier:
+    if ev.modifiers() == QtCore.Qt.ShiftModifier and s[0] is not None and s[1] is not None:
         for child in self.childGroup.childItems()[:]:
             if hasattr(child, 'accept_mousewheel_transformations'):
                 m_old = child.transform()
                 m = QtGui.QTransform()
+                print(1, m_old.m22(),s[1])
                 m.scale(1, m_old.m22() * s[1])
                 child.setTransform(m)
         ev.accept()

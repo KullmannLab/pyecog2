@@ -74,7 +74,7 @@ def Animal2Parameter(animal):
 def Parameter2Animal(parameter):
     pass
 
-class ProjecEditWindow(QMainWindow):
+class ProjectEditWindow(QMainWindow):
     def __init__(self,project = None):
         QMainWindow.__init__(self)
         widget = QWidget(self)
@@ -114,6 +114,7 @@ class ProjecEditWindow(QMainWindow):
 
         ## Create tree of Parameter objects
         self.p = Parameter.create(name='params', type='group', children=self.params)
+        self.p.param('Global Settings','Project Title').sigValueChanged.connect(self.setProjectTitle)
         self.p.param('Global Settings', 'Update project from root folders').sigActivated.connect(self.update_project_from_roots)
         self.p.param('Global Settings', 'Select EEG root directory','EEG root directory:').sigValueChanged.connect(
             self.setEEGFolder)
@@ -177,6 +178,12 @@ class ProjecEditWindow(QMainWindow):
         else:
             sys.stderr.write('No folder selected\n')
 
+
+    def setProjectTitle(self, eeg_root_folder_param):
+        print('Changing project title to:',eeg_root_folder_param.value())
+        self.project.setTitle(eeg_root_folder_param.value())
+
+
     def setVideoFolder(self, eeg_root_folder_param):
         pass  # Currently we are only accepting changes when clicking the Update button
         # self.project.eeg_root_folder = eeg_root_folder.value(0)
@@ -205,9 +212,6 @@ class ProjecEditWindow(QMainWindow):
                 animal.update_video_folder(video_dir)
 
 
-
-
-
     def update_project_from_roots(self):
         self.project.eeg_root_folder = self.p.param('Global Settings', 'Select EEG root directory','EEG root directory:').value()
         self.project.video_root_folder = self.p.param('Global Settings', 'Select Video root directory','Video root directory:').value()
@@ -220,14 +224,10 @@ class ProjecEditWindow(QMainWindow):
         self.p.param('Animal list:').clearChildren()
         self.p.param('Animal list:').addChildren(self.animal_dict)
 
-        pass
-
-
-
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    window = ProjecEditWindow()
+    window = ProjectEditWindow()
     window.setGeometry(500, 300, 300, 200)
     window.show()
     sys.exit(app.exec_())

@@ -58,6 +58,7 @@ class NDFConverterWindow(QMainWindow):
         QMainWindow.__init__(self)
         widget = QWidget(self)
         layout = QGridLayout(widget)
+        self.title = "NDF converter"
         self.setCentralWidget(widget)
         self.terminal = QTextBrowser(self)
         self._err_color = QtCore.Qt.red
@@ -118,6 +119,7 @@ class NDFConverterWindow(QMainWindow):
     def handleOutput(self, text, stdout):
         color = self.terminal.textColor()
         self.terminal.setTextColor(color if stdout else self._err_color)
+        self.terminal.moveCursor(QtGui.QTextCursor.End)
         self.terminal.insertPlainText(text)
         self.terminal.setTextColor(color)
 

@@ -12,7 +12,7 @@ from pyecog2.annotation_table_widget import AnnotationTableWidget
 from pyecog2.annotations_module import AnnotationElement, AnnotationPage
 from pyecog2.coding_tests.AnnotationParameterTree import AnnotationParameterTee
 from pyecog2.coding_tests.FFT import FFTwindow
-from pyecog2.coding_tests.ProjectGUI import ProjecEditWindow
+from pyecog2.coding_tests.ProjectGUI import ProjectEditWindow
 from pyecog2.coding_tests.VideoPlayer import VideoWindow
 from pyecog2.coding_tests.WaveletWidget import WaveletWindow
 from pyecog2.coding_tests.convert_ndf_folder_gui import NDFConverterWindow
@@ -25,6 +25,7 @@ from pyecog2.tree_widget import FileTreeElement
 class MainModel(QObject):
     sigTimeChanged      = QtCore.Signal(object)
     sigWindowChanged    = QtCore.Signal(object)
+    sigProjectChanged   = QtCore.Signal()
 
     def __init__(self):
         super().__init__()
@@ -80,6 +81,7 @@ class MainWindow(QMainWindow):
         self.paired_graphics_view = PairedGraphicsView(parent=self)
 
         self.tree_element = FileTreeElement(parent=self)
+        self.main_model.sigProjectChanged.connect(lambda: self.tree_element.set_rootnode_from_project(self.main_model.project))
         self.dock_list['File Tree'] = QDockWidget("File Tree", self)
         self.dock_list['File Tree'].setWidget(self.tree_element.widget)
         self.dock_list['File Tree'].setFloating(False)
@@ -232,6 +234,8 @@ class MainWindow(QMainWindow):
         dialog.setNameFilter('*.pyecog')
         if dialog.exec():
             fname = dialog.selectedFiles()[0]
+            if not fname.endswith('.pyecog'):
+                fname = fname + '.pyecog'
             print(fname)
             self.main_model.project.project_file = fname
             print('Saving project to:', self.main_model.project.project_file)
@@ -305,7 +309,7 @@ class MainWindow(QMainWindow):
 
     def openProjectEditor(self):
         print('opening Project Editor')
-        self.projectEditor = ProjecEditWindow(self.main_model.project)
+        self.projectEditor = ProjectEditWindow(self.main_model.project)
         self.projectEditor.show()
 
     def export_annotations(self):

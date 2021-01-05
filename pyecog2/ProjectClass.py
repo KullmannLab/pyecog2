@@ -334,6 +334,11 @@ class Project():
         self.current_animal = Animal()
         self.set_current_animal(Animal())  # start with empty animal
         self.file_buffer = FileBuffer(self.current_animal)
+        self.main_model.sigProjectChanged.emit()
+
+    def setTitle(self,title):
+        self.title = title
+        self.main_model.sigProjectChanged.emit()
 
     def set_current_animal(self, animal):  # copy alterations made to annotations
         if animal is None:
@@ -374,6 +379,7 @@ class Project():
         print('current animal:', self.current_animal.id)
         self.file_buffer = FileBuffer(self.current_animal)
         self.project_file = fname
+        self.main_model.sigProjectChanged.emit()
 
     def export_annotations(self, fname):
         with open(fname, 'w') as f:
@@ -393,6 +399,7 @@ class Project():
         if self.get_animal(animal.id) is None:
             print('Added animal', animal.id, 'to project')
             self.animal_list.append(animal)
+            self.main_model.sigProjectChanged.emit()
         else:
             print('Animal with id:', animal.id, 'already exists in project: nothing added')
 
@@ -400,11 +407,13 @@ class Project():
         for animal in self.animal_list:
             if animal.id == animal_id:
                 self.animal_list.remove(animal)
+                self.main_model.sigProjectChanged.emit()
 
     def update_files_from_animal_directories(self):
         for animal in self.animal_list:
             animal.update_eeg_folder(animal.eeg_folder)
             animal.update_video_folder(animal.video_folder)
+        self.main_model.sigProjectChanged.emit()
 
     def update_project_from_root_directories(self):
         self.update_files_from_animal_directories()  # first update already existing animals
@@ -420,7 +429,7 @@ class Project():
                 if video_dir not in video_dir_list:
                     video_dir = None  # check if compatible video dir exists
                 self.add_animal(Animal(id=id,eeg_folder=directory,video_folder=video_dir))
-
+        self.main_model.sigProjectChanged.emit()
 
     def get_data_from_range(self, trange, channel=None, animal=None, n_envelope=None):
         '''

@@ -4,6 +4,7 @@ import webbrowser
 
 import numpy as np
 from PyQt5 import QtCore, QtGui
+from PyQt5.QtGui import QPalette, QColor
 from PyQt5.QtCore import Qt, QSettings, QByteArray, QObject
 from PyQt5.QtWidgets import QApplication, QPlainTextEdit, QDockWidget, QMainWindow, QFileDialog
 
@@ -199,7 +200,7 @@ class MainWindow(QMainWindow):
             dialog = QFileDialog()
             dialog.setWindowTitle('Load Project ...')
             dialog.setFileMode(QFileDialog.AnyFile)
-            dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+            # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
             dialog.setAcceptMode(QFileDialog.AcceptOpen)
             dialog.setNameFilter('*.pyecog')
             if dialog.exec():
@@ -229,7 +230,7 @@ class MainWindow(QMainWindow):
         dialog = QFileDialog()
         dialog.setWindowTitle('Save Project as ...')
         dialog.setFileMode(QFileDialog.AnyFile)
-        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptSave)
         dialog.setNameFilter('*.pyecog')
         if dialog.exec():
@@ -254,7 +255,7 @@ class MainWindow(QMainWindow):
         home = os.path.expanduser("~") # default, if no settings available
         dialog.setDirectory(home)
         '''
-        #dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setOption(QFileDialog.ShowDirsOnly, False)
         dialog.exec()
         return dialog.selectedFiles()[0]
@@ -316,7 +317,7 @@ class MainWindow(QMainWindow):
         dialog = QFileDialog()
         dialog.setWindowTitle('Export annotations as ...')
         dialog.setFileMode(QFileDialog.AnyFile)
-        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptSave)
         dialog.setNameFilter('*.csv')
         if dialog.exec():
@@ -437,9 +438,24 @@ class MainWindow(QMainWindow):
 
     def keyPressEvent(self, evt):
         print('Key press captured by Main', evt.key())
+        modifiers = evt.modifiers()
         if evt.key() == QtCore.Qt.Key_Space:
             print('Space pressed')
             self.video_element.play()
+            return
+
+        if evt.key() == QtCore.Qt.Key_Left:
+            if modifiers == QtCore.Qt.ShiftModifier:
+                self.paired_graphics_view.overview_page_left()
+            else:
+                self.paired_graphics_view.insetview_page_left()
+            return
+
+        if evt.key() == QtCore.Qt.Key_Right:
+            if modifiers == QtCore.Qt.ShiftModifier:
+                self.paired_graphics_view.overview_page_right()
+            else:
+                self.paired_graphics_view.insetview_page_right()
             return
 
         if evt.key() == QtCore.Qt.Key_Delete:
@@ -472,6 +488,25 @@ class MainWindow(QMainWindow):
 if __name__ == '__main__':
 
     app = QApplication(sys.argv)
+    app.setStyle("fusion")
+    # Mikail feel free to play about if you feel so inclined :P
+    # Now use a palette to switch to dark colors:
+    # palette = QPalette()
+    # palette.setColor(QPalette.Window, QColor(53, 53, 53))
+    # palette.setColor(QPalette.WindowText, Qt.white)
+    # palette.setColor(QPalette.Base, QColor(25, 25, 25))
+    # palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+    # palette.setColor(QPalette.ToolTipBase, Qt.black)
+    # palette.setColor(QPalette.ToolTipText, Qt.white)
+    # palette.setColor(QPalette.Text, Qt.white)
+    # palette.setColor(QPalette.Button, QColor(53, 53, 53))
+    # palette.setColor(QPalette.ButtonText, Qt.white)
+    # palette.setColor(QPalette.BrightText, Qt.red)
+    # palette.setColor(QPalette.Link, QColor(42, 130, 218))
+    # palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+    # palette.setColor(QPalette.HighlightedText, Qt.black)
+    # app.setPalette(palette)
+
     screen = MainWindow()
     screen.get_available_screen()
     screen.show()

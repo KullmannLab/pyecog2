@@ -15,8 +15,11 @@ from pyecog2.pyecog_plot_item import PyecogPlotCurveItem, PyecogLinearRegionItem
 from pyqtgraph import functions as fn
 from pyqtgraph.Point import Point
 
+# Mikail feel free to play about if you feel so inclined :P
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
+# pg.setConfigOption('antialias', True)
+# pg.setConfigOption('useOpenGL', False)
 
 # Function to overide pyqtgraph ViewBox wheel events
 def wheelEvent(self, ev, axis=None):
@@ -106,10 +109,11 @@ class PairedGraphicsView():
         self.overview_plot.vb.scene().sigMouseClicked.connect(self.overview_clicked)
         # hacky use of self.vb, but just rolling with it
         self.is_setting_window_position = False
+        self.is_setting_ROI_position = False
 
         x_range, y_range = self.insetview_plot.viewRange()
         pen = pg.mkPen(color=(250, 250, 80), width=2)
-        penh = pg.mkPen(color=(100, 100, 250), width=2)
+        penh = pg.mkPen(color=(50, 50, 200), width=2)
 
         self.overviewROI = pg.RectROI(pos=(x_range[0], y_range[0]),
                                       size=(x_range[1] - x_range[0], y_range[1] - y_range[0]),
@@ -335,6 +339,23 @@ class PairedGraphicsView():
         # print('hit', ev_pos)
         # print(event, event.pos())
         pos = self.overview_plot.vb.mapSceneToView(ev.scenePos())
+        modifiers = ev.modifiers()
+        if modifiers == QtCore.Qt.ShiftModifier:
+            if not self.is_setting_ROI_position:
+                self.is_setting_ROI_position = pos  # save position of first click
+                return
+            else:
+                pos0 =  self.is_setting_ROI_position
+                new_xrange = (min(pos0.x(),pos.x()),max(pos0.x(),pos.x()))
+                new_yrange = (min(pos0.y(),pos.y()),max(pos0.y(),pos.y()))
+                print(new_xrange)
+                self.insetview_plot.setRange(xRange=new_xrange,
+                                             yRange=new_yrange,
+                                             padding=0)
+                self.is_setting_ROI_position = False  # clear position of first shift+click
+                return
+        self.is_setting_ROI_position = False  # clear position of any shift+click
+
         center = pos
         xmin, xmax = self.insetview_plot.viewRange()[0]
         ymin, ymax = self.insetview_plot.viewRange()[1]
@@ -343,7 +364,6 @@ class PairedGraphicsView():
         y_range = ymax - ymin
         new_xrange = (center.x() - x_range / 2, center.x() + x_range / 2)
         # new_xrange = new_xrange - new_xrange
-
         new_yrange = (center.y() - y_range / 2, center.y() + y_range / 2)
 
         print(new_xrange)
@@ -351,7 +371,6 @@ class PairedGraphicsView():
                                      yRange=new_yrange,
                                      padding=0)
 
-        modifiers = ev.modifiers()
         if modifiers == QtCore.Qt.ControlModifier:
             # self.main_model.annotations.focusOnAnnotation(None)
             self.main_model.set_time_position(pos.x())
@@ -390,6 +409,34 @@ class PairedGraphicsView():
             self.overview_plot.vb.setXRange(x_range[0], x_range[0] + ox_range[1] - ox_range[0], padding=0)
         elif x_range[1] > ox_range[1]:
             self.overview_plot.vb.setXRange(x_range[1] - (ox_range[1] - ox_range[0]), x_range[1], padding=0)
+
+    def insetview_page_left(self):
+        xmin, xmax = self.insetview_plot.viewRange()[0]
+        x_range = xmax - xmin
+        new_xrange = (xmin - x_range, xmin)
+        print(new_xrange)
+        self.insetview_plot.setRange(xRange=new_xrange, padding=0)
+
+    def insetview_page_right(self):
+        xmin, xmax = self.insetview_plot.viewRange()[0]
+        x_range = xmax - xmin
+        new_xrange = (xmax, xmax + x_range)
+        print(new_xrange)
+        self.insetview_plot.setRange(xRange=new_xrange, padding=0)
+
+    def overview_page_left(self):
+        xmin, xmax = self.overview_plot.viewRange()[0]
+        x_range = xmax - xmin
+        new_xrange = (xmin - x_range, xmin)
+        print(new_xrange)
+        self.overview_plot.setRange(xRange=new_xrange, padding=0)
+
+    def overview_page_right(self):
+        xmin, xmax = self.overview_plot.viewRange()[0]
+        x_range = xmax - xmin
+        new_xrange = (xmax, xmax + x_range)
+        print(new_xrange)
+        self.overview_plot.setRange(xRange=new_xrange, padding=0)
 
 class DateAxis(pg.AxisItem):
     def tickStrings(self, values, scale, spacing):

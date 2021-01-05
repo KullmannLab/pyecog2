@@ -118,7 +118,6 @@ class NDFConverterWindow(QMainWindow):
     def handleOutput(self, text, stdout):
         color = self.terminal.textColor()
         self.terminal.setTextColor(color if stdout else self._err_color)
-        self.terminal.moveCursor(QtGui.QTextCursor.End)
         self.terminal.insertPlainText(text)
         self.terminal.setTextColor(color)
 
@@ -197,7 +196,12 @@ class NDFConverterWindow(QMainWindow):
         for a in self.p.param('Animal id: [TID1,TID2,...]').children():
             print('***\n Starting to convert', a.name(), a.value(),'\n***')
             tids = a.value()
-            dh.convert_ndf_directory_to_h5(self.files2convert,tids=tids,save_dir=self.destination_folder)
+            animal_destination_folder = self.destination_folder + os.sep + a.name()
+            if not os.path.isdir(self.destination_folder):
+                os.mkdir(self.destination_folder)
+            if not os.path.isdir(animal_destination_folder):
+                os.mkdir(animal_destination_folder)
+            dh.convert_ndf_directory_to_h5(self.files2convert,tids=tids,save_dir=animal_destination_folder)
         return (1,1) # wavelet worker expects to emit tuple when done...
 
 

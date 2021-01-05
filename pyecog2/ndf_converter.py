@@ -84,7 +84,7 @@ class NdfFile:
         self.tid_data_time_dict = {}
         self.resampled = False
 
-        self.file_label = file_path.split('/')[-1].split('.')[0]
+        self.file_label = os.path.split(file_path)[-1].split('.')[0]
         self.identifier = None
         self.data_address = None
         self.metadata = None
@@ -119,7 +119,7 @@ class NdfFile:
 
     def set_modified_time_to_old(self):
         """ This function sets the ndf files modified and access times to those read in self.read_file_metadata"""
-        mcode  = float(self.filepath.split('.')[0][-10:])
+        mcode  = float(self.filepath.split('.')[-2][-10:])
         os.utime(self.filepath, times = (self.file_access_time, mcode))
         #os.utime(self.filepath, times = (self.file_access_time, self.file_modified_time))
 

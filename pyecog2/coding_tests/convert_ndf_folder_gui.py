@@ -136,7 +136,7 @@ class NDFConverterWindow(QMainWindow):
     def setNDFFolder(self, folder2convertParam):
         self.folder2convert = folder2convertParam.value()
         print('Inspecting',self.folder2convert)
-        ndf_files = glob.glob(self.folder2convert + '/*.ndf')
+        ndf_files = glob.glob(self.folder2convert + os.path.sep + '*.ndf')
         ndf_files.sort()
         print('Converting folder:', self.folder2convert)
         print('There are', len(ndf_files), ' *.ndf files to convert...')
@@ -144,8 +144,8 @@ class NDFConverterWindow(QMainWindow):
             print('Folder does not have *.ndf files to convert!')
             return
 
-        start_timestamp = int(ndf_files[0].split('/')[-1][1:-4])
-        end_timestamp = int(ndf_files[-1].split('/')[-1][1:-4])
+        start_timestamp = int(os.path.split(ndf_files[0])[-1][1:-4])
+        end_timestamp = int(os.path.split(ndf_files[-1])[-1][1:-4])
         self.p.param('Date Range','Start').setValue(datetime.fromtimestamp(start_timestamp).strftime(self.dfrmt))
         self.p.param('Date Range','End').setValue(datetime.fromtimestamp(end_timestamp).strftime(self.dfrmt))
         print('testing file',ndf_files[0])
@@ -195,7 +195,7 @@ class NDFConverterWindow(QMainWindow):
                               if (start_file_name <= f <= end_file_name)]
         print(len(self.files2convert), 'files between:', start_file_name, 'and', end_file_name)
 
-        for a in self.p.param.get:
+        for a in self.p.param('Animal id: [TID1,TID2,...]').children():
             print('***\n Starting to convert', a['name'], a['value'],'\n***')
             tids = a['value']
             dh.convert_ndf_directory_to_h5(self.files2convert,tids=tids,save_dir=self.destination_folder)

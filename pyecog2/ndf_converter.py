@@ -142,7 +142,7 @@ class NdfFile:
     def get_valid_tids_and_fs(self, message_threshold=20000):
         """
         - Here work out which t_ids are in the file and their
-          sampling frequency. Arbitary threshold of at least 20,000 datapoints!
+          sampling frequency. Arbitrary threshold of at least 20,000 datapoints!
         """
         f = open(self.filepath, 'rb')
         f.seek(self.data_address)

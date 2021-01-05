@@ -56,10 +56,10 @@ class MainModel(QObject):
 
 class MainWindow(QMainWindow):
     '''
-    basicvally handles the combination of the the three menu bar and the paired view
+    basically handles the combination of the the tree menu bar and the paired view
 
     Most of the code here is for setting up the geometry of the gui and the
-    menubar stuff
+    menu bar stuff
     '''
     def __init__(self):
         super().__init__()
@@ -139,7 +139,7 @@ class MainWindow(QMainWindow):
         settings.endGroup()
 
         self.settings = QSettings("PyEcog", "PyEcog")
-        print("reading cofigurations from: " + self.settings.fileName())
+        print("reading configurations from: " + self.settings.fileName())
         self.settings.beginGroup("MainWindow")
         # print(self.settings.value("windowGeometry", type=QByteArray))
         self.restoreGeometry(self.settings.value("windowGeometry", type=QByteArray))
@@ -149,7 +149,7 @@ class MainWindow(QMainWindow):
             settings = QSettings("PyEcog","PyEcog")
             settings.beginGroup("ProjectSettings")
             fname = settings.value("ProjectFileName")
-            print('Loading Projet:', fname)
+            print('Loading Project:', fname)
             self.show()
             self.load_project(fname)
             # self.main_model.project.load_from_json(fname)
@@ -250,7 +250,7 @@ class MainWindow(QMainWindow):
         home = os.path.expanduser("~") # default, if no settings available
         dialog.setDirectory(home)
         '''
-        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        #dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setOption(QFileDialog.ShowDirsOnly, False)
         dialog.exec()
         return dialog.selectedFiles()[0]

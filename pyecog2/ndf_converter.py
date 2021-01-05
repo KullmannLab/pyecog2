@@ -84,7 +84,7 @@ class NdfFile:
         self.tid_data_time_dict = {}
         self.resampled = False
 
-        self.file_label = file_path.split('/')[-1].split('.')[0]
+        self.file_label = os.path.split(file_path)[-1].split('.')[0]
         self.identifier = None
         self.data_address = None
         self.metadata = None

@@ -22,7 +22,7 @@ def create_metafile_from_h5(file,duration = 3600):
                            data_format='h5',
                            volts_per_bit=0,
                            transmitter_id=str(h5_file.attributes['t_ids']),
-                           start_timestamp_unix=int(file.split('\\')[-1].split('_')[0][1:]),
+                           start_timestamp_unix=int(os.path.split(file)[-1].split('_')[0][1:]),
                            duration=duration,  # assume all h5 files have 1hr duration
                            channel_labels=[str(label) for label in h5_file.attributes['t_ids']],
                            experiment_metadata_str='')
@@ -43,7 +43,7 @@ def read_neuropixels_metadata(fname):
 
     m = {'no_channels':int(d['nSavedChans']),
          'fs':float(d['imSampRate']),
-         'start_timestamp_unix':datetime.timestamp(datetime.strptime(d['fileCreateTime'],'%Y-%m-%dT%H:%M:%S')),
+         'start_timestamp_unix': datetime.timestamp(datetime.strptime(d['fileCreateTime'],'%Y-%m-%dT%H:%M:%S')),
          'duration':float(d['fileTimeSecs']),
          'data_format':'int16',
          'volts_per_bit': 0}
@@ -96,20 +96,20 @@ class Animal():
 
     def update_eeg_folder(self,eeg_folder):
         self.eeg_folder = eeg_folder
-        h5files = glob.glob(eeg_folder + '/*.h5')
+        h5files = glob.glob(eeg_folder + os.path.sep + '*.h5')
         h5files.sort()
         for i,file in enumerate(h5files):
             if os.path.isfile(file[:-2] + 'meta'):
                 # print(file[:-2] + 'meta already exists')
                 continue
-            start = int(file.split('\\')[-1].split('_')[0][1:])
+            start = int(os.path.split(file)[-1].split('_')[0][1:])
             try:
-                next_start = int(h5files[i+1].split('/')[-1].split('_')[0][1:])
+                next_start = int(os.path.split(h5files[i+1])[-1].split('_')[0][1:])
                 duration = min(next_start-start,3600)
             except:
                 duration = 3600
             create_metafile_from_h5(file,duration)
-        self.eeg_files = glob.glob(eeg_folder + '/*.meta')
+        self.eeg_files = glob.glob(eeg_folder + os.path.sep + '*.meta')
         self.eeg_files.sort()
         self.eeg_init_time = []
         self.eeg_duration  = []
@@ -120,7 +120,7 @@ class Animal():
 
     def update_video_folder(self,video_folder):
         self.video_folder = video_folder
-        self.video_files = glob.glob(video_folder + '/*.mp4')
+        self.video_files = glob.glob(video_folder + os.path.sep + '*.mp4')
         self.video_init_time = [
             datetime(*map(int, [fname[-18:-14], fname[-14:-12], fname[-12:-10], fname[-10:-8], fname[-8:-6],
                                 fname[-6:-4]])).timestamp()+3600
@@ -375,6 +375,14 @@ class Project():
         self.file_buffer = FileBuffer(self.current_animal)
         self.project_file = fname
 
+    def export_annotations(self, fname):
+        with open(fname, 'w') as f:
+            f.write('Animal ID,label,' + 'start,stop\n')
+            for animal in self.animal_list:
+                for a in animal.annotations.annotations_list:
+                    f.write(animal.id + ',' + a.getLabel() + ',' + str(a.getStart()) + ',' + str(a.getEnd()) + '\n')
+        return
+
     def get_animal(self, animal_id):
         for animal in self.animal_list:
             if animal.id == animal_id:
@@ -401,14 +409,14 @@ class Project():
     def update_project_from_root_directories(self):
         self.update_files_from_animal_directories()  # first update already existing animals
         existing_eeg_dir = [animal.eeg_folder for animal in self.animal_list]
-        eeg_dir_list = glob.glob(self.eeg_root_folder + '/*/')  # then check for new animals
-        video_dir_list = glob.glob(self.video_root_folder + '/*/')
+        eeg_dir_list = glob.glob(self.eeg_root_folder + os.path.sep + '*' + os.path.sep)  # then check for new animals
+        video_dir_list = glob.glob(self.video_root_folder + os.path.sep + '*' + os.path.sep)
         for directory in eeg_dir_list:
             if directory not in existing_eeg_dir:
-                id = directory.split('/')[-2]
+                id = os.path.split(directory)[-2]
                 print('Creating animal from directory:' ,directory)
                 print('Adding animal with id:',id)
-                video_dir = self.video_root_folder + '/' + id
+                video_dir = self.video_root_folder + os.path.sep + id
                 if video_dir not in video_dir_list:
                     video_dir = None  # check if compatible video dir exists
                 self.add_animal(Animal(id=id,eeg_folder=directory,video_folder=video_dir))
@@ -422,8 +430,8 @@ class Project():
         :param n_envelope: int - compute envelope in n_envelope number of points, if none, return all data
         :return:
         '''
-        print('Project() get_data_from_range called for chanbel', channel, '; time range:', trange, ', duration:',
-              trange[1] - trange[0])
+        # print('Project() get_data_from_range called for chanbel', channel, '; time range:', trange, ', duration:',
+        #       trange[1] - trange[0])
         if (animal is not None) and (animal is not self.current_animal):  # reset file buffer if animal has changed
             print('Clearing File Buffer')
             self.set_current_animal(animal)

@@ -18,7 +18,8 @@ from pyqtgraph.Point import Point
 # Mikail feel free to play about if you feel so inclined :P
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
-# pg.setConfigOption('antialias', True)
+# pg.setConfigOption('useWeave',True)
+pg.setConfigOption('antialias', True)
 # pg.setConfigOption('useOpenGL', False)
 
 # Function to overide pyqtgraph ViewBox wheel events
@@ -37,6 +38,7 @@ def wheelEvent(self, ev, axis=None):
             if hasattr(child, 'accept_mousewheel_transformations'):
                 m_old = child.transform()
                 m = QtGui.QTransform()
+                print(1, m_old.m22(),s[1])
                 print(1, m_old.m22(),s[1])
                 m.scale(1, m_old.m22() * s[1])
                 child.setTransform(m)
@@ -136,12 +138,14 @@ class PairedGraphicsView():
         self.insetview_plot.vb.wheelEvent = wheelEventWrapper(self.insetview_plot.vb)
 
 
-    def set_scenes_plot_channel_data(self, overview_range = [0,3600], pens=None):
+    def set_scenes_plot_channel_data(self, overview_range = None, pens=None):
         '''
         # Not entirely clear the differences between this and
         set_plotitem_data is snesnible
         pens - a list of len channels containing pens
         '''
+        if overview_range is None:
+            overview_range, y_range = self.overview_plot.viewRange()
         # we need to handle if channel not seen before
         # 6 std devations
         print('Items to delete')
@@ -150,15 +154,15 @@ class PairedGraphicsView():
         print('Items after delete')
         print(self.overview_plot.items)
         self.insetview_plot.clear()
-        print(overview_range)
-        self.overview_plot.setXRange(*overview_range)
+        # print(overview_range)
+        self.overview_plot.setXRange(*overview_range,padding=0)
         self.insetview_plot.vb.setXRange(overview_range[0],
-                                         overview_range[0] + min(30, overview_range[1] - overview_range[0]))
+                                         overview_range[0] + min(30, overview_range[1] - overview_range[0]),padding=0)
         # if self.scale is None:  # running for the first time
         if True:  # running for the first time
             print('Getting data to compute plot scale factors')
-            arr,tarr = self.main_model.project.get_data_from_range(self.overview_plot.vb.viewRange()[0])
-            print(arr.shape, tarr.shape)
+            arr,tarr = self.main_model.project.get_data_from_range(overview_range,n_envelope=1000) # self.overview_plot.vb.viewRange()[0]) wierd behaviour here because vb.viewRange() range is not updated
+            # print(arr.shape, tarr.shape)
             self.n_channels = arr.shape[1]
             self.scale = 1 / (6 * np.mean(np.std(arr, axis=0, keepdims=True), axis=1))
             self.overview_plot.vb.setYRange(-2, arr.shape[1] + 1)
@@ -340,7 +344,7 @@ class PairedGraphicsView():
         # print(event, event.pos())
         pos = self.overview_plot.vb.mapSceneToView(ev.scenePos())
         modifiers = ev.modifiers()
-        if modifiers == QtCore.Qt.ShiftModifier:
+        if modifiers == QtCore.Qt.ShiftModifier:  # Setting ROI with two clicks
             if not self.is_setting_ROI_position:
                 self.is_setting_ROI_position = pos  # save position of first click
                 return
@@ -348,14 +352,15 @@ class PairedGraphicsView():
                 pos0 =  self.is_setting_ROI_position
                 new_xrange = (min(pos0.x(),pos.x()),max(pos0.x(),pos.x()))
                 new_yrange = (min(pos0.y(),pos.y()),max(pos0.y(),pos.y()))
-                print(new_xrange)
+                print('old range:', self.insetview_plot.viewRange()[0], 'new range:',new_xrange)
+                self.is_setting_ROI_position = False  # clear position of first shift+click
+                self.overviewROI.setPos((new_xrange[0], new_yrange[0]))
+                self.overviewROI.setSize((new_xrange[1] - new_xrange[0], new_yrange[1] - new_yrange[0]))
                 self.insetview_plot.setRange(xRange=new_xrange,
                                              yRange=new_yrange,
                                              padding=0)
-                self.is_setting_ROI_position = False  # clear position of first shift+click
                 return
-        self.is_setting_ROI_position = False  # clear position of any shift+click
-
+        self.is_setting_ROI_position = False  # clear position of any shift+click, and center inset view in click
         center = pos
         xmin, xmax = self.insetview_plot.viewRange()[0]
         ymin, ymax = self.insetview_plot.viewRange()[1]
@@ -369,7 +374,7 @@ class PairedGraphicsView():
         print(new_xrange)
         self.insetview_plot.setRange(xRange=new_xrange,
                                      yRange=new_yrange,
-                                     padding=0)
+                                     padding=0,)
 
         if modifiers == QtCore.Qt.ControlModifier:
             # self.main_model.annotations.focusOnAnnotation(None)

@@ -51,7 +51,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
             self.previous_args = new_args
         else:
             if new_args == self.previous_args:
-                print('setData_with_envlope: arguments did not change since last call')
+                # print('setData_with_envlope: arguments did not change since last call')
                 return
         # print('displaying n points', n)
         visible_data, visible_time = self.project.get_data_from_range(self.parent_viewbox.viewRange()[0], self.channel,

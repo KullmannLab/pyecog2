@@ -247,16 +247,21 @@ class FileBuffer():  # Consider translating this to cython
 
             # Decide by how much we should downsample
             ds = int((stop - start) / file_envlopes[i]) + 1
-            if ds == 1:
+            # print('Downsampling ratio:', ds,file_envlopes,sample_ranges)
+            if channel is None:
+                # poor coding here, we are not computing proper envelopes, but it'll do for now because this is only
+                # used for coputing channel scallings so far
+                enveloped_data.append(data[start:stop:ds, :])
+            elif ds == 1:
                 # Small enough to display with no intervention.
-                if channel is None:
-                    enveloped_data.append(data[start:stop, :])
-                else:
-                    enveloped_data.append(data[start:stop, channel].reshape(-1, 1))
-
+                enveloped_data.append(data[start:stop, channel].reshape(-1, 1))
             else:
                 # Here convert data into a down-sampled array suitable for visualizing.
                 # Must do this piecewise to limit memory usage.
+                dss = 1
+                # if ds > 100: # so much downsampling that we might as well skip some samples
+                #     dss = ds//100  # we will only grab about 10 samples to compute min and max for envlope
+                #     ds = 100
                 samples = (1 + (stop - start) // ds)
                 visible_data = np.zeros((samples * 2, 1), dtype=data.dtype)
                 sourcePtr = start
@@ -265,7 +270,7 @@ class FileBuffer():  # Consider translating this to cython
                     # read data in chunks of ~1M samples
                     chunkSize = int((1e6 // ds) * ds)
                     while sourcePtr < stop - 1:
-                        chunk_data = data[sourcePtr:min(stop, sourcePtr + chunkSize), channel]
+                        chunk_data = data[sourcePtr:min(stop, sourcePtr + chunkSize):dss, channel]
                         sourcePtr += chunkSize
                         # reshape chunk to be integer multiple of ds
                         chunk_data = chunk_data[:(len(chunk_data) // ds) * ds].reshape(len(chunk_data) // ds, ds)

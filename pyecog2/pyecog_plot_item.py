@@ -46,7 +46,8 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
     def setData_with_envelope(self):
         n = self.n_display_points()*2
         #check if arguments have changed since last call:
-        new_args = [self.parent_viewbox.viewRange()[0], self.channel,n]
+        # new_args = [self.parent_viewbox.viewRange()[0], self.channel, n]
+        new_args = [self.parent_viewbox.viewRange(), self.channel, n]
         if self.previous_args is None:
             self.previous_args = new_args
         else:
@@ -54,8 +55,12 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
                 # print('setData_with_envlope: arguments did not change since last call')
                 return
         # print('displaying n points', n)
-        visible_data, visible_time = self.project.get_data_from_range(self.parent_viewbox.viewRange()[0], self.channel,
-                                                                      n_envelope=n)
+        if self.parent_viewbox.viewRange()[1][0]-2 < self.channel < self.parent_viewbox.viewRange()[1][1]+2:
+            visible_data, visible_time = self.project.get_data_from_range(self.parent_viewbox.viewRange()[0], self.channel,
+                                                                          n_envelope=n)
+        else:
+            visible_data = np.zeros(1)
+            visible_time = np.zeros(1)
         # print('visible data shape:',visible_data.shape)
         self.setData(y=visible_data.ravel(), x=visible_time.ravel(), pen=self.pen, antialias=True)  # update the plot
         self.previous_args = new_args

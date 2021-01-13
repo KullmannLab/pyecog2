@@ -49,11 +49,12 @@ class AnnotationParameterTee(ParameterTree):
         ParameterTree.__init__(self)
         self.annotationPage = annotations
         labels = self.annotationPage.labels
+        self.shortcut_keys = dict([(l, i+1) for i,l in enumerate(labels)])
         print('Labels:', labels)
         Label_initial_dict = [{'name': label,
                                'type': 'group',
                                'children':[
-                                   {'name':'shortcut key','type':'int','value': i+1,'limits': (1, 10)},
+                                   {'name':'shortcut key','type':'int','value': self.shortcut_keys[label],'limits': (1, 10)},
                                    {'name':'color','type':'color', 'value':self.annotationPage.label_color_dict[label]},
                                    {'name': 'Channel range', 'type': 'str',
                                     'value': str(self.annotationPage.label_channel_range_dict[label])}
@@ -69,20 +70,20 @@ class AnnotationParameterTee(ParameterTree):
         self.headerItem().setHidden(True)
         self.annotationPage.sigLabelsChanged.connect(lambda s: self.re_init())
 
-
     def re_init(self):
         print('AnnotationParameterTree Re_init Called ')
         self.p.sigTreeStateChanged.disconnect()
+        labels = self.annotationPage.labels
         Label_dict = [{'name': label,
                                'type': 'group',
                                'children':[
-                                   {'name':'shortcut key','type':'int','value': i+1,'limits': (1, 10)},
+                                   {'name':'shortcut key','type':'int','value': self.shortcut_keys[label],'limits': (1, 10)},
                                    {'name':'color','type':'color', 'value':self.annotationPage.label_color_dict[label]},
                                    {'name': 'Channel range', 'type': 'str',
                                     'value': str(self.annotationPage.label_channel_range_dict[label])}
                                           ],
                                'renamable': True,
-                               'removable': True} for i, label in enumerate(self.annotationPage.labels)]
+                               'removable': True} for i, label in enumerate(labels)]
         self.p.clearChildren()
         self.params = [ScalableGroup(name="Annotation Labels", children=Label_dict)]
         self.p.addChildren(self.params)
@@ -110,28 +111,40 @@ class AnnotationParameterTee(ParameterTree):
                 elif path[-1] == 'Channel range':
                     print('setting new channel range',data,'for label',label)
                     self.annotationPage.change_label_channel_range(label,str(data))
+                elif path[-1] == 'shortcut key':
+                    self.shortcut_keys[label] = data
             if change == 'name':  # check for changes in labels
                 new_labels = [c.name() for c in self.p.child('Annotation Labels').children()]
                 print('new labels:', new_labels)
                 for old_label in self.annotationPage.labels:
                     if old_label not in new_labels:
-                        self.annotationPage.change_label_name(old_label, data.split(':')[-1])
+                        self.shortcut_keys[data] = self.shortcut_keys[old_label]
+                        del self.shortcut_keys[old_label]
+                        self.annotationPage.change_label_name(old_label, data)
             if change == 'childRemoved':
                 label = data.name()
+                del self.shortcut_keys[label]
                 self.annotationPage.delete_label(label)
             if change == 'childAdded':
                 label = data[0].name()
                 qcolor = data[0].children()[1].value()
                 color = (qcolor.red(), qcolor.green(), qcolor.blue())
                 print('adding label', label, color)
+                self.shortcut_keys[label] = len(self.shortcut_keys) +1
                 self.annotationPage.add_label(label, color)
 
     def get_label_from_shortcut(self,shortcutkey):
-        p_list = self.params[0].children()
-        # label_list = [(p.children()[0].value(),p.name()) for p in p_list]
-        # print('shortcut,label:', label_list)
+        # p_list = self.params[0].children()
+        # # label_list = [(p.children()[0].value(),p.name()) for p in p_list]
+        # # print('shortcut,label:', label_list)
+        # label = None
+        # for p in p_list:
+        #     if p.children()[0].value() == shortcutkey:
+        #         label = p.name()
+        # return label
         label = None
-        for p in p_list:
-            if p.children()[0].value() == shortcutkey:
-                label = p.name()
-        return label
+        print('looking for key', shortcutkey)
+        for k in self.shortcut_keys.keys():
+            if self.shortcut_keys[k] == shortcutkey:
+                label = k
+                return label

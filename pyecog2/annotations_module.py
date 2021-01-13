@@ -224,8 +224,15 @@ class AnnotationPage(QObject):
         self.label_color_dict[label] = color
         self.sigLabelsChanged.emit(label)
 
-    def change_label_channel_range_dict(self,label,channel_range):
-        self.label_channel_range_dict[label] = channel_range
+    def change_label_channel_range(self,label,channel_range):
+        # Receives string and tries to interpret it as a list
+        try:
+            if not channel_range.startswith('['):
+                channel_range = '[' + channel_range + ']'
+            c = list(eval(channel_range))
+        except:
+            c = None
+        self.label_channel_range_dict[label] = c
         self.sigLabelsChanged.emit(label)
 
     def add_label(self, label, color = None):

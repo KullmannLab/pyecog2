@@ -100,8 +100,9 @@ class MainWindow(QMainWindow):
         self.dock_list['Annotations Table'].setObjectName("Annotations Table")
         self.dock_list['Annotations Table'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
+        self.annotation_parameter_tree = AnnotationParameterTee(self.main_model.annotations)
         self.dock_list['Annotation Parameter Tree'] = QDockWidget("Annotation Parameter Tree", self)
-        self.dock_list['Annotation Parameter Tree'].setWidget(AnnotationParameterTee(self.main_model.annotations))
+        self.dock_list['Annotation Parameter Tree'].setWidget(self.annotation_parameter_tree)
         self.dock_list['Annotation Parameter Tree'].setObjectName("Annotation Parameter Tree")
         self.dock_list['Annotation Parameter Tree'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
@@ -466,24 +467,26 @@ class MainWindow(QMainWindow):
         numbered_keys = [QtCore.Qt.Key_1,QtCore.Qt.Key_2,QtCore.Qt.Key_3,QtCore.Qt.Key_4,QtCore.Qt.Key_5,
                          QtCore.Qt.Key_6,QtCore.Qt.Key_7,QtCore.Qt.Key_8,QtCore.Qt.Key_9,QtCore.Qt.Key_0]
 
-        for i in range(len(self.main_model.annotations.labels)):
+        for i in range(len(numbered_keys)):
             if evt.key() == numbered_keys[i]:
                 print(i+1,'pressed')
-                if self.main_model.annotations.focused_annotation is None:
-                    print('Adding new annotation')
-                    new_annotation = AnnotationElement(label = self.main_model.annotations.labels[i],
-                                                       start = self.main_model.window[0],
-                                                       end = self.main_model.window[1],
-                                                       notes = '')
-                    self.main_model.annotations.add_annotation(new_annotation)
-                    self.main_model.annotations.focusOnAnnotation(new_annotation)
-                else:
-                    print('Calling annotation_table changeSelectionLabel')
-                    self.annotation_table.changeSelectionLabel(self.main_model.annotations.labels[i])
-                    # annotation = self.main_model.annotations.focused_annotation
-                    # annotation.setLabel(self.main_model.annotations.labels[i])
-                    # self.main_model.annotations.focusOnAnnotation(annotation)
-                return
+                label = self.annotation_parameter_tree.get_label_from_shortcut(i + 1)
+                if label is not None:
+                    if self.main_model.annotations.focused_annotation is None:
+                        print('Adding new annotation')
+                        new_annotation = AnnotationElement(label = label,
+                                                           start = self.main_model.window[0],
+                                                           end = self.main_model.window[1],
+                                                           notes = '')
+                        self.main_model.annotations.add_annotation(new_annotation)
+                        self.main_model.annotations.focusOnAnnotation(new_annotation)
+                    else:
+                        print('Calling annotation_table changeSelectionLabel')
+                        self.annotation_table.changeSelectionLabel(label)
+                        # annotation = self.main_model.annotations.focused_annotation
+                        # annotation.setLabel(self.main_model.annotations.labels[i])
+                        # self.main_model.annotations.focusOnAnnotation(annotation)
+                    return
 
 if __name__ == '__main__':
 

@@ -164,9 +164,9 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
         self.setMovable(movable)
         self.label = label  # Label of the annotation
         self.id = id  # field to identify corresponding annotation in the annotations object
-        label_text = pg.TextItem(label, anchor=(0, -1), color= pen.color())
+        label_text = pg.TextItem(label, anchor=(0, 0), color=pen.color())
         label_text.setParentItem(self.lines[0])
-        self.removable = removable
+        label_text.updateTextPos()
         self.menu = None
         self.setAcceptedMouseButtons(self.acceptedMouseButtons() | QtCore.Qt.RightButton)
         self.setZValue(0.1)

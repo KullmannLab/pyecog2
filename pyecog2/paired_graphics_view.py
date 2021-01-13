@@ -245,12 +245,13 @@ class PairedGraphicsView():
         color = self.main_model.annotations.label_color_dict[annotation.getLabel()]  # circle hue with constant luminosity an saturation
         brush = pg.functions.mkBrush(color=(*color, 25))
         pen = pg.functions.mkPen(color=(*color, 200))
+        channel_range = self.main_model.annotations.label_channel_range_dict[annotation.getLabel()]
         annotation_graph_o = PyecogLinearRegionItem((annotation.getStart(), annotation.getEnd()), pen=pen,
-                                                    brush=brush, movable=False, id=None,channel_range=[100,200])
+                                                    brush=brush, movable=False, id=None,channel_range=channel_range)
         annotation_graph_o.setZValue(-1)
         annotation_graph_i = PyecogLinearRegionItem((annotation.getStart(), annotation.getEnd()), pen=pen,
                                                     brush=brush, swapMode='push', label=annotation.getLabel(), id=None,
-                                                    channel_range=[100,200])
+                                                    channel_range=channel_range)
 
         annotation_graph_i.sigRegionChangeFinished.connect(
             self.function_generator_link_graphs_to_annotations(annotation, annotation_graph_i))

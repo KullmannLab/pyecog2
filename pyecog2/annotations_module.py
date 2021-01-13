@@ -112,13 +112,16 @@ class AnnotationPage(QObject):
     sigAnnotationAdded   = QtCore.pyqtSignal(object)
     sigLabelsChanged     = QtCore.pyqtSignal(object)
 
-    def __init__(self, alist=None, fname=None, dict=None):
+    def __init__(self, alist=None, fname=None, dic=None):
         super().__init__()
-        if dict is not None:
-            self.annotations_list = [AnnotationElement(annotation) for annotation in dict['annotations_list']]
-            self.labels = dict['labels']
-            self.label_color_dict = dict['label_color_dict']
-            self.label_channel_range_dict = dict['label_channel_range_dict']
+        if dic is not None:
+            self.annotations_list = [AnnotationElement(annotation) for annotation in dic['annotations_list']]
+            self.labels = dic['labels']
+            self.label_color_dict = dic['label_color_dict']
+            if 'label_channel_range_dict' in dic.keys():  #Back compatibility with projects before label_channel_range
+                self.label_channel_range_dict = dic['label_channel_range_dict']
+            else:
+                self.label_channel_range_dict = dict([(label,None) for label in self.labels])
         elif alist is not None and self.checklist(alist):
             self.annotations_list = alist
             self.labels = list(set([annotation.getLabel() for annotation in alist]))
@@ -138,6 +141,8 @@ class AnnotationPage(QObject):
 
     def copy_from(self, annotation_page):
         self.__dict__ = annotation_page.__dict__
+        if not hasattr(annotation_page, 'label_channel_range_dict'):  # Back compatibility with projects before label_channel_range
+            self.label_channel_range_dict = dict([(label, None) for label in self.labels])
         self.sigLabelsChanged.emit('')
 
     def copy_to(self, annotation_page):

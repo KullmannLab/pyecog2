@@ -67,7 +67,7 @@ class Animal():
     def __init__(self, id=None, eeg_folder=None, video_folder=None, dict={}):
         if dict != {}:
             self.__dict__ = dict
-            self.annotations = AnnotationPage(dict=dict['annotations'])
+            self.annotations = AnnotationPage(dic=dict['annotations'])
             return
 
         if eeg_folder is not None:

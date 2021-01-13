@@ -118,6 +118,7 @@ class AnnotationPage(QObject):
             self.annotations_list = [AnnotationElement(annotation) for annotation in dict['annotations_list']]
             self.labels = dict['labels']
             self.label_color_dict = dict['label_color_dict']
+            self.label_channel_range_dict = dict['label_channel_range_dict']
         elif alist is not None and self.checklist(alist):
             self.annotations_list = alist
             self.labels = list(set([annotation.getLabel() for annotation in alist]))
@@ -125,13 +126,14 @@ class AnnotationPage(QObject):
             n = max(len(self.labels),6)  # make space for at least 6 colors, or space all colors equally
             for i,label in enumerate(self.labels):
                 self.label_color_dict[label] = tuple(np.array(colorsys.hls_to_rgb(i / n, .5, .9)) * 255)
-
+                self.label_channel_range_dict[label] = None
         elif fname is not None:
             self.import_from_json(fname)
         else:
             self.annotations_list = []
             self.labels = []
             self.label_color_dict = {}  # dictionary to save label plotting colors
+            self.label_channel_range_dict = {}
         self.focused_annotation = None
 
     def copy_from(self, annotation_page):
@@ -200,6 +202,7 @@ class AnnotationPage(QObject):
         if label in self.labels:
             self.delete_all_with_label(label)
             del self.label_color_dict[label]
+            del self.label_channel_range_dict[label]
             for i, l in reversed(list(enumerate(self.labels))):
                 if l == label:
                     del self.labels[i]
@@ -212,11 +215,17 @@ class AnnotationPage(QObject):
             if l == old_label:
                 self.labels[i] = new_label
         self.label_color_dict[new_label] = self.label_color_dict[old_label]
+        self.label_channel_range_dict[new_label] = self.label_channel_range_dict[old_label]
         del self.label_color_dict[old_label]
+        del self.label_channel_range_dict[old_label]
         self.sigLabelsChanged.emit(new_label)
 
     def change_label_color(self,label,color):
         self.label_color_dict[label] = color
+        self.sigLabelsChanged.emit(label)
+
+    def change_label_channel_range_dict(self,label,channel_range):
+        self.label_channel_range_dict[label] = channel_range
         self.sigLabelsChanged.emit(label)
 
     def add_label(self, label, color = None):
@@ -230,6 +239,10 @@ class AnnotationPage(QObject):
                     n = len(self.labels)
                     h = i_spaced_nfold(n,6)
                     self.label_color_dict[label] = tuple(np.array(colorsys.hls_to_rgb(h, .5, .9)) * 255)
+
+            if label not in self.label_channel_range_dict.keys():
+                self.label_channel_range_dict[label] = None
+
             self.sigLabelsChanged.emit(label)
         else:
             print('Annotations: Label already exists')
@@ -238,7 +251,7 @@ class AnnotationPage(QObject):
         # convert annotation objects into dictionaries
         full_dict = [json.loads(repr(a).replace('\'','\"')) for a in self.annotations_list]
         with open(fname, 'w') as f:
-            json.dump([full_dict,list(self.labels),self.label_color_dict], f, indent=4)
+            json.dump([full_dict,list(self.labels),self.label_color_dict,self.label_channel_range_dict], f, indent=4)
 
     def import_from_json(self, fname):
         with open(fname, 'r') as f:
@@ -246,10 +259,11 @@ class AnnotationPage(QObject):
         full_dict = object_list[0]
         # convert dictionaries into annotation objects
         self.annotations_list = [AnnotationElement(dictionary=a) for a in full_dict]
-        self.labels = set(object_list[1])
+        self.labels = object_list[1]
         self.label_color_dict = object_list[2]
+        self.label_channel_range_dict = object_list[3]
 
-    def export_to_csv(self, fname, label):
+    def export_to_csv(self, fname, label): # Currently not in use
         with open(fname, 'w') as f:
             f.write(label + ',' + 'start,stop\n')
             for i, a in enumerate(self.annotations_list):

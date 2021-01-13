@@ -110,16 +110,60 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
 
     def __init__(self, values=(0, 1), orientation='vertical', brush=None, pen=None,
                  hoverBrush=None, hoverPen=None, movable=True, bounds=None,
-                 span=(0, 1), swapMode='sort',label = '', id = None, removable=True):
+                 span=(0, 1), swapMode='sort',label = '', id = None, removable=True, channel_range = None):
 
-        pg.LinearRegionItem.__init__(self, values=values, orientation=orientation, brush=brush, pen=pen,
-                                     hoverBrush=hoverBrush, hoverPen=hoverPen, movable=movable, bounds=bounds,
-                                     span=span, swapMode=swapMode)
+        # pg.LinearRegionItem.__init__(self, values=values, orientation=orientation, brush=brush, pen=pen,
+        #                              hoverBrush=hoverBrush, hoverPen=hoverPen, movable=movable, bounds=bounds,
+        #                              span=span, swapMode=swapMode)
 
-        self.lines[0].setZValue(101) # ML: hack to have lines above areas
-        self.lines[1].setZValue(101)
-        self.label = label # Label of the annotation
-        self.id = id # field to identify corresponding annotation in the annotations object
+        # Copied from pg.LinearRegionItem to avoid creation of infinite lines, and made to be only vertical
+        pg.GraphicsObject.__init__(self)
+        self.orientation = orientation
+        self.bounds = QtCore.QRectF()
+        self.blockLineSignal = False
+        self.moving = False
+        self.mouseHovering = False
+        self.span = span
+        self.swapMode = swapMode
+        self._bounds = None
+
+        lineKwds = dict(
+            movable=movable,
+            bounds=bounds,
+            span=span,
+            pen=pen,
+            hoverPen=hoverPen,
+        )
+
+        if channel_range is not None:
+            self.channel_range = [min(channel_range) - .5, max(channel_range) + .5]
+        else:
+            self.channel_range = None
+
+        self.lines = [
+            PyecogInfiniteLine(QtCore.QPointF(values[0], 0), angle=90, yrange=self.channel_range, **lineKwds),
+            PyecogInfiniteLine(QtCore.QPointF(values[1], 0), angle=90, yrange=self.channel_range, **lineKwds)]
+
+        for l in self.lines:
+            l.setParentItem(self)
+            l.sigPositionChangeFinished.connect(self.lineMoveFinished)
+            l.setZValue(101)
+        self.lines[0].sigPositionChanged.connect(lambda: self.lineMoved(0))
+        self.lines[1].sigPositionChanged.connect(lambda: self.lineMoved(1))
+
+        if brush is None:
+            brush = QtGui.QBrush(QtGui.QColor(0, 0, 255, 50))
+        self.setBrush(brush)
+
+        if hoverBrush is None:
+            c = self.brush.color()
+            c.setAlpha(min(c.alpha() * 2, 255))
+            hoverBrush = pg.functions.mkBrush(c)
+        self.setHoverBrush(hoverBrush)
+
+        self.setMovable(movable)
+        self.label = label  # Label of the annotation
+        self.id = id  # field to identify corresponding annotation in the annotations object
         label_text = pg.TextItem(label, anchor=(0, -1), color= pen.color())
         label_text.setParentItem(self.lines[0])
         self.removable = removable
@@ -222,6 +266,41 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
         else:
             ev.ignore()
 
+    # Only plot over relevant channels
+    def boundingRect(self):
+        br = self.viewRect()  # bounds of containing ViewBox mapped to local coords.
+        rng = self.getRegion()
+        if self.orientation in ('vertical', PyecogLinearRegionItem.Vertical):
+            br.setLeft(rng[0])
+            br.setRight(rng[1])
+            length = br.height()
+            if self.channel_range is None:
+                br.setBottom(br.top() + length * self.span[1])
+                br.setTop(br.top() + length * self.span[0])
+            else:
+                # print('bottom original arg = ', br.top() + length * self.span[1])
+                # print(self.channel_range[0]-.5)
+                # print('top original arg = ', br.top() + length * self.span[0])
+                # print(self.channel_range[1]+.5)
+                br.setBottom(min(br.top() + length * self.span[1], self.channel_range[1])) # For some reason Top and bottom are switched in pyqtgraph code
+                br.setTop(max(br.top() + length * self.span[0], self.channel_range[0]))
+
+
+        else:
+            br.setTop(rng[0])
+            br.setBottom(rng[1])
+            length = br.width()
+            br.setRight(br.left() + length * self.span[1])
+            br.setLeft(br.left() + length * self.span[0])
+
+        br = br.normalized()
+
+        if self._bounds != br:
+            self._bounds = br
+            self.prepareGeometryChange()
+
+        return br
+
 class PyecogCursorItem(pg.InfiniteLine):
     def __init__(self, pos=None, angle=90, pen=None, movable=True, bounds=None,
                  hoverPen=None, label=None, labelOpts=None, span=(0, 1), markers=None,
@@ -238,4 +317,51 @@ class PyecogCursorItem(pg.InfiniteLine):
         self.setZValue(102)  # Hack to make it above all else
 
 
+class PyecogInfiniteLine(pg.InfiniteLine):
+    def __init__(self, pos=None, angle=90, pen=None, movable=False, bounds=None,
+                 hoverPen=None, label=None, labelOpts=None, span=(0, 1), markers=None,
+                 name=None, yrange=None):
+        pg.InfiniteLine.__init__(self, pos=pos, angle=angle, pen=pen, movable=movable, bounds=bounds,
+                                 hoverPen=hoverPen, label=label, labelOpts=labelOpts, span=span, markers=markers,
+                                 name=name)
+        self.yrange = yrange
 
+    def _computeBoundingRect(self):
+        #br = UIGraphicsItem.boundingRect(self)
+        vr = self.viewRect()  # bounds of containing ViewBox mapped to local coords.
+        if vr is None:
+            return QtCore.QRectF()
+
+        ## add a 4-pixel radius around the line for mouse interaction.
+
+        px = self.pixelLength(direction=pg.Point(1,0), ortho=True)  ## get pixel length orthogonal to the line
+        if px is None:
+            px = 0
+        pw = max(self.pen.width() / 2, self.hoverPen.width() / 2)
+        w = max(4, self._maxMarkerSize + pw) + 1
+        w = w * px
+        br = QtCore.QRectF(vr)
+        br.setBottom(-w)
+        br.setTop(w)
+
+        length = br.width()
+        left = br.left() + length * self.span[0]
+        right = br.left() + length * self.span[1]
+        if self.yrange is not None:
+            left = max(left, self.yrange[0])
+            right = min(right, self.yrange[1])
+        br.setLeft(left)
+        br.setRight(right)
+        br = br.normalized()
+
+        vs = self.getViewBox().size()
+
+        if self._bounds != br or self._lastViewSize != vs:
+            self._bounds = br
+            self._lastViewSize = vs
+            self.prepareGeometryChange()
+
+        self._endPoints = (left, right)
+        self._lastViewRect = vr
+
+        return self._bounds

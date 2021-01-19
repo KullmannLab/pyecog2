@@ -467,6 +467,9 @@ class PairedGraphicsView():
         xmin, xmax = self.insetview_plot.viewRange()[0]
         self.insetview_plot.setRange(xRange=(0.9*xmin+0.1*xmax,0.1*xmin+0.9*xmax), padding=0) # just to update the plots
         self.insetview_plot.setRange(xRange=(xmin,xmax), padding=0)
+        xmin, xmax = self.overview_plot.viewRange()[0]
+        self.overview_plot.setRange(xRange=(0.9*xmin+0.1*xmax,0.1*xmin+0.9*xmax), padding=0) # just to update the plots
+        self.overview_plot.setRange(xRange=(xmin,xmax), padding=0)
 
 class DateAxis(pg.AxisItem):
     def tickStrings(self, values, scale, spacing):

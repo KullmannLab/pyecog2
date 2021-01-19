@@ -5,6 +5,7 @@ from pyecog2.h5loader import H5File
 import glob, os
 from datetime import datetime
 from pyecog2.annotations_module import AnnotationPage
+from scipy import signal
 
 
 def clip(x, a, b):  # utility funciton for file buffer
@@ -195,7 +196,7 @@ class FileBuffer():  # Consider translating this to cython
         else:
             return 0
 
-    def get_data_from_range(self, trange, channel=None, n_envelope=None):
+    def get_data_from_range(self, trange, channel=None, n_envelope=None, for_plot=False, filter_settings=(False,0,0)):
         # First check if data is already buffered, most of the time this will be the case:
         if trange[0] >= self.range[0] and trange[1] <= self.range[1]:
             # print('Data already in buffer')
@@ -240,6 +241,7 @@ class FileBuffer():  # Consider translating this to cython
 
         enveloped_data = []
         enveloped_time = []
+        no_downsampling = True
         for i, data in enumerate(self.data):
             start = sample_ranges[i][0]
             stop = sample_ranges[i][1]
@@ -252,10 +254,14 @@ class FileBuffer():  # Consider translating this to cython
                 # poor coding here, we are not computing proper envelopes, but it'll do for now because this is only
                 # used for coputing channel scallings so far
                 enveloped_data.append(data[start:stop:ds, :])
+                if ds != 0:
+                    no_downsampling = False
             elif ds == 1:
                 # Small enough to display with no intervention.
+
                 enveloped_data.append(data[start:stop, channel].reshape(-1, 1))
             else:
+                no_downsampling = False
                 # Here convert data into a down-sampled array suitable for visualizing.
                 # Must do this piecewise to limit memory usage.
                 dss = 1
@@ -315,6 +321,20 @@ class FileBuffer():  # Consider translating this to cython
         if len(enveloped_data) > 0:
             data = np.vstack(enveloped_data)
             time = np.vstack(enveloped_time)
+            if for_plot and filter_settings[0]: # apply LP filter only for plots without downsampling
+                fs = 2/(time[2]-time[0])
+                nyq = 0.5 * fs[0]
+                hpcutoff = min(max(filter_settings[1] / nyq, 0.001), 1)
+                lpcutoff = min(max(filter_settings[2] / nyq, 0.001), 1)
+                # for some reason the banpass butterworth filter is very unstable
+                if lpcutoff<.99:  # don't apply filter if LP cutoff freqquency is above nyquist freq.
+                    print('applying LP filter to display data:', filter_settings, fs, nyq, lpcutoff)
+                    b, a = signal.butter(2, lpcutoff, 'lowpass', analog=False)
+                    data = signal.filtfilt(b, a, data,axis =0,method='pad')
+                if hpcutoff < .99:
+                    print('applying HP filter to display data:', filter_settings, fs, nyq, hpcutoff)
+                    b, a = signal.butter(2, hpcutoff, 'highpass', analog=False)
+                    data = signal.filtfilt(b, a, data,axis =0,method='pad')
         else:
             data = np.array([0, 0])
             time = np.array(trange)
@@ -326,6 +346,7 @@ class Project():
                  dict=None):
         if dict is not None:
             self.__dict__ = dict
+            self.filter_settings = (False, 0, 1e6)
             self.animal_list = [Animal(dict=animal) for animal in dict['animal_list']]
             self.current_animal = Animal(dict=dict['current_animal'])
             self.main_model = main_model
@@ -338,6 +359,7 @@ class Project():
         self.title = title
         self.current_animal = Animal()
         self.set_current_animal(Animal())  # start with empty animal
+        self.filter_settings = (False,0,1e6) # initialize filter settings
         self.file_buffer = FileBuffer(self.current_animal)
         self.main_model.sigProjectChanged.emit()
 
@@ -384,6 +406,8 @@ class Project():
         print('current animal:', self.current_animal.id)
         self.file_buffer = FileBuffer(self.current_animal)
         self.project_file = fname
+        if not hasattr(self,'filter_settings'):  #Backwards compatibility
+            self.filter_settings = (False, 0, 1e6)
         self.main_model.sigProjectChanged.emit()
 
     def export_annotations(self, fname):
@@ -436,7 +460,7 @@ class Project():
                 self.add_animal(Animal(id=id,eeg_folder=directory,video_folder=video_dir))
         self.main_model.sigProjectChanged.emit()
 
-    def get_data_from_range(self, trange, channel=None, animal=None, n_envelope=None):
+    def get_data_from_range(self, trange, channel=None, animal=None, n_envelope=None,for_plot = False):
         '''
         :param trange: list of length 2 - [init_time, end_time] for the data to get
         :param channel: channel from wich to grab the data
@@ -452,7 +476,10 @@ class Project():
             # self.current_animal = animal
             self.file_buffer = FileBuffer(self.current_animal)
 
-        return self.file_buffer.get_data_from_range(trange, channel, n_envelope)
+        return self.file_buffer.get_data_from_range(trange, channel, n_envelope,for_plot,self.filter_settings)
+
+    def updateFilterSettings(self, settings=(False,0,1e6)):
+        self.filter_settings = settings
 
     def get_project_time_range(self):
         if not self.animal_list:

@@ -136,7 +136,7 @@ class PairedGraphicsView():
          # now overide the viewbox wheel event to allow shift wheel to zoom
         self.overview_plot.vb.wheelEvent = wheelEventWrapper(self.overview_plot.vb)
         self.insetview_plot.vb.wheelEvent = wheelEventWrapper(self.insetview_plot.vb)
-
+        self.updateFilterSettings()
 
     def set_scenes_plot_channel_data(self, overview_range = None, pens=None):
         '''
@@ -431,6 +431,13 @@ class PairedGraphicsView():
         print(new_xrange)
         self.insetview_plot.setRange(xRange=new_xrange, padding=0)
 
+    def insetview_set_xrange(self,x_range):
+        xmin, xmax = self.insetview_plot.viewRange()[0]
+        centre = (xmax + xmin)/2
+        new_xrange = (centre - x_range/2, centre + x_range/2)
+        print(new_xrange)
+        self.insetview_plot.setRange(xRange=new_xrange, padding=0)
+
     def overview_page_left(self):
         xmin, xmax = self.overview_plot.viewRange()[0]
         x_range = xmax - xmin
@@ -444,6 +451,15 @@ class PairedGraphicsView():
         new_xrange = (xmax, xmax + x_range)
         print(new_xrange)
         self.overview_plot.setRange(xRange=new_xrange, padding=0)
+
+    def updateFilterSettings(self, settings=(False,0,1e6)):
+        self.apply_filter = settings[0]
+        self.highpass_frequency = settings[1]
+        self.lowpass_frequency = settings[1]
+        self.main_model.project.updateFilterSettings(settings)
+        xmin, xmax = self.insetview_plot.viewRange()[0]
+        self.insetview_plot.setRange(xRange=(0.9*xmin+0.1*xmax,0.1*xmin+0.9*xmax), padding=0) # just to update the plots
+        self.insetview_plot.setRange(xRange=(xmin,xmax), padding=0)
 
 class DateAxis(pg.AxisItem):
     def tickStrings(self, values, scale, spacing):

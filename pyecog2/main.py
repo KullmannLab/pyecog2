@@ -20,7 +20,7 @@ from pyecog2.coding_tests.convert_ndf_folder_gui import NDFConverterWindow
 from pyecog2.paired_graphics_view import PairedGraphicsView
 from pyecog2.tree_model_and_nodes import TreeModel
 from pyecog2.tree_widget import FileTreeElement
-
+from pyecog2.coding_tests.plot_controls import PlotControls
 
 #
 class MainModel(QObject):
@@ -55,6 +55,11 @@ class MainModel(QObject):
             self.sigWindowChanged.emit(pos)
             print('Window changesd to:', pos)
 
+    def update_filter_settings(self):
+        pass
+
+    def update_xrange_settings(self,xrange):
+        pass
 
 class MainWindow(QMainWindow):
     '''
@@ -89,6 +94,17 @@ class MainWindow(QMainWindow):
         self.dock_list['File Tree'].setObjectName("File Tree")
         self.dock_list['File Tree'].setAllowedAreas(Qt.RightDockWidgetArea | Qt.LeftDockWidgetArea | Qt.TopDockWidgetArea | Qt.BottomDockWidgetArea)
         self.dock_list['File Tree'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
+
+        self.plot_controls = PlotControls(self.main_model)
+        self.plot_controls.sigUpdateXrange.connect(self.paired_graphics_view.insetview_set_xrange)
+        self.plot_controls.sigUpdateFilter.connect(self.paired_graphics_view.updateFilterSettings)
+        self.dock_list['Plot Controls'] = QDockWidget("Plot controls", self)
+        self.dock_list['Plot Controls'].setWidget(self.plot_controls)
+        self.dock_list['Plot Controls'].setFloating(False)
+        self.dock_list['Plot Controls'].setObjectName("Plot Controls")
+        self.dock_list['Plot Controls'].setAllowedAreas(
+            Qt.RightDockWidgetArea | Qt.LeftDockWidgetArea | Qt.TopDockWidgetArea | Qt.BottomDockWidgetArea)
+        self.dock_list['Plot Controls'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
         self.dock_list['Text'] = QDockWidget("Text", self)
         self.dock_list['Text'].setWidget(QPlainTextEdit())
@@ -129,11 +145,13 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.paired_graphics_view.splitter)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['File Tree'])
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['Plot Controls'])
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['Annotation Parameter Tree'])
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['Annotations Table'])
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['Text'])
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['FFT'])
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['Wavelet'])
+        self.addDockWidget(Qt.BottomDockWidgetArea, self.dock_list['Video'])
+        self.addDockWidget(Qt.BottomDockWidgetArea, self.dock_list['Wavelet'])
+        self.addDockWidget(Qt.BottomDockWidgetArea, self.dock_list['FFT'])
 
 
         settings = QSettings("PyEcog","PyEcog")

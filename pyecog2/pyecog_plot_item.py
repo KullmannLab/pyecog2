@@ -57,12 +57,12 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
         # print('displaying n points', n)
         if self.parent_viewbox.viewRange()[1][0]-2 < self.channel < self.parent_viewbox.viewRange()[1][1]+2:
             visible_data, visible_time = self.project.get_data_from_range(self.parent_viewbox.viewRange()[0], self.channel,
-                                                                          n_envelope=n)
+                                                                          n_envelope=n, for_plot = True)
         else:
             visible_data = np.zeros(1)
             visible_time = np.zeros(1)
         # print('visible data shape:',visible_data.shape)
-        self.setData(y=visible_data.ravel(), x=visible_time.ravel(), pen=self.pen, antialias=True)  # update the plot
+        self.setData(y=visible_data.ravel(), x=visible_time.ravel(), pen=self.pen)  # update the plot
         self.previous_args = new_args
         # self.resetTransform()
 

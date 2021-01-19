@@ -96,7 +96,8 @@ class MainWindow(QMainWindow):
         self.dock_list['File Tree'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
         self.plot_controls = PlotControls(self.main_model)
-        self.plot_controls.sigUpdateXrange.connect(self.paired_graphics_view.insetview_set_xrange)
+        self.plot_controls.sigUpdateXrange_i.connect(self.paired_graphics_view.insetview_set_xrange)
+        self.plot_controls.sigUpdateXrange_o.connect(self.paired_graphics_view.overview_set_xrange)
         self.plot_controls.sigUpdateFilter.connect(self.paired_graphics_view.updateFilterSettings)
         self.dock_list['Plot Controls'] = QDockWidget("Plot controls", self)
         self.dock_list['Plot Controls'].setWidget(self.plot_controls)

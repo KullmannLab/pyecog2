@@ -438,6 +438,13 @@ class PairedGraphicsView():
         print(new_xrange)
         self.insetview_plot.setRange(xRange=new_xrange, padding=0)
 
+    def overview_set_xrange(self, x_range):
+        xmin, xmax = self.overview_plot.viewRange()[0]
+        centre = (xmax + xmin) / 2
+        new_xrange = (centre - x_range / 2, centre + x_range / 2)
+        print(new_xrange)
+        self.overview_plot.setRange(xRange=new_xrange, padding=0)
+
     def overview_page_left(self):
         xmin, xmax = self.overview_plot.viewRange()[0]
         x_range = xmax - xmin

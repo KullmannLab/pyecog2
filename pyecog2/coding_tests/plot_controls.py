@@ -47,7 +47,8 @@ class ChannelSelectorWindow(QMainWindow):
 
 class PlotControls(QWidget):
     sigUpdateFilter = QtCore.pyqtSignal(tuple)
-    sigUpdateXrange = QtCore.pyqtSignal(float)
+    sigUpdateXrange_i = QtCore.pyqtSignal(float)
+    sigUpdateXrange_o = QtCore.pyqtSignal(float)
     def __init__(self, main_model = None):
         self.main_model = main_model
         QWidget.__init__(self)
@@ -74,11 +75,15 @@ class PlotControls(QWidget):
         self.filter_controls_layout.addWidget(self.lp_spin,2,1)
         self.layout.addWidget(self.filter_controls_widget,0,0)
 
-        self.Xrange_spin = pg.SpinBox(value=14.0, bounds=[0, 3600],step=1,compactHeight=False)
-        self.Xrange_spin.valueChanged.connect(self.update_Xrange)
-        
-        self.range_controls_layout.addWidget(QtGui.QLabel('X range (s)'),0,0)
-        self.range_controls_layout.addWidget(self.Xrange_spin,0,1)
+        self.Xrange_spin_o = pg.SpinBox(value=3600.0, bounds=[0, 3600],step=1,compactHeight=False)
+        self.Xrange_spin_o.valueChanged.connect(self.update_Xrange_o)
+        self.range_controls_layout.addWidget(QtGui.QLabel('Overview X range (s)'),0,0)
+        self.range_controls_layout.addWidget(self.Xrange_spin_o,0,1)
+
+        self.Xrange_spin_i = pg.SpinBox(value=30.0, bounds=[0, 3600],step=1,compactHeight=False)
+        self.Xrange_spin_i.valueChanged.connect(self.update_Xrange_i)
+        self.range_controls_layout.addWidget(QtGui.QLabel('Inset X range (s)'),1,0)
+        self.range_controls_layout.addWidget(self.Xrange_spin_i,1,1)
         self.layout.addWidget(self.range_controls_widget,1,0)
 
         self.channel_selector_butotn = QPushButton('Channel Selector (coming soon...)', self)
@@ -90,9 +95,14 @@ class PlotControls(QWidget):
         self.sigUpdateFilter.emit((self.filter_check.checkState()>0,self.hp_spin.value(),self.lp_spin.value()))
         return
 
-    def update_Xrange(self):
-        print(self.Xrange_spin.value())
-        self.sigUpdateXrange.emit(self.Xrange_spin.value())
+    def update_Xrange_o(self):
+        print(self.Xrange_spin_o.value())
+        self.sigUpdateXrange_o.emit((self.Xrange_spin_o.value()))
+        return
+
+    def update_Xrange_i(self):
+        print(self.Xrange_spin_i.value())
+        self.sigUpdateXrange_i.emit((self.Xrange_spin_i.value()))
         return
 
     def launch_channel_selector(self):

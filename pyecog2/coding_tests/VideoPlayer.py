@@ -18,6 +18,7 @@ class VideoWindow(QWidget):
         self.project = project
         self.setWindowTitle("Video")
         self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
+        self.last_position = 0
 
         videoWidget = QVideoWidget()
         self.videoWidget = videoWidget
@@ -33,25 +34,6 @@ class VideoWindow(QWidget):
         self.errorLabel = QLabel()
         self.errorLabel.setSizePolicy(QSizePolicy.Preferred,
                 QSizePolicy.Maximum)
-
-        # Create new action
-        # openAction = QAction(QIcon('open.png'), '&Open', self)
-        # openAction.setShortcut('Ctrl+O')
-        # openAction.setStatusTip('Open movie')
-        # openAction.triggered.connect(self.openFile)
-
-        # Create exit action
-        # exitAction = QAction(QIcon('exit.png'), '&Exit', self)
-        # exitAction.setShortcut('Ctrl+Q')
-        # exitAction.setStatusTip('Exit application')
-        # exitAction.triggered.connect(self.exitCall)
-
-        # Create menu bar and add action
-        # menuBar = self.menuBar()
-        # fileMenu = menuBar.addMenu('&File')
-        # #fileMenu.addAction(newAction)
-        # fileMenu.addAction(openAction)
-        # fileMenu.addAction(exitAction)
 
         # Create layouts to place inside widget
         controlLayout = QHBoxLayout()
@@ -83,14 +65,6 @@ class VideoWindow(QWidget):
             self.current_file = ''
             self.current_time_range = [0,0]
 
-        # ERASE THIS SECTION AFTER LAB MEETING!!! todo
-        # self.mediaPlayer.setMedia(
-        #     QMediaContent(QUrl.fromLocalFile('/home/mfpleite/Documents/RDSS/mouse IVC/2019/video/100_PC/20191127174021.mp4')))
-            # /home/mfpleite/Documents/RDSS/mouseIVC/2019/video/100_PC/20191127170021.mp4
-            # /home/mfpleite/PycharmProjects/pyecog2/Notebooks/Video.ogv
-            # /home/mfpleite/Shared/ele_data/119/20190930150911.mp4
-        # self.playButton.setEnabled(True)
-        # END
 
     def openFile(self):
         fileName, _ = QFileDialog.getOpenFileName(self, "Open Movie",
@@ -119,6 +93,7 @@ class VideoWindow(QWidget):
                     self.style().standardIcon(QStyle.SP_MediaPlay))
 
     def positionChanged(self, position):
+        self.last_position = position
         if self.current_time_range[0] != 0 and position != 0:  # avoid time changes when switching files
             self.positionSlider.setValue(position)
             self.sigTimeChanged.emit(position/1000 + self.current_time_range[0])
@@ -133,6 +108,9 @@ class VideoWindow(QWidget):
         # open the right media
         if self.current_time_range[0] <= pos <= self.current_time_range[1]:
             position = (pos-self.current_time_range[0])*1000
+            if self.mediaPlayer.state() == QMediaPlayer.PlayingState and abs(position-self.last_position)<200:
+                # skip position setting to ensure smooth video plaback
+                return
             # go to correct relative position
             self.mediaPlayer.setPosition(position)  # UNIX time
             return

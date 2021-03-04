@@ -55,7 +55,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
                 # print('setData_with_envlope: arguments did not change since last call')
                 return
         # print('displaying n points', n)
-        if self.parent_viewbox.viewRange()[1][0]-2 < self.channel < self.parent_viewbox.viewRange()[1][1]+2:
+        if self.parent_viewbox.viewRange()[1][0]-2 < self.channel < self.parent_viewbox.viewRange()[1][1]+2: # Avoid plotting channels out of view
             visible_data, visible_time = self.project.get_data_from_range(self.parent_viewbox.viewRange()[0], self.channel,
                                                                           n_envelope=n, for_plot = True)
         else:

@@ -29,19 +29,42 @@ def wheelEvent(self, ev, axis=None):
         mask[axis] = self.state['mouseEnabled'][axis]
     else:
         mask = self.state['mouseEnabled'][:]
-    s = 1.02 ** (ev.delta() * self.state['wheelScaleFactor'])  # actual scaling factor
+    s = 1.02 ** (-ev.delta() * self.state['wheelScaleFactor'])  # actual scaling factor
     s = [(None if m is False else s) for m in mask]
     center = Point(fn.invertQTransform(self.childGroup.transform()).map(ev.pos()))
     # JC added
     if ev.modifiers() == QtCore.Qt.ShiftModifier and s[0] is not None and s[1] is not None:
         for child in self.childGroup.childItems()[:]:
             if hasattr(child, 'accept_mousewheel_transformations'):
+
                 m_old = child.transform()
                 m = QtGui.QTransform()
                 print(1, m_old.m22(),s[1])
                 print(1, m_old.m22(),s[1])
                 m.scale(1, m_old.m22() * s[1])
                 child.setTransform(m)
+        ev.accept()
+        child_group_transformation = self.childGroup.transform()
+        # self.childGroup.update()
+        # self.autoRange()
+        # self.updateAutoRange()
+        # self.sigTransformChanged.emit(self)  ## segfaults here: 1
+        print(self.viewRange())
+        print(self.targetRange())
+        return
+
+    if ev.modifiers() == QtCore.Qt.AltModifier and s[0] is not None and s[1] is not None:
+        for child in self.childGroup.childItems()[:]:
+            if hasattr(child, 'accept_mousewheel_transformations'):
+
+                m_old = child.transform()
+                m = QtGui.QTransform()
+                print('Alt modifier - transform:',child.y(),'center:', round(center.y()))
+                print(1, m_old.m22(),s[1])
+                print(1, m_old.m22(),s[1])
+                if round(child.y()) == round(center.y()):
+                    m.scale(1, m_old.m22() * s[1])
+                    child.setTransform(m)
         ev.accept()
         child_group_transformation = self.childGroup.transform()
         # self.childGroup.update()

@@ -161,11 +161,15 @@ class FileBuffer():  # Consider translating this to cython
             self.data.append(arr)
 
         else:  # it is a bin file and can be mememaped
-            m = np.memmap(fname[:-4] + 'bin', mode='r+', dtype =metadata['data_format'] )
+            try:
+                print('opening binary fie:',fname[:-4] + 'bin')
+                m = np.memmap(fname[:-4] + 'bin', mode='r', dtype =metadata['data_format'] )
+            except ValueError:
+                m = np.zeros(0)  # binary file is empty so just create empty array
             m = m.reshape((-1, metadata['no_channels']))
             self.data.append(m)
 
-        trange = [metadata['start_timestamp_unix'], metadata['start_timestamp_unix'] + metadata['duration']]
+        trange = [metadata['start_timestamp_unix'], metadata['start_timestamp_unix'] + 1/metadata['fs']*m.shape[0]]
         self.data_ranges.append(trange)
 
         if self.range[0] > trange[0]:  # buffering earlier file
@@ -196,6 +200,17 @@ class FileBuffer():  # Consider translating this to cython
         else:
             return 0
 
+    def clear_buffer(self):
+        self.files = []
+        self.range = [np.Inf, -np.Inf]
+        self.data = []
+        self.data_ranges = []
+        self.metadata = []
+
+    def get_t_max_for_live_plot(self):
+        return max([r[1] for r in self.data_ranges])
+
+
     def get_data_from_range(self, trange, channel=None, n_envelope=None, for_plot=False, filter_settings=(False,0,0)):
         # First check if data is already buffered, most of the time this will be the case:
         if trange[0] >= self.range[0] and trange[1] <= self.range[1]:
@@ -205,11 +220,7 @@ class FileBuffer():  # Consider translating this to cython
             # Now clear buffer if range is not contiguous to previous range
             if trange[1] <= self.range[0] or trange[0] >= self.range[1]:
                 print('Non-contiguous data: restarting buffer...')
-                self.files = []
-                self.range = [np.Inf, -np.Inf]
-                self.data = []
-                self.data_ranges = []
-                self.metadata = []
+                self.clear_buffer()
             # fill buffer with the necessary files:
             for i, file in enumerate(self.animal.eeg_files):
                 arange = [self.animal.eeg_init_time[i], self.animal.eeg_init_time[i] + self.animal.eeg_duration[i]]
@@ -326,7 +337,7 @@ class FileBuffer():  # Consider translating this to cython
                 nyq = 0.5 * fs[0]
                 hpcutoff = min(max(filter_settings[1] / nyq, 0.001), .5)
                 lpcutoff = min(max(filter_settings[2] / nyq, 0.001), 1)
-                # for some reason the banpass butterworth filter is very unstable
+                # for some reason the bandpass butterworth filter is very unstable
                 if lpcutoff<.99:  # don't apply filter if LP cutoff freqquency is above nyquist freq.
                     print('applying LP filter to display data:', filter_settings, fs, nyq, lpcutoff)
                     b, a = signal.butter(2, lpcutoff, 'lowpass', analog=False)
@@ -334,6 +345,7 @@ class FileBuffer():  # Consider translating this to cython
                 if hpcutoff < .99:  #Always true
                     print('applying HP filter to display data:', filter_settings, fs, nyq, hpcutoff)
                     b, a = signal.butter(2, hpcutoff, 'highpass', analog=False)
+                    data = data - np.mean(data)
                     data = signal.filtfilt(b, a, data,axis =0,method='gust')
         else:
             data = np.array([0, 0])
@@ -484,8 +496,8 @@ class Project():
     def get_project_time_range(self):
         if not self.animal_list:
             return np.array([0,0])
-        i=np.Inf
-        e=-np.Inf
+        i = np.Inf
+        e = -np.Inf
         for animal in self.animal_list:
             i = min(min(animal.eeg_init_time),i)
             e = max(max(np.array(animal.eeg_init_time) + np.array(animal.eeg_duration)),e)

@@ -6,7 +6,7 @@ import numpy as np
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtGui import QPalette, QColor
 from PyQt5.QtCore import Qt, QSettings, QByteArray, QObject
-from PyQt5.QtWidgets import QApplication, QPlainTextEdit, QDockWidget, QMainWindow, QFileDialog
+from PyQt5.QtWidgets import QApplication, QPlainTextEdit, QTextEdit, QDockWidget, QMainWindow, QFileDialog
 
 from pyecog2.ProjectClass import Project, Animal
 from pyecog2.annotation_table_widget import AnnotationTableWidget
@@ -107,9 +107,12 @@ class MainWindow(QMainWindow):
             Qt.RightDockWidgetArea | Qt.LeftDockWidgetArea | Qt.TopDockWidgetArea | Qt.BottomDockWidgetArea)
         self.dock_list['Plot Controls'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
-        self.dock_list['Text'] = QDockWidget("Text", self)
-        self.dock_list['Text'].setWidget(QPlainTextEdit())
-        self.dock_list['Text'].setObjectName("Text")
+        self.dock_list['Hints'] = QDockWidget("Hints", self)
+        text_edit = QTextEdit()
+        text = open('HelperHints.md').read()
+        text_edit.setMarkdown(text)
+        self.dock_list['Hints'].setWidget(text_edit)
+        self.dock_list['Hints'].setObjectName("Hints")
 
         self.annotation_table = AnnotationTableWidget(self.main_model.annotations)
         self.dock_list['Annotations Table'] = QDockWidget("Annotations Table", self)
@@ -149,7 +152,7 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['Plot Controls'])
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['Annotation Parameter Tree'])
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['Annotations Table'])
-        self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['Text'])
+        self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['Hints'])
         self.addDockWidget(Qt.BottomDockWidgetArea, self.dock_list['Video'])
         self.addDockWidget(Qt.BottomDockWidgetArea, self.dock_list['Wavelet'])
         self.addDockWidget(Qt.BottomDockWidgetArea, self.dock_list['FFT'])
@@ -282,15 +285,18 @@ class MainWindow(QMainWindow):
 
     def reload_plot(self):
         #print('reload')
-        index = self.tree_element.tree_view.currentIndex()
-        self.tree_element.model.data(index, TreeModel.prepare_for_plot_role)
-        full_xrange = self.paired_graphics_view.overview_plot.vb.viewRange()[0][1]
-        #print(full_xrange)
         xmin,xmax = self.paired_graphics_view.insetview_plot.vb.viewRange()[0]
-        x_range=xmax-xmin
-        if full_xrange > x_range:
+        x_range = xmax-xmin
+        # index = self.tree_element.tree_view.currentIndex()
+        # self.tree_element.model.data(index, TreeModel.prepare_for_plot_role)
+        self.main_model.project.file_buffer.clear_buffer()
+        self.main_model.project.file_buffer.get_data_from_range([xmin,xmax],n_envelope=10,channel=0)
+        buffer_x_max = self.main_model.project.file_buffer.get_t_max_for_live_plot()
+        #print(full_xrange)
+        print('reload_plot',buffer_x_max,xmax)
+        if buffer_x_max > xmax:
             #print('called set xrange')
-            self.paired_graphics_view.insetview_plot.vb.setXRange(full_xrange-x_range,full_xrange, padding=0)
+            self.paired_graphics_view.insetview_plot.vb.setXRange(buffer_x_max-x_range,buffer_x_max, padding=0)
 
 
     def load_live_recording(self):

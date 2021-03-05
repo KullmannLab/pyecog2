@@ -6,7 +6,7 @@ import numpy as np
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtGui import QPalette, QColor
 from PyQt5.QtCore import Qt, QSettings, QByteArray, QObject
-from PyQt5.QtWidgets import QApplication, QPlainTextEdit, QTextEdit, QDockWidget, QMainWindow, QFileDialog
+from PyQt5.QtWidgets import QApplication, QPlainTextEdit, QTextEdit, QDockWidget, QMainWindow, QFileDialog, QMessageBox
 
 from pyecog2.ProjectClass import Project, Animal
 from pyecog2.annotation_table_widget import AnnotationTableWidget
@@ -21,7 +21,7 @@ from pyecog2.paired_graphics_view import PairedGraphicsView
 from pyecog2.tree_model_and_nodes import TreeModel
 from pyecog2.tree_widget import FileTreeElement
 from pyecog2.coding_tests.plot_controls import PlotControls
-
+from datetime import datetime
 #
 class MainModel(QObject):
     sigTimeChanged      = QtCore.Signal(object)
@@ -79,6 +79,8 @@ class MainWindow(QMainWindow):
         self.setGeometry(0, 0, size.width(), size.height())
 
         self.main_model = MainModel()
+        self.autosave_timer = QtCore.QTimer()
+        self.live_recording_timer = QtCore.QTimer()
 
         # Populate Main window with widgets
         # self.createDockWidget()
@@ -182,13 +184,13 @@ class MainWindow(QMainWindow):
             settings = QSettings("PyEcog","PyEcog")
             settings.beginGroup("ProjectSettings")
             fname = settings.value("ProjectFileName")
-            print('Loading Project:', fname)
             self.show()
-            self.load_project(fname)
-            # self.main_model.project.load_from_json(fname)
-            # self.main_model.project.load_from_json('/home/mfpleite/Shared/ele_data/proj.pyecog')
-            # print(self.main_model.project.__dict__)
-            self.tree_element.set_rootnode_from_project(self.main_model.project)
+            if fname.endswith('.pyecog'):
+                print('Loading last opened Project:', fname)
+                self.load_project(fname)
+            else:
+                print('Loading last opened directory:', fname)
+                self.load_directory(fname)
         except Exception as e:
             print('ERROR in tree build')
             print(e)
@@ -212,11 +214,12 @@ class MainWindow(QMainWindow):
         self.restoreState(self.settings.value("windowState", type=QByteArray))
         self.show()
 
-    def load_directory(self):
-        print('0penening only folders with h5 files')
-        selected_directory = self.select_directory()
-        temp_animal = Animal(id='-', eeg_folder=selected_directory)
-        temp_project = Project(self.main_model,eeg_data_folder=selected_directory, title=selected_directory)
+    def load_directory(self,dirname=None):
+        print('Openening folder')
+        if dirname is None:
+            dirname = self.select_directory()
+        temp_animal = Animal(id='-', eeg_folder=dirname)
+        temp_project = Project(self.main_model,eeg_data_folder=dirname, title=dirname,project_file = dirname)
         temp_project.add_animal(temp_animal)
         self.tree_element.set_rootnode_from_project(temp_project)
         self.main_model.project = temp_project
@@ -229,14 +232,34 @@ class MainWindow(QMainWindow):
         if type(fname) is not str:
             dialog = QFileDialog()
             dialog.setWindowTitle('Load Project ...')
-            dialog.setFileMode(QFileDialog.AnyFile)
+            dialog.setFileMode(QFileDialog.ExistingFile)
             # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
             dialog.setAcceptMode(QFileDialog.AcceptOpen)
             dialog.setNameFilter('*.pyecog')
             if dialog.exec():
                 fname = dialog.selectedFiles()[0]
+
         if type(fname) is str:
-            print(fname)
+            print('load_project:Loading:',fname)
+            if os.path.isfile(fname+'_autosave'):
+                last_file_modification = os.path.getmtime(fname)
+                last_autosave_modification = os.path.getmtime(fname+'_autosave')
+                if last_autosave_modification>last_file_modification:
+                    msg = QMessageBox()
+                    msg.setIcon(QMessageBox.Information)
+                    msg.setText("A more recently modified autosave file exists, do you want to load it instead?")
+                    msg.setDetailedText("Last autosave file modification: " +
+                                           datetime.fromtimestamp(last_autosave_modification).isoformat(sep=' ') +
+                                           "\nLast project file modification: " +
+                                           datetime.fromtimestamp(last_file_modification).isoformat(
+                                               sep=' ')
+                                           )
+                    msg.setWindowTitle("Load autosave")
+                    msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+                    retval = msg.exec_()
+                    if retval == QMessageBox.Ok:
+                        fname = fname+'_autosave'
+
             self.main_model.project.load_from_json(fname)
             self.tree_element.set_rootnode_from_project(self.main_model.project)
             init_time = min(self.main_model.project.current_animal.eeg_init_time)
@@ -245,6 +268,8 @@ class MainWindow(QMainWindow):
             self.paired_graphics_view.set_scenes_plot_channel_data(plot_range)
             self.main_model.set_time_position(init_time)
             self.main_model.set_window_pos([init_time,init_time])
+
+        self.toggle_auto_save()
 
 
     def save(self):
@@ -255,6 +280,7 @@ class MainWindow(QMainWindow):
         else:
             print('Saving project to:', fname)
             self.main_model.project.save_to_json(fname)
+        self.toggle_auto_save()
 
     def save_as(self):
         dialog = QFileDialog()
@@ -271,6 +297,25 @@ class MainWindow(QMainWindow):
             self.main_model.project.project_file = fname
             print('Saving project to:', self.main_model.project.project_file)
             self.main_model.project.save_to_json(fname)
+        self.toggle_auto_save()
+
+    def auto_save(self):
+        print('autosave_save action triggered')
+        fname = self.main_model.project.project_file
+        if not os.path.isfile(fname):
+            print('warning - project file does not exist yet')
+        elif fname.endswith('.pyecog'):
+            print('Auto saving project to:', fname+'_autosave')
+            self.main_model.project.save_to_json(fname+'_autosave')
+        else:
+            print('project filename not in *.pyecog')
+
+    def toggle_auto_save(self):
+        self.autosave_timer.timeout.connect(self.auto_save)
+        if self.action_autosave.isChecked():
+            self.autosave_timer.start(60000)  # autosave every minute
+        else:
+            self.autosave_timer.stop()
 
     def select_directory(self, label_text='Select a directory'):
         '''
@@ -307,14 +352,11 @@ class MainWindow(QMainWindow):
 
 
     def load_live_recording(self):
-        '''
-        This should just change the graphics view/ file node to keep
-        reloading?
-        '''
-        self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.reload_plot)
         if self.actionLiveUpdate.isChecked():
-            self.timer.start(100)
+            self.live_recording_timer.start(100)
+        else:
+            self.live_recording_timer.stop()
 
     def open_git_url(self):
         webbrowser.open('https://github.com/KullmannLab/pyecog2')
@@ -399,6 +441,12 @@ class MainWindow(QMainWindow):
         self.action_load_project.triggered.connect(self.load_project)
         self.action_save.triggered.connect(self.save)
         self.action_save_as.triggered.connect(self.save_as)
+        self.menu_project.addSeparator()
+        self.action_autosave  = self.menu_project.addAction("Enable autosave")
+        self.action_autosave.setCheckable(True)
+        self.action_autosave.toggled.connect(self.toggle_auto_save)
+        self.action_autosave.setChecked(True)
+
 
         # ANNOTATIONS section
         self.menu_annotations = self.menu_bar.addMenu("Annotations")
@@ -450,6 +498,7 @@ class MainWindow(QMainWindow):
         #self.menubar.addMenu("View")
 
     def closeEvent(self, event):
+        self.auto_save()
         print('closing')
         settings = QSettings("PyEcog","PyEcog")
         settings.beginGroup("MainWindow")

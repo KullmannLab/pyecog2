@@ -169,7 +169,7 @@ class FileBuffer():  # Consider translating this to cython
             m = m.reshape((-1, metadata['no_channels']))
             self.data.append(m)
 
-        trange = [metadata['start_timestamp_unix'], metadata['start_timestamp_unix'] + 1/metadata['fs']*m.shape[0]]
+        trange = [metadata['start_timestamp_unix'], metadata['start_timestamp_unix'] + 1/metadata['fs']*self.data[-1].shape[0]]
         self.data_ranges.append(trange)
 
         if self.range[0] > trange[0]:  # buffering earlier file
@@ -400,7 +400,7 @@ class Project():
         dict[
             'current_animal'] = self.current_animal.id  # Animal().dict() # self.current_animal.dict() # Otherwise when loading the current animal would not be in the animal_list
         dict['file_buffer'] = None
-        print(dict)
+        # print(dict)
         json.dump(dict, open(fname, 'w'), indent=4)
 
     def load_from_json(self, fname):
@@ -416,7 +416,7 @@ class Project():
         self.set_current_animal(self.get_animal(current_animal_id))
         print('current animal:', self.current_animal.id)
         self.file_buffer = FileBuffer(self.current_animal)
-        self.project_file = fname
+        self.project_file = fname.strip('_autosave') # when recovering autosaves, make the project file the original project file
         if not hasattr(self,'filter_settings'):  #Backwards compatibility
             self.filter_settings = (False, 0, 1e6)
         self.main_model.sigProjectChanged.emit()

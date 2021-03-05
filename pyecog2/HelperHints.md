@@ -1,4 +1,6 @@
-## Keyboard and Mouse shrotcuts
+## Keyboard and Mouse shortcuts
+
+---
 ### Plot Control:
 - **LeftClick** - Pan
 - **RightClick** - Zoom
@@ -10,6 +12,7 @@
 - **Shift + LeftClick** *(overview)*- Set inset box corners (click once for one, twice for the other)
 - **Shift + LeftClick** *(inset)*- Set selection window edges (click once for one, twice for the other)
 - **Control + LeftClick** - Move time cursor to position
+---
 ### Annotations:
-- **Numbered Keys** - Create new annotation on selection window
+- **Numbered Keys** - Create new annotation on selection window / Change current annotation label
 - **Delete** - delete focused annotation

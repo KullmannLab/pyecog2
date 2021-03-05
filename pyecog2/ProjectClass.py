@@ -269,7 +269,6 @@ class FileBuffer():  # Consider translating this to cython
                     no_downsampling = False
             elif ds == 1:
                 # Small enough to display with no intervention.
-
                 enveloped_data.append(data[start:stop, channel].reshape(-1, 1))
             else:
                 no_downsampling = False
@@ -332,20 +331,20 @@ class FileBuffer():  # Consider translating this to cython
         if len(enveloped_data) > 0:
             data = np.vstack(enveloped_data)
             time = np.vstack(enveloped_time)
-            if for_plot and filter_settings[0]: # apply LP filter only for plots without downsampling
+            if for_plot and filter_settings[0]: # apply LP filter only for plots
                 fs = 2/(time[2]-time[0])
                 nyq = 0.5 * fs[0]
                 hpcutoff = min(max(filter_settings[1] / nyq, 0.001), .5)
+                data = data - np.mean(data)
                 lpcutoff = min(max(filter_settings[2] / nyq, 0.001), 1)
                 # for some reason the bandpass butterworth filter is very unstable
                 if lpcutoff<.99:  # don't apply filter if LP cutoff freqquency is above nyquist freq.
-                    print('applying LP filter to display data:', filter_settings, fs, nyq, lpcutoff)
+                    # print('applying LP filter to display data:', filter_settings, fs, nyq, lpcutoff)
                     b, a = signal.butter(2, lpcutoff, 'lowpass', analog=False)
                     data = signal.filtfilt(b, a, data,axis =0,method='gust')
-                if hpcutoff < .99:  #Always true
-                    print('applying HP filter to display data:', filter_settings, fs, nyq, hpcutoff)
+                if hpcutoff > .001: # don't apply filter if HP cutoff frequency too low.
+                    # print('applying HP filter to display data:', filter_settings, fs, nyq, hpcutoff)
                     b, a = signal.butter(2, hpcutoff, 'highpass', analog=False)
-                    data = data - np.mean(data)
                     data = signal.filtfilt(b, a, data,axis =0,method='gust')
         else:
             data = np.array([0, 0])

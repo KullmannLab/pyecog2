@@ -63,9 +63,9 @@ class PlotControls(QWidget):
 
         self.filter_check = QCheckBox('Apply filter')
         self.filter_check.stateChanged.connect(self.update_filter)
-        self.hp_spin = pg.SpinBox(value=1,bounds=[0,None],step=1,compactHeight=False) #, int=True, minStep=1, step=1)
+        self.hp_spin = pg.SpinBox(value=.001,bounds=[0,None],step=1,compactHeight=False) #, int=True, minStep=1, step=1)
         self.hp_spin.valueChanged.connect(self.update_filter)
-        self.lp_spin = pg.SpinBox(value=70,bounds=[0,None],step=1,compactHeight=False) #, int=True, minStep=1, step=1)
+        self.lp_spin = pg.SpinBox(value=1000,bounds=[0,None],step=1,compactHeight=False) #, int=True, minStep=1, step=1)
         self.lp_spin.valueChanged.connect(self.update_filter)
 
         self.filter_controls_layout.addWidget(self.filter_check,0,0)

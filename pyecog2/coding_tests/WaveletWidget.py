@@ -64,7 +64,7 @@ def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), progress_signal = 
 def morlet_wavelet_fft(input_signal, dt=1, R=7, freq_interval=(), progress_signal=None, kill_switch=None):
     if kill_switch is None:
         kill_switch = [False]
-    print('morlet_wavelet called')
+    # print('morlet_wavelet called')
     Ns = len(input_signal)
     if len(freq_interval) > 0:
         minf = max(freq_interval[0], R / (Ns * dt))  # avoid wavelets with COI longer than the signal
@@ -81,7 +81,7 @@ def morlet_wavelet_fft(input_signal, dt=1, R=7, freq_interval=(), progress_signa
 
     alfa = (maxf / minf) ** (1 / Nf) - 1  # According to the expression achived by fn = ((1+1/R)^n)*f0 where 1/R = alfa
     vf = ((1 + alfa) ** np.arange(0, Nf)) * minf
-    print(Nf, Ns)
+    # print(Nf, Ns)
     result = np.zeros((Nf, Ns), dtype='complex')
     input_signalf = np.fft.fft(input_signal)
     Ni = len(input_signal)
@@ -127,20 +127,20 @@ class Worker(QRunnable):
         '''
         import sys
         # Retrieve args/kwargs here; and fire processing using them
-        print('worker run called')
+        # print('worker run called')
         try:
-            print('calling worker function')
+            # print('calling worker function')
             result = self.fn(*self.args, **self.kwargs)
         except:
-            print('worker Error')
+            # print('worker Error')
             traceback.print_exc()
             exctype, value = sys.exc_info()[:2]
             self.signals.error.emit((exctype, value, traceback.format_exc()))
         else:
-            print('worker emiting result')
+            # print('worker emiting result')
             self.signals.result.emit(result)  # Return the result of the processing
         finally:
-            print('worker emiting finished')
+            # print('worker emiting finished')
             self.signals.finished.emit()  # Done
 
 
@@ -209,7 +209,7 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
     def update_data(self):
         for s in self.thread_killswitch_list:  # Stop all previous wavelet computations
             s[0] = True
-            print('Killswitch list:',self.thread_killswitch_list)
+            # print('Killswitch list:',self.thread_killswitch_list)
         self.data = np.array([[1, 0], [0, 1]])
         self.start_t = timer()
         if self.hist_levels is not None:
@@ -221,24 +221,24 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
                 time = np.arange(300*250)/250
                 print('random data')
             else:
-                print('window' , self.main_model.window)
+                # print('window' , self.main_model.window)
                 data, time = self.main_model.project.get_data_from_range(self.main_model.window,channel = self.channel)
             if len(data) <= 10 :
                 return
-            print('Wavelet data shape:',data.shape)
+            # print('Wavelet data shape:',data.shape)
             self.img.setImage(self.data*0)
             if self.hist_levels is not None: # Mantain levels from previous view if they exist
                 self.hist.setLevels(*self.hist_levels)
             self.p1.setLabel('bottom', 'Computing Wavelet tranform...', units='')
             self.show()
-            print('Computing Wavelet...')
+            # print('Computing Wavelet...')
             if len(time.shape)==1:
                 self.dt = (time[10]-time[9])  # avoid time edge values
             else:
                 self.dt = (time[10] - time[9])[0]
             s = [False]
             self.thread_killswitch_list.append(s)
-            print('Killswitch list:',self.thread_killswitch_list)
+            # print('Killswitch list:',self.thread_killswitch_list)
             worker = Worker(morlet_wavelet_fft, data.ravel(),dt = self.dt ,R=self.R,freq_interval = (1,2/self.dt),
                             kill_switch=s)
             worker.signals.result.connect(self.update_image)
@@ -254,15 +254,15 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             self.p1.setLabel('bottom', 'Time', units='s')
 
     def update_image(self,tuple):
-        print('updating wavelet result...')
+        # print('updating wavelet result...')
         self.wav, self.coi, vf, ks = tuple
         for i, s in enumerate(self.thread_killswitch_list): # clean up killswitch list
             if s is ks:
                 del self.thread_killswitch_list[i]
                 print(self.thread_killswitch_list)
         if ks[0]:  # If the task was killed do not update the plot
-            print('Wavelet process killed: not ploting data')
-            print('Killswitch list:', self.thread_killswitch_list)
+            # print('Wavelet process killed: not ploting data')
+            # print('Killswitch list:', self.thread_killswitch_list)
             return
         self.data = np.log(np.abs(self.wav)+.001)
         self.img.setImage(self.data*(1-self.coi))

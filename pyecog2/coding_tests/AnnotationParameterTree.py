@@ -74,6 +74,7 @@ class AnnotationParameterTee(ParameterTree):
         print('AnnotationParameterTree Re_init Called ')
         self.p.sigTreeStateChanged.disconnect()
         labels = self.annotationPage.labels
+        print(labels)
         if set(labels) != set(self.shortcut_keys.keys()):  # restart shortcut keys in case labels change in annotationPage
             self.shortcut_keys = dict([(l, i + 1) for i, l in enumerate(labels)])
 

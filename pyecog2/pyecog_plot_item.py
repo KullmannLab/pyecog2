@@ -110,7 +110,7 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
 
     def __init__(self, values=(0, 1), orientation='vertical', brush=None, pen=None,
                  hoverBrush=None, hoverPen=None, movable=True, bounds=None,
-                 span=(0, 1), swapMode='sort',label = '', id = None, removable=True, channel_range = None):
+                 span=(0, 1), swapMode='sort',label = '', id = None, removable=True, channel_range = None,movable_lines = False):
 
         # pg.LinearRegionItem.__init__(self, values=values, orientation=orientation, brush=brush, pen=pen,
         #                              hoverBrush=hoverBrush, hoverPen=hoverPen, movable=movable, bounds=bounds,
@@ -128,18 +128,19 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
         self._bounds = None
 
         lineKwds = dict(
-            movable=movable,
+            movable=movable or movable_lines,
             bounds=bounds,
             span=span,
             pen=pen,
             hoverPen=hoverPen,
         )
-
         if channel_range is not None:
             self.channel_range = [min(channel_range) - .5, max(channel_range) + .5]
         else:
             self.channel_range = None
 
+        self.lines = []
+        self.setMovable(movable) # pg setMovable overides line movable arguments, so doing it before lines
         self.lines = [
             PyecogInfiniteLine(QtCore.QPointF(values[0], 0), angle=90, yrange=self.channel_range, **lineKwds),
             PyecogInfiniteLine(QtCore.QPointF(values[1], 0), angle=90, yrange=self.channel_range, **lineKwds)]
@@ -160,8 +161,6 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
             c.setAlpha(min(c.alpha() * 2, 255))
             hoverBrush = pg.functions.mkBrush(c)
         self.setHoverBrush(hoverBrush)
-
-        self.setMovable(movable)
         self.label = label  # Label of the annotation
         self.id = id  # field to identify corresponding annotation in the annotations object
         label_text = pg.TextItem(label, anchor=(0, 0), color=pen.color())

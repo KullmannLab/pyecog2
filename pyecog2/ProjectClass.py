@@ -389,8 +389,9 @@ class Project():
 
     def save_to_json(self, fname):
         try:
-            self.current_animal.annotations.copy_from(
-                self.main_model.annotations)  # save alterations made to the current animal annotations
+            self.main_model.annotations.copy_to(self.current_animal.annotations)
+            # self.current_animal.annotations.copy_from(
+            #     self.main_model.annotations)  # save alterations made to the current animal annotations
         except:
             print('no main model defined')
 

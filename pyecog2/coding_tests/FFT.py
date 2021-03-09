@@ -33,7 +33,7 @@ class FFTwindow(pg.PlotWidget):
 
     def updateData(self):
         if self.isVisible():
-            print('window', self.main_model.window)
+            # print('window', self.main_model.window)
             data, time = self.main_model.project.get_data_from_range(self.main_model.window,channel = 0)
             if len(data) < 10:
                 return
@@ -42,7 +42,7 @@ class FFTwindow(pg.PlotWidget):
             # vf = np.fft.rfftfreq(N)*1/(time[1]-time[0])
             vf,t,z = stft(data.T,fs = 1/(time[10]-time[9]),nfft=1024) # avoid time edge values
             dataf = np.mean(np.abs(z),axis=-1).ravel()
-            print('FFT: data shape:',data.shape,'FFT: dataf shape:',dataf.shape,'vf shape:',vf.shape,'z shape:',z.shape)
+            # print('FFT: data shape:',data.shape,'FFT: dataf shape:',dataf.shape,'vf shape:',vf.shape,'z shape:',z.shape)
             # self.p1.setData(x = vf, y = np.abs(dataf[0]))
             self.p1.setData(x = vf, y = np.abs(dataf))
             # self.setLimits(xMin=vf[0],xMax=vf[-1],yMin=min(0,min(np.abs(dataf))),yMax = 1.1*max(dataf))

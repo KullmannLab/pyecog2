@@ -255,7 +255,7 @@ class PairedGraphicsView():
         annotation_graph_o.setZValue(-1)
         annotation_graph_i = PyecogLinearRegionItem((annotation.getStart(), annotation.getEnd()), pen=pen,
                                                     brush=brush, swapMode='push', label=annotation.getLabel(), id=None,
-                                                    channel_range=channel_range)
+                                                    channel_range=channel_range,movable=False, movable_lines=True)
 
         annotation_graph_i.sigRegionChangeFinished.connect(
             self.function_generator_link_graphs_to_annotations(annotation, annotation_graph_i))

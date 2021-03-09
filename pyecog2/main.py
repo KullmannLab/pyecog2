@@ -40,6 +40,8 @@ class MainModel(QObject):
         self.file_meta_dict = {}
         self.annotations = AnnotationPage()
         self.project = Project(self)
+        self.annotations_history = []
+        self.annotations_history_backcounter = 0
 
     def set_time_position(self, pos):
         self.time_position = pos
@@ -54,12 +56,6 @@ class MainModel(QObject):
             self.window = pos
             self.sigWindowChanged.emit(pos)
             print('Window changesd to:', pos)
-
-    def update_filter_settings(self):
-        pass
-
-    def update_xrange_settings(self,xrange):
-        pass
 
 class MainWindow(QMainWindow):
     '''
@@ -414,8 +410,6 @@ class MainWindow(QMainWindow):
         self.actionLiveUpdate.setCheckable(True)
         self.actionLiveUpdate.toggled.connect(self.load_live_recording)
         self.actionLiveUpdate.setChecked(False)
-        #self.live_shortcut = QtWidgets.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key_L), self)
-        #self.live_shortcut.connect()
         self.actionLiveUpdate.setShortcut('Ctrl+L')
 
         self.menu_file.addSeparator()
@@ -450,6 +444,12 @@ class MainWindow(QMainWindow):
 
         # ANNOTATIONS section
         self.menu_annotations = self.menu_bar.addMenu("Annotations")
+        self.annotations_undo = self.menu_annotations.addAction("Undo")
+        self.annotations_undo.setShortcut('Ctrl+Z')
+        self.annotations_undo.triggered.connect(self.main_model.annotations.step_back_in_history)
+        self.annotations_redo = self.menu_annotations.addAction("Undo")
+        self.annotations_redo.setShortcut('Ctrl+Shift+Z')
+        self.annotations_redo.triggered.connect(self.main_model.annotations.step_forward_in_history)
         self.action_export_annotations = self.menu_annotations.addAction("Export to CSV")
         self.action_export_annotations.triggered.connect(self.export_annotations)
         self.action_import_annotations = self.menu_annotations.addAction("Import annotations")
@@ -568,6 +568,7 @@ class MainWindow(QMainWindow):
                         # annotation.setLabel(self.main_model.annotations.labels[i])
                         # self.main_model.annotations.focusOnAnnotation(annotation)
                     return
+
 
 if __name__ == '__main__':
 

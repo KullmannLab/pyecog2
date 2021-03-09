@@ -12,6 +12,11 @@
 - **Shift + LeftClick** *(overview)*- Set inset box corners (click once for one, twice for the other)
 - **Shift + LeftClick** *(inset)*- Set selection window edges (click once for one, twice for the other)
 - **Control + LeftClick** - Move time cursor to position
+
+
+- **Arrow Keys** - move inset view one page to the left/right
+- **Shift + Arrow Keys** - move overview one page to the left/right
+
 ---
 ### Annotations:
 - **Numbered Keys** - Create new annotation on selection window / Change current annotation label

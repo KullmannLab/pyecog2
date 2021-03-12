@@ -32,7 +32,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
     information.QtWidgets.QTableWidgetok
     """
 
-    def __init__(self, annotationsPage = AnnotationPage(), *args, **kwds):
+    def __init__(self, annotationsPage = AnnotationPage(),parent=None, *args, **kwds):
         """
         All positional arguments are passed to QTableWidget.__init__().
 
@@ -52,7 +52,6 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
 
         self.setWindowTitle('Annotations Table')
         self.itemClass = AnnotationTableWidgetItem
-
         self.setVerticalScrollMode(self.ScrollPerPixel)
         self.setSelectionMode(QtWidgets.QAbstractItemView.ContiguousSelection)
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
@@ -77,6 +76,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         self.contextMenu.addAction('Copy All').triggered.connect(self.copyAll)
         self.contextMenu.addAction('Save Selection').triggered.connect(self.saveSel)
         self.contextMenu.addAction('Save All').triggered.connect(self.saveAll)
+        self.parent = parent
         self.annotationsPage = annotationsPage
         self.setData(annotationsPage.annotations_list)
         self.annotationsPage.sigFocusOnAnnotation.connect(self.selectAnnotation) #connect function to select annotation
@@ -175,18 +175,23 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
 
     def removeSelection(self):
         annotations_to_remove = list(set([item.annotation for item in self.selectedItems()]))
+        self.annotationsPage.history_is_paused = True # Avoid filling history with all the deletion steps - slightly unelegant to do this here
         for annotation in annotations_to_remove:
             print('Removing annotation:', annotation.getLabel(),annotation.getPos())
             self.annotationsPage.delete_annotation(annotation)
-
+        self.annotationsPage.history_is_paused = False
+        self.annotationsPage.cache_to_history()
 
     def changeSelectionLabel(self,label):
         annotations_to_change = list(set([item.annotation for item in self.selectedItems()]))
+        self.annotationsPage.history_is_paused = True  # Avoid filling history with all the deletion steps - slightly unelegant to do this here
         for annotation in annotations_to_change:
             print('changing annotation label', annotation.getLabel(),annotation.getPos())
             annotation.setLabel(label)
         # a bit of a pity that this signal cannot be emited by the anotationPage
         self.annotationsPage.sigLabelsChanged.emit(label)
+        self.annotationsPage.history_is_paused = False
+        self.annotationsPage.cache_to_history()
 
     def setEditable(self, editable=True):
         self.editable = editable
@@ -414,6 +419,11 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
                 if self.annotationsPage.focused_annotation is not None:
                     self.changeSelectionLabel(self.annotationsPage.labels[i])
                 return
+
+        if ev.key() == QtCore.Qt.Key_Space: # pass spacebar presses to main window -  implementation is a bit naughty...
+            if self.parent is not None:
+                print('passing to main window')
+                self.parent.keyPressEvent(ev)
 
         QtWidgets.QTableWidget.keyPressEvent(self, ev)
 

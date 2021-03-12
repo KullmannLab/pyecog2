@@ -49,7 +49,7 @@ class MainModel(QObject):
         if abs(pos - self.time_position_emited) > .01: # only emit signal if time_position actually changed
             self.time_position_emited = pos
             self.sigTimeChanged.emit(pos)
-            print('Current Time emited:', pos)
+            # print('Current Time emited:', pos)
 
     def set_window_pos(self, pos):
         if pos != self.window:
@@ -66,9 +66,10 @@ class MainWindow(QMainWindow):
     '''
     def __init__(self):
         super().__init__()
+        print('🇵 🇾 🇪 🇨 🇴 🇬')
 
         # Initialize Main Window geometry
-        self.title = "PyEcog Main"
+        self.title = "ℙ𝕪𝔼𝕔𝕠𝕘"
         (size, rect) = self.get_available_screen()
         self.setWindowIcon(QtGui.QIcon("icon.png"))
         self.setWindowTitle(self.title)
@@ -112,7 +113,7 @@ class MainWindow(QMainWindow):
         self.dock_list['Hints'].setWidget(text_edit)
         self.dock_list['Hints'].setObjectName("Hints")
 
-        self.annotation_table = AnnotationTableWidget(self.main_model.annotations)
+        self.annotation_table = AnnotationTableWidget(self.main_model.annotations,self) # passing self as parent in position 2
         self.dock_list['Annotations Table'] = QDockWidget("Annotations Table", self)
         self.dock_list['Annotations Table'].setWidget(self.annotation_table)
         self.dock_list['Annotations Table'].setObjectName("Annotations Table")

@@ -249,9 +249,9 @@ class AnnotationPage(QObject):
         del self.label_color_dict[old_label]
         del self.label_channel_range_dict[old_label]
         self.sigLabelsChanged.emit(new_label)
-        print('change label name')
         self.history_is_paused = False
         self.cache_to_history()
+        print('change label name')
 
     def change_label_color(self,label,color):
         self.label_color_dict[label] = color
@@ -355,15 +355,15 @@ class AnnotationPage(QObject):
 
     def cache_to_history(self,dummy_argument=None):
         if self.history_is_paused:
-            print('skiping history cache')
+            # print('skiping history cache')
             return
         for k in range(1,-self.history_step):
             del self.history[-1] # delete history after current event
         self.history.append(self.dict())
         self.history_step=-1
-        print('Caching to history, history size:',len(self.history),dummy_argument)
-        for i,d in enumerate(self.history):
-            print(i,d['labels'])
+        # print('Caching to history, history size:',len(self.history),dummy_argument)
+        # for i,d in enumerate(self.history):
+        #     print(i,d['labels'])
         if len(self.history) >= 10: # delete history buffer older than 10 events
             del self.history[0]
 
@@ -382,7 +382,7 @@ class AnnotationPage(QObject):
             print('Already at most recent point in history')
         else:
             self.history_step += 1
-            print('going forward to step', self.history_step,'of history',len(self.history))
+            # print('going forward to step', self.history_step,'of history',len(self.history))
             self.restore_from_dict(self.history[self.history_step])
 
     def connect_annotations_to_history(self):

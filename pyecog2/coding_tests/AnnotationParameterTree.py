@@ -68,13 +68,17 @@ class AnnotationParameterTee(ParameterTree):
         self.p.sigTreeStateChanged.connect(self.change)
         self.setParameters(self.p, showTop=False)
         self.headerItem().setHidden(True)
-        self.annotationPage.sigLabelsChanged.connect(lambda s: self.re_init())
+        # self.last_label_change = None
+        self.annotationPage.sigLabelsChanged.connect(self.re_init)
 
-    def re_init(self):
-        print('AnnotationParameterTree Re_init Called ')
+    def re_init(self,label=None): # dummy variable to connect to sigLabelsChanged
+        # if self.last_label_change == label:
+        #     print('re_init already ran for', label)
+        #     return # skip re_init because it already ran
+        # self.last_label_change = label
+        print('AnnotationParameterTree Re_init Called ', label)
         self.p.sigTreeStateChanged.disconnect()
         labels = self.annotationPage.labels
-        print(labels)
         if set(labels) != set(self.shortcut_keys.keys()):  # restart shortcut keys in case labels change in annotationPage
             self.shortcut_keys = dict([(l, i + 1) for i, l in enumerate(labels)])
 
@@ -92,6 +96,7 @@ class AnnotationParameterTee(ParameterTree):
         self.params = [ScalableGroup(name="Annotation Labels", children=Label_dict)]
         self.p.addChildren(self.params)
         self.p.sigTreeStateChanged.connect(self.change)
+        print('AnnotationParameterTree Re_init finished ')
 
 
     ## If anything changes in the tree, print a message

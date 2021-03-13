@@ -162,6 +162,7 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         self.p1.setLogMode(y=True)
         self.channel = 0
         self.R = 14
+        self.setBackground(self.main_model.color_settings['brush'])
 
         # Contrast/color control
         self.hist = pg.HistogramLUTItem()
@@ -215,6 +216,7 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         if self.hist_levels is not None:
             self.hist_levels = self.hist.getLevels()
         if self.isVisible():
+            self.setBackground(self.main_model.color_settings['brush'])
             if self.main_model is None:
                 data = np.random.randn(300*250)
                 data[200:800] += np.sin(np.arange(600)*10)

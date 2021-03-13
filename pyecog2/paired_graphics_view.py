@@ -15,12 +15,6 @@ from pyecog2.pyecog_plot_item import PyecogPlotCurveItem, PyecogLinearRegionItem
 from pyqtgraph import functions as fn
 from pyqtgraph.Point import Point
 
-# Mikail feel free to play about if you feel so inclined :P
-pg.setConfigOption('background', 'w')
-pg.setConfigOption('foreground', 'k')
-# pg.setConfigOption('useWeave',True)
-pg.setConfigOption('antialias', True)
-# pg.setConfigOption('useOpenGL', False)
 
 # Function to overide pyqtgraph ViewBox wheel events
 def wheelEvent(self, ev, axis=None):
@@ -86,6 +80,10 @@ class PairedGraphicsView():
         self.build_splitter()
         self.scale = None  # transform on the childitems of plot
 
+        self.main_model = parent.main_model
+        self.main_pen = self.main_model.color_settings['pen']
+        self.main_brush = self.main_model.color_settings['brush']
+
         overview_layout_widget = pg.GraphicsLayoutWidget()
         overview_date_axis = DateAxis(orientation='bottom')
         self.overview_plot = overview_layout_widget.addPlot(axisItems={'bottom':overview_date_axis})
@@ -132,7 +130,6 @@ class PairedGraphicsView():
         # {"1" : {'inset': obj,'overview':obj }
         # will be used for an ugly hack to snchonize across plots
         self.channel_plotitem_dict = {}
-        self.main_model = parent.main_model
         self.main_model.annotations.sigAnnotationAdded.connect(self.add_annotaion_plot)
         self.main_model.annotations.sigLabelsChanged.connect(
             lambda: self.set_scenes_plot_annotations_data(self.main_model.annotations))
@@ -148,6 +145,9 @@ class PairedGraphicsView():
         set_plotitem_data is snesnible
         pens - a list of len channels containing pens
         '''
+        self.splitter.widget(0).setBackgroundBrush(self.main_brush)
+        self.splitter.widget(1).setBackgroundBrush(self.main_brush)
+
         if overview_range is None:
             overview_range, y_range = self.overview_plot.viewRange()
         # we need to handle if channel not seen before
@@ -174,7 +174,7 @@ class PairedGraphicsView():
 
         for i in range(self.n_channels):
             if pens is None:
-                pen = pg.mkPen('k')
+                pen=self.main_pen
             else:
                 pen = pen[i]
             print('Setting plotitem channel data')
@@ -212,9 +212,9 @@ class PairedGraphicsView():
         if True: # index not in self.channel_plotitem_dict.keys(): # This was used before we were clearing the scenes upon file loading
             self.channel_plotitem_dict[index] = {}
             self.channel_plotitem_dict[index]['overview'] = PyecogPlotCurveItem(self.main_model.project, index,
-                                                                                viewbox=self.overview_plot.vb)
+                                                                                viewbox=self.overview_plot.vb,pen=pen)
             self.channel_plotitem_dict[index]['insetview'] = PyecogPlotCurveItem(self.main_model.project, index,
-                                                                                 viewbox=self.insetview_plot.vb)
+                                                                                 viewbox=self.insetview_plot.vb, pen=pen)
             self.channel_plotitem_dict[index]['overview'].setY(index)
             self.channel_plotitem_dict[index]['insetview'].setY(index)
             m = QtGui.QTransform().scale(1, init_scale)
@@ -316,8 +316,12 @@ class PairedGraphicsView():
 
 
     def set_scene_window(self, window):
-        brush = pg.functions.mkBrush(color=(0, 0, 0, 10))
-        pen = pg.functions.mkPen(color=(0, 0, 0, 200))
+        color = self.main_pen.color()
+        color.setAlpha(15)
+        brush = pg.functions.mkBrush(color)
+        pen = self.main_pen
+        # brush = pg.functions.mkBrush(color=(1, 1, 1, 10))
+        # pen = pg.functions.mkPen(color=(1, 1, 1, 200))
         # window_item_o = pg.LinearRegionItem(window, brush=brush,movable=False)
         window_item_o = PyecogLinearRegionItem(window, pen=pen, brush=brush, movable=False, id=None)
         self.overview_plot.addItem(window_item_o)

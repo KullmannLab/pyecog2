@@ -24,7 +24,8 @@ class FFTwindow(pg.PlotWidget):
         super().__init__(name='FFT')
         self.main_model = main_model
         self.p1 = self.plot()
-        self.p1.setPen((0, 0, 0))
+        self.p1.setPen(self.main_model.color_settings['pen'])
+        self.setBackground(self.main_model.color_settings['brush'])
         self.setXRange(0,100)
         self.setLabel('left', 'Amplitude', units = 'a.u.')
         self.setLabel('bottom', 'Frequency', units = 'Hz')
@@ -33,6 +34,8 @@ class FFTwindow(pg.PlotWidget):
 
     def updateData(self):
         if self.isVisible():
+            self.p1.setPen(self.main_model.color_settings['pen'])
+            self.setBackground(self.main_model.color_settings['brush'])
             # print('window', self.main_model.window)
             data, time = self.main_model.project.get_data_from_range(self.main_model.window,channel = 0)
             if len(data) < 10:

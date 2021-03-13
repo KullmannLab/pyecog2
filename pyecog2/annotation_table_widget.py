@@ -94,10 +94,13 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
     def updateTableColor(self):
         for i in range(self.rowCount()):
             # make bkgd color a bit lighter than normal color
-            alpha = 50 / 255
-            color = [value * alpha + 255 * (1 - alpha) for value in self.annotationsPage.label_color_dict[self.item(i, 0).text()]]
+            alpha = 125
+            bgcolor = self.annotationsPage.label_color_dict[self.item(i, 0).text()]
+            # fgcolor = [255-bgcolor[0],255-bgcolor[1],255-bgcolor[2]]
+            # print('TABLE bgcolor',bgcolor)
             for k in range(self.columnCount()):
-                self.item(i, k).setBackground(QtGui.QBrush(QtGui.QColor(*color)))
+                self.item(i, k).setBackground(QtGui.QBrush(QtGui.QColor(*bgcolor,alpha)))
+                # self.item(i, k).setForeground(QtGui.QBrush(QtGui.QColor(*fgcolor)))
 
     def clear(self):
         """Clear all contents from the table."""

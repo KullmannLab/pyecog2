@@ -14,7 +14,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
     also maybe the downsampling in plotitem?
     '''
 
-    def __init__(self, project, channel, viewbox, *args, **kwds):
+    def __init__(self, project, channel, viewbox, pen=None, *args, **kwds):
         '''
         Todo: I really dont like passining in the viewbox
         This should be assigned instead when they get added to the plot
@@ -24,7 +24,15 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
         self.project = project
         self.channel = channel
         self.parent_viewbox = viewbox
-        self.pen = (0, 0, 0, 100)
+        if pen is None:
+            self.pen = pg.mkPen(pg.getConfigOption('foreground')) #(1, 1, 1, 100)
+            color = self.pen.color()
+            rgb = color.getRgb()
+            color.setRgb(int(rgb[0]*255/100),int(rgb[1]*255/100),int(rgb[2]*255/100),100)
+            self.pen.setColor(color)
+        else:
+            self.pen = pen
+
         self.n_display_points = viewbox.width  # 5000  # this should be horizontal resolution of window
         super().__init__(*args, **kwds)
         self.resetTransform()

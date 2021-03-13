@@ -22,6 +22,7 @@ from pyecog2.tree_model_and_nodes import TreeModel
 from pyecog2.tree_widget import FileTreeElement
 from pyecog2.coding_tests.plot_controls import PlotControls
 from datetime import datetime
+import pyqtgraph as pg
 #
 class MainModel(QObject):
     sigTimeChanged      = QtCore.Signal(object)
@@ -42,6 +43,22 @@ class MainModel(QObject):
         self.project = Project(self)
         self.annotations_history = []
         self.annotations_history_backcounter = 0
+
+        # pen = pg.mkPen(pg.getConfigOption('foreground'))  # (1, 1, 1, 100)
+        # color = pen.color()
+        # rgb = color.getRgb()
+        # print('pen color',rgb)
+        # color.setRgb(min(int(rgb[0] * 255 / 100), 255), min(int(rgb[1] * 255 / 100), 255),
+        #              min(int(rgb[2] * 255 / 100), 255), 100)
+        # pen.setColor(color)
+        # brush = pg.mkBrush(pg.getConfigOption('background'))
+        pen = pg.mkPen((0, 0, 0, 100))  # (1, 1, 1, 100)
+        brush = pg.mkBrush((255, 255, 255, 255))  # (1, 1, 1, 100)
+        self.color_settings = {'pen':pen,'brush':brush}
+        # self.color_settings['pen'].setColor(QColor(255, 255, 255, 100))
+        # self.color_settings['brush'].setColor(QColor(0, 0, 0, 255))
+        # self.color_settings['pen'].setColor(QColor(0, 0, 0, 100))
+        # self.color_settings['brush'].setColor(QColor(255, 255, 255, 255))
 
     def set_time_position(self, pos):
         self.time_position = pos
@@ -64,17 +81,19 @@ class MainWindow(QMainWindow):
     Most of the code here is for setting up the geometry of the gui and the
     menu bar stuff
     '''
-    def __init__(self):
+    def __init__(self, app_handle = None):
         super().__init__()
-        print('🇵 🇾 🇪 🇨 🇴 🇬')
+        print('\n🇵 🇾 🇪 🇨 🇴 🇬\n')
 
         # Initialize Main Window geometry
-        self.title = "ℙ𝕪𝔼𝕔𝕠𝕘"
+        # self.title = "ℙ𝕪𝔼𝕔𝕠𝕘"
+        self.title = '🇵 🇾 🇪 🇨 🇴 🇬'
         (size, rect) = self.get_available_screen()
-        self.setWindowIcon(QtGui.QIcon("icon.png"))
+        self.setWindowIcon(QtGui.QIcon("icons/icon.png"))
+        # self.setWindowIcon(QtGui.QIcon("icons/wave2.png"))
         self.setWindowTitle(self.title)
         self.setGeometry(0, 0, size.width(), size.height())
-
+        self.app_handle = app_handle
         self.main_model = MainModel()
         self.autosave_timer = QtCore.QTimer()
         self.live_recording_timer = QtCore.QTimer()
@@ -314,6 +333,37 @@ class MainWindow(QMainWindow):
         else:
             self.autosave_timer.stop()
 
+    def toggle_darkmode(self):
+        if self.action_darkmode.isChecked():
+            palette = QPalette()
+            palette.setColor(QPalette.Window, QColor(53, 53, 53))
+            palette.setColor(QPalette.WindowText, Qt.white)
+            # palette.setColor(QPalette.Base, QColor(25, 25, 25))
+            palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+            palette.setColor(QPalette.Base, QColor(35, 39, 41))
+            palette.setColor(QPalette.ToolTipBase, Qt.black)
+            palette.setColor(QPalette.ToolTipText, Qt.white)
+            palette.setColor(QPalette.Text, Qt.white)
+            palette.setColor(QPalette.Button, QColor(53, 53, 53))
+            palette.setColor(QPalette.ButtonText, Qt.white)
+            palette.setColor(QPalette.BrightText, Qt.red)
+            palette.setColor(QPalette.Link, QColor(42, 130, 218))
+            palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+            palette.setColor(QPalette.HighlightedText, Qt.black)
+            self.app_handle.setPalette(palette)
+            self.main_model.color_settings['pen'].setColor(QColor(255,255,255,100))
+            self.main_model.color_settings['brush'].setColor(QColor(0,0,0,255))
+            self.paired_graphics_view.set_scenes_plot_channel_data()
+            self.main_model.sigWindowChanged.emit(self.main_model.window)
+
+        else:
+            palette = QPalette()
+            self.app_handle.setPalette(palette)
+            self.main_model.color_settings['pen'].setColor(QColor(0,0,0,100))
+            self.main_model.color_settings['brush'].setColor(QColor(255,255,255,255))
+            self.paired_graphics_view.set_scenes_plot_channel_data()
+            self.main_model.sigWindowChanged.emit(self.main_model.window)
+
     def select_directory(self, label_text='Select a directory'):
         '''
         Method launches a dialog allow user to select a directory
@@ -486,6 +536,13 @@ class MainWindow(QMainWindow):
         self.menu_help = self.menu_bar.addMenu("Help")
         self.action_reset_geometry    = self.menu_help.addAction("Reset Main Window layout")
         self.action_reset_geometry.triggered.connect(self.reset_geometry)
+
+        self.action_darkmode = self.menu_help.addAction("Dark mode")
+        self.action_darkmode.setCheckable(True)
+        self.action_darkmode.toggled.connect(self.toggle_darkmode)
+        self.action_darkmode.setChecked(False)
+        # self.toggle_darkmode()
+
         self.menu_help.addSeparator()
         self.action_go_to_git = self.menu_help.addAction("Go to Git Repository")
         self.action_go_to_git.triggered.connect(self.open_git_url)
@@ -580,8 +637,9 @@ if __name__ == '__main__':
     # palette = QPalette()
     # palette.setColor(QPalette.Window, QColor(53, 53, 53))
     # palette.setColor(QPalette.WindowText, Qt.white)
-    # palette.setColor(QPalette.Base, QColor(25, 25, 25))
+    # # palette.setColor(QPalette.Base, QColor(25, 25, 25))
     # palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+    # palette.setColor(QPalette.Base, QColor(35, 39, 41))
     # palette.setColor(QPalette.ToolTipBase, Qt.black)
     # palette.setColor(QPalette.ToolTipText, Qt.white)
     # palette.setColor(QPalette.Text, Qt.white)
@@ -592,8 +650,16 @@ if __name__ == '__main__':
     # palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
     # palette.setColor(QPalette.HighlightedText, Qt.black)
     # app.setPalette(palette)
+    # pg.setConfigOption('background', 'k')
+    pg.setConfigOption('foreground', 'd')
+    pg.setConfigOption('background', 'w')
+    # pg.setConfigOption('foreground', 'k')
+    pg.setConfigOption('antialias', True)
 
-    screen = MainWindow()
+    # pg.setConfigOption('useWeave',True)
+    # pg.setConfigOption('useOpenGL', False)
+
+    screen = MainWindow(app_handle =app)
     screen.get_available_screen()
     screen.show()
     sys.exit(app.exec_())

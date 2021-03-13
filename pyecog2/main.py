@@ -44,21 +44,10 @@ class MainModel(QObject):
         self.annotations_history = []
         self.annotations_history_backcounter = 0
 
-        # pen = pg.mkPen(pg.getConfigOption('foreground'))  # (1, 1, 1, 100)
-        # color = pen.color()
-        # rgb = color.getRgb()
-        # print('pen color',rgb)
-        # color.setRgb(min(int(rgb[0] * 255 / 100), 255), min(int(rgb[1] * 255 / 100), 255),
-        #              min(int(rgb[2] * 255 / 100), 255), 100)
-        # pen.setColor(color)
-        # brush = pg.mkBrush(pg.getConfigOption('background'))
         pen = pg.mkPen((0, 0, 0, 100))  # (1, 1, 1, 100)
         brush = pg.mkBrush((255, 255, 255, 255))  # (1, 1, 1, 100)
         self.color_settings = {'pen':pen,'brush':brush}
-        # self.color_settings['pen'].setColor(QColor(255, 255, 255, 100))
-        # self.color_settings['brush'].setColor(QColor(0, 0, 0, 255))
-        # self.color_settings['pen'].setColor(QColor(0, 0, 0, 100))
-        # self.color_settings['brush'].setColor(QColor(255, 255, 255, 255))
+
 
     def set_time_position(self, pos):
         self.time_position = pos
@@ -187,6 +176,8 @@ class MainWindow(QMainWindow):
         settings.beginGroup("StandardMainWindow")
         settings.setValue("windowGeometry", self.saveGeometry())
         settings.setValue("windowState", self.saveState())
+        settings.setValue("darkMode", False)
+        settings.setValue("autoSave", True)
         settings.endGroup()
 
         self.settings = QSettings("PyEcog", "PyEcog")
@@ -195,6 +186,10 @@ class MainWindow(QMainWindow):
         # print(self.settings.value("windowGeometry", type=QByteArray))
         self.restoreGeometry(self.settings.value("windowGeometry", type=QByteArray))
         self.restoreState(self.settings.value("windowState", type=QByteArray))
+        self.action_darkmode.setChecked(self.settings.value("darkMode",type=bool))
+        self.toggle_darkmode()
+        self.action_autosave.setChecked(self.settings.value("autoSave",type=bool))
+        self.toggle_auto_save()
 
         try:
             settings = QSettings("PyEcog","PyEcog")
@@ -228,6 +223,8 @@ class MainWindow(QMainWindow):
         print(self.settings.value("windowGeometry", type=QByteArray))
         self.restoreGeometry(self.settings.value("windowGeometry", type=QByteArray))
         self.restoreState(self.settings.value("windowState", type=QByteArray))
+        self.action_darkmode.setChecked(self.settings.value("darkMode",type=bool))
+        self.toggle_darkmode()
         self.show()
 
     def load_directory(self,dirname=None):
@@ -327,7 +324,6 @@ class MainWindow(QMainWindow):
             print('project filename not in *.pyecog')
 
     def toggle_auto_save(self):
-        self.autosave_timer.timeout.connect(self.auto_save)
         if self.action_autosave.isChecked():
             self.autosave_timer.start(60000)  # autosave every minute
         else:
@@ -491,6 +487,7 @@ class MainWindow(QMainWindow):
         self.action_autosave.setCheckable(True)
         self.action_autosave.toggled.connect(self.toggle_auto_save)
         self.action_autosave.setChecked(True)
+        self.autosave_timer.timeout.connect(self.auto_save)
 
 
         # ANNOTATIONS section
@@ -562,6 +559,8 @@ class MainWindow(QMainWindow):
         settings.beginGroup("MainWindow")
         settings.setValue("windowGeometry", self.saveGeometry())
         settings.setValue("windowState", self.saveState())
+        settings.setValue("darkMode",self.action_darkmode.isChecked())
+        settings.setValue("autoSave",self.action_autosave.isChecked())
         settings.endGroup()
 
         settings.beginGroup("ProjectSettings")
@@ -573,7 +572,6 @@ class MainWindow(QMainWindow):
         #     settings.setValue("windowGeometry", self.dock_list[dock_name].saveGeometry())
         #     # settings.setValue("windowState", self.dock_list[dock_name].saveState())
         #     settings.endGroup()
-
         self.saveState()
 
     def keyPressEvent(self, evt):

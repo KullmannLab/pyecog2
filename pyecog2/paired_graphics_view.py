@@ -167,6 +167,8 @@ class PairedGraphicsView():
             print('Getting data to compute plot scale factors')
             arr,tarr = self.main_model.project.get_data_from_range(overview_range,n_envelope=1000) # self.overview_plot.vb.viewRange()[0]) wierd behaviour here because vb.viewRange() range is not updated
             # print(arr.shape, tarr.shape)
+            if len(arr.shape)<2:
+                return
             self.n_channels = arr.shape[1]
             self.scale = 1 / (6 * np.mean(np.std(arr, axis=0, keepdims=True), axis=1))
             self.overview_plot.vb.setYRange(-2, arr.shape[1] + 1)

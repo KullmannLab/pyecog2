@@ -367,6 +367,7 @@ class MainWindow(QMainWindow):
         dialog = QFileDialog()
         dialog.setWindowTitle(label_text)
         dialog.setFileMode(QFileDialog.DirectoryOnly)
+        dialog.setAcceptMode(QFileDialog.AcceptOpen)
         # we might want to set home directory using settings
         # for now rely on default behaviour
         '''
@@ -374,9 +375,11 @@ class MainWindow(QMainWindow):
         dialog.setDirectory(home)
         '''
         # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
-        dialog.setOption(QFileDialog.ShowDirsOnly, False)
-        dialog.exec()
-        return dialog.selectedFiles()[0]
+        # dialog.setOption(QFileDialog.ShowDirsOnly, False)
+        if dialog.exec():
+            return dialog.selectedFiles()[0]
+        else:
+            return ''
 
     def reload_plot(self):
         #print('reload')

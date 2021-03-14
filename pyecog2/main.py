@@ -73,13 +73,16 @@ class MainWindow(QMainWindow):
     '''
     def __init__(self, app_handle = None):
         super().__init__()
-        print('\n🇵 🇾 🇪 🇨 🇴 🇬\n')
+        if os.name == 'posix':
+            pyecog_string = '🇵 🇾 🇪 🇨 🇴 🇬'
+        else:
+            pyecog_string = 'P Y E C O G'
+        print('\n',pyecog_string,'\n')
 
         # Initialize Main Window geometry
         # self.title = "ℙ𝕪𝔼𝕔𝕠𝕘"
-        self.title = '🇵 🇾 🇪 🇨 🇴 🇬'
+        self.title = pyecog_string
         (size, rect) = self.get_available_screen()
-
         icon_file = pkg_resources.resource_filename('pyecog2', 'icons/icon.png')
         print('ICON:', icon_file)
         self.setWindowIcon(QtGui.QIcon(icon_file))

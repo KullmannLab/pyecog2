@@ -27,9 +27,5 @@ setuptools.setup(
                     'h5py==3.1.0',
                     'pyqtgraph==0.11.0',
                     'numba==0.52.0'],
-   data_files = [('icons',['icons/icon.png',
-   						   'icons/research.png',
-   						   'icons/wave.png',
-   						   'icons/laboratory-mouse.png']),
-   				 ('hints',['pyecog2/HelperHints.md'])]
+   include_package_data = True
   )

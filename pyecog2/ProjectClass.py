@@ -97,6 +97,7 @@ class Animal():
 
     def update_eeg_folder(self,eeg_folder):
         self.eeg_folder = eeg_folder
+        print('Looking for files:',eeg_folder,os.path.sep,'*.h5')
         h5files = glob.glob(eeg_folder + os.path.sep + '*.h5')
         h5files.sort()
         for i,file in enumerate(h5files):

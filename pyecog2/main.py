@@ -625,9 +625,7 @@ class MainWindow(QMainWindow):
                         # self.main_model.annotations.focusOnAnnotation(annotation)
                     return
 
-
-if __name__ == '__main__':
-
+def execute():
     app = QApplication(sys.argv)
     app.setStyle("fusion")
     # Mikail feel free to play about if you feel so inclined :P
@@ -661,3 +659,7 @@ if __name__ == '__main__':
     screen.get_available_screen()
     screen.show()
     sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    execute()
+

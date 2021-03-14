@@ -229,7 +229,7 @@ class MainWindow(QMainWindow):
 
     def load_directory(self,dirname=None):
         print('Openening folder')
-        if dirname is None:
+        if type(dirname) != str:
             dirname = self.select_directory()
         temp_animal = Animal(id='-', eeg_folder=dirname)
         temp_project = Project(self.main_model,eeg_data_folder=dirname, title=dirname,project_file = dirname)
@@ -370,12 +370,10 @@ class MainWindow(QMainWindow):
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         # we might want to set home directory using settings
         # for now rely on default behaviour
-        '''
-        home = os.path.expanduser("~") # default, if no settings available
-        dialog.setDirectory(home)
-        '''
+        # home = os.path.expanduser("~") # default, if no settings available
+        # dialog.setDirectory(home)
         # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
-        # dialog.setOption(QFileDialog.ShowDirsOnly, False)
+        dialog.setOption(QFileDialog.ShowDirsOnly, False)
         if dialog.exec():
             return dialog.selectedFiles()[0]
         else:

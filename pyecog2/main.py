@@ -23,6 +23,7 @@ from pyecog2.tree_widget import FileTreeElement
 from pyecog2.coding_tests.plot_controls import PlotControls
 from datetime import datetime
 import pyqtgraph as pg
+import pkg_resources
 #
 class MainModel(QObject):
     sigTimeChanged      = QtCore.Signal(object)
@@ -78,7 +79,10 @@ class MainWindow(QMainWindow):
         # self.title = "ℙ𝕪𝔼𝕔𝕠𝕘"
         self.title = '🇵 🇾 🇪 🇨 🇴 🇬'
         (size, rect) = self.get_available_screen()
-        self.setWindowIcon(QtGui.QIcon("icons/icon.png"))
+
+        icon_file = pkg_resources.resource_filename('pyecog2', 'icons/icon.png')
+        print('ICON:', icon_file)
+        self.setWindowIcon(QtGui.QIcon(icon_file))
         # self.setWindowIcon(QtGui.QIcon("icons/wave2.png"))
         self.setWindowTitle(self.title)
         self.setGeometry(0, 0, size.width(), size.height())
@@ -116,7 +120,10 @@ class MainWindow(QMainWindow):
 
         self.dock_list['Hints'] = QDockWidget("Hints", self)
         text_edit = QTextEdit()
-        text = open('HelperHints.md').read()
+        hints_file = pkg_resources.resource_filename('pyecog2', 'HelperHints.md')
+        # text = open('HelperHints.md').read()
+        print('hints file:',hints_file)
+        text = open(hints_file).read()
         text_edit.setMarkdown(text)
         self.dock_list['Hints'].setWidget(text_edit)
         self.dock_list['Hints'].setObjectName("Hints")

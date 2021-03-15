@@ -88,8 +88,6 @@ class MainWindow(QMainWindow):
         print('ICON:', icon_file)
         self.setWindowIcon(QtGui.QIcon(icon_file))
         self.app_handle.setWindowIcon(QtGui.QIcon(icon_file))
-        self.app_handle.setApplicationName(self.title)
-        self.setUnifiedTitleAndToolBarOnMac(True)
         self.setWindowTitle(self.title)
         self.setGeometry(0, 0, size.width(), size.height())
         self.main_model = MainModel()

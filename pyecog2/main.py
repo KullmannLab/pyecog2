@@ -88,6 +88,7 @@ class MainWindow(QMainWindow):
         print('ICON:', icon_file)
         self.setWindowIcon(QtGui.QIcon(icon_file))
         self.app_handle.setWindowIcon(QtGui.QIcon(icon_file))
+        self.app_handle.setWindowTitle(self.title)
         # self.setWindowIcon(QtGui.QIcon("icons/wave2.png"))
         self.setWindowTitle(self.title)
         self.setGeometry(0, 0, size.width(), size.height())

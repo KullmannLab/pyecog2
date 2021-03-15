@@ -88,7 +88,6 @@ class MainWindow(QMainWindow):
         print('ICON:', icon_file)
         self.setWindowIcon(QtGui.QIcon(icon_file))
         sys.stdout.write("\x1b]2;"+self.title+"\x07")
-        # self.app_handle.setWindowTitle(self.title)
         self.setWindowTitle(self.title)
         self.setGeometry(0, 0, size.width(), size.height())
         self.main_model = MainModel()

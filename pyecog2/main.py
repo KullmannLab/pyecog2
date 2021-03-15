@@ -73,6 +73,7 @@ class MainWindow(QMainWindow):
     '''
     def __init__(self, app_handle = None):
         super().__init__()
+        self.app_handle = app_handle
         if os.name == 'posix':
             pyecog_string = '🇵 🇾 🇪 🇨 🇴 🇬'
         else:
@@ -86,10 +87,10 @@ class MainWindow(QMainWindow):
         icon_file = pkg_resources.resource_filename('pyecog2', 'icons/icon.png')
         print('ICON:', icon_file)
         self.setWindowIcon(QtGui.QIcon(icon_file))
+        self.app_handle.setWindowIcon(QtGui.QIcon(icon_file))
         # self.setWindowIcon(QtGui.QIcon("icons/wave2.png"))
         self.setWindowTitle(self.title)
         self.setGeometry(0, 0, size.width(), size.height())
-        self.app_handle = app_handle
         self.main_model = MainModel()
         self.autosave_timer = QtCore.QTimer()
         self.live_recording_timer = QtCore.QTimer()

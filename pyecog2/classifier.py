@@ -228,7 +228,7 @@ class GaussianClassifier():
             try:
                 old_color = animal.annotations.label_color_dict[label]
                 print('found color for ', label, old_color)
-            except:
+            except Exception:
                 print('did not find color for' , label)
                 old_color = (255,255,255)
             new_color = tuple([ max(int(c*0.5),0) for c in old_color])

@@ -265,7 +265,7 @@ class AnnotationPage(QObject):
             if not channel_range.startswith('['):
                 channel_range = '[' + channel_range + ']'
             c = list(eval(channel_range))
-        except:
+        except Exception:
             c = None
         self.label_channel_range_dict[label] = c
         self.sigLabelsChanged.emit(label)

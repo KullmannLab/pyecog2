@@ -115,7 +115,7 @@ def main():
             print('final data size:',data_list.shape)
             print(np.diff(data_list[:,3])%256)
 
-    except:
+    except Exception:
         # Make sure device is disconnected on exit.
         device.disconnect()
 

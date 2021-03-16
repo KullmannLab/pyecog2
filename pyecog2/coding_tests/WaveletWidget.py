@@ -131,7 +131,7 @@ class Worker(QRunnable):
         try:
             # print('calling worker function')
             result = self.fn(*self.args, **self.kwargs)
-        except:
+        except Exception:
             # print('worker Error')
             traceback.print_exc()
             exctype, value = sys.exc_info()[:2]

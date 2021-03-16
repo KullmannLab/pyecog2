@@ -9,7 +9,7 @@ if sys.version_info < (3,):
     range = xrange
 try:
     from utils import lprofile
-except:
+except Exception:
     pass
 
 class H5Dataset():

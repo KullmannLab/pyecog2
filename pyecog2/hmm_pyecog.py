@@ -1,11 +1,10 @@
 
-from sklearn.preprocessing import normalize
 import numpy as np
 
 from numba import jit
-from numba import jitclass
+from numba.experimental import jitclass
 import numba
-from sklearn.preprocessing import normalize
+# from sklearn.preprocessing import normalize
 
 
 class HMMBayes():
@@ -38,7 +37,7 @@ class HMMBayes():
             label = int(label)
             tp[label, next_label] += 1
 
-        tp = normalize(tp, axis=1, norm='l1')
+        tp = tp/np.sum(np.abs(tp),axis=1) # normalize(tp, axis=1, norm='l1') avoid using sklearn just for this
         return tp
 
     @property
@@ -218,7 +217,7 @@ class HMM_LL():
             label = int(label)
             tp[label, next_label] += 1
 
-        tp = normalize(tp, axis=1, norm='l1')
+        tp = tp/np.sum(np.abs(tp),axis=1) # normalize(tp, axis=1, norm='l1') void using sklearn just for this
         return tp
 
     @property

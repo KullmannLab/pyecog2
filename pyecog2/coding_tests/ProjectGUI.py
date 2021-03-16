@@ -49,7 +49,7 @@ class ScalableGroup(pTypes.GroupParameter):
             n = (len(self.childs) + 1)
         try:
             self.addChild(Animal2Parameter(Animal(id='Animal '+str(n))))
-        except:
+        except Exception:
             print('Animal with name','Animal '+str(n+1),'already exists. Trying to add animal with name:','Animal '+str(n+1))
             self.addNew(typ,n+1)
 

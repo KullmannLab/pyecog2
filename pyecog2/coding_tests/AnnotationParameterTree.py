@@ -172,5 +172,5 @@ class AnnotationParameterTee(ParameterTree):
                     for c in [0, 1]:
                         ch.child(c0).setBackground(c, QtGui.QBrush(QtGui.QColor(35, 39, 41)))
                         ch.child(c0).setForeground(c, QtGui.QBrush(QtGui.QColor(250, 250, 250)))
-        except:
+        except Exception:
             pass

@@ -55,10 +55,10 @@ def load_metadata_file(fname):
     try:
         with open(fname, 'r') as json_file:
             metadata = json.load(json_file)
-    except:
+    except Exception:
         try:
             metadata = read_neuropixels_metadata(fname)
-        except:
+        except Exception:
             metadata = None
             print('Unrecognized metafile format')
     return metadata
@@ -108,7 +108,7 @@ class Animal():
             try:
                 next_start = int(os.path.split(h5files[i+1])[-1].split('_')[0][1:])
                 duration = min(next_start-start,3600)
-            except:
+            except Exception:
                 duration = 3600
             create_metafile_from_h5(file,duration)
         self.eeg_files = glob.glob(eeg_folder + os.path.sep + '*.meta')
@@ -301,7 +301,7 @@ class FileBuffer():  # Consider translating this to cython
                         targetPtr += chunk_data.shape[0] * 2
 
                     enveloped_data.append(visible_data[:targetPtr, :].reshape((-1, 1)))
-                except:
+                except Exception:
                     print('ERROR in downsampling')
                     raise
                     # throw_error()
@@ -393,7 +393,7 @@ class Project():
             self.main_model.annotations.copy_to(self.current_animal.annotations)
             # self.current_animal.annotations.copy_from(
             #     self.main_model.annotations)  # save alterations made to the current animal annotations
-        except:
+        except Exception:
             print('no main model defined')
 
         dict = self.__dict__.copy()

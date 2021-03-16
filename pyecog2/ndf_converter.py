@@ -14,7 +14,7 @@ from scipy import signal, stats
 try:
     import numba
     from numba import jit
-except:
+except Exception:
     pass
 
 import multiprocessing
@@ -355,7 +355,7 @@ class NdfFile:
             for tid in self.read_ids:
                 try:
                     transmitter_group = file_group.create_group(str(tid))
-                except:
+                except Exception:
                     print('WARNING! Error creating group! Have you entered twice?!', tid)
                     continue
                 transmitter_group.attrs['fs'] = self.tid_to_fs_dict[tid]

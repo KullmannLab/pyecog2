@@ -443,7 +443,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
                 c = 0
                 try:
                     c = self.selectedRanges()[0].leftColumn() # Keep the same column selected if there is already a selection
-                except:
+                except Exception:
                     pass
                 self.setCurrentCell(r,c)
 

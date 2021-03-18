@@ -49,6 +49,10 @@ def reg_invcov(M,n):
 
 
 def average_mu_and_cov(mu1,cov1,n1,mu2,cov2,n2):
+    np.nan_to_num(mu1,copy=False)
+    np.nan_to_num(mu2,copy=False)
+    np.nan_to_num(cov1,copy=False)
+    np.nan_to_num(cov2,copy=False)
     mu = (mu1*n1 + mu2*n2)/(n1 + n2)
     cov = n1/(n1+n2)*(cov1 + (mu-mu1)@(mu-mu1).T) + n2/(n1+n2)*(cov2 + (mu-mu2)@(mu-mu2).T)
     return (mu,cov)
@@ -85,9 +89,11 @@ class GaussianClassifier():
     Class to setup, train and run the classifier on feature files from animal
     '''
 
-    def __init__(self,project,feature_extractor):
+    def __init__(self,project,feature_extractor,labels=None):
         self.project = project
-        self.labels2classify = ['seizure','outliers'] # Populate this with the annotation labels to classify
+        if labels is None:
+            labels = ['seizure','outlier']
+        self.labels2classify = labels # Populate this with the annotation labels to classify
         self.Ndim = feature_extractor.settings['number_of_features']
         self.class_means   = np.zeros((len(self.labels2classify),self.Ndim))
         self.class_cov     = np.tile(np.eye(self.Ndim),(len(self.labels2classify),1,1))
@@ -111,14 +117,16 @@ class GaussianClassifier():
             for label in self.labels2classify:
                 labeled_positions[label] = np.array([a.getPos() for a in animal.annotations.get_all_with_label(label)])
 
-            for i,eeg_file in enumerate(animal.eeg_files[:200]):
+            for ifile,eeg_file in enumerate(animal.eeg_files[:]):
                 feature_file = '.'.join(eeg_file.split('.')[:-1] + ['features'])
-                print('Animal:', animal.id, 'file:',i,'of',len(animal.eeg_files), feature_file,end='\r')
+                print('Animal:', animal.id, 'file:',ifile,'of',len(animal.eeg_files), feature_file,end='\r')
                 fmeta_file = '.'.join(eeg_file.split('.')[:-1] + ['fmeta'])
                 with open(fmeta_file) as f:
                     fmeta_dict = json.load(f)
                 f_vec = np.fromfile(feature_file, dtype=fmeta_dict['data_format'])
                 f_vec_d = f_vec.reshape((-1, self.Ndim))
+                # if sum(np.isfinite(f_vec)) != len(f_vec):
+                #     print('\nNaNs found in:',feature_file,'\n')
                 np.nan_to_num(f_vec_d,copy=False)
                 f_label = np.zeros(f_vec_d.shape[0])
 
@@ -146,7 +154,7 @@ class GaussianClassifier():
                         self.class_npoints[i] += n_labeled
 
                     locs = f_label == 0
-                    n_labeled = np.sum(locs)  # number of datapoints labled with label
+                    n_labeled = np.sum(locs)  # number of datapoints labled with blank
                     if n_labeled>0:
                         (mu, cov) = average_mu_and_cov(np.mean(f_vec_d[locs],axis=0)[:,np.newaxis],
                                                        np.cov(f_vec_d[locs].T,bias=True),
@@ -158,6 +166,10 @@ class GaussianClassifier():
                         self.blank_npoints += n_labeled
                         self.blank_means = mu.ravel()
                         self.blank_cov   = cov
+                        if sum(np.isnan(cov.ravel())):
+                            print('\nCov matrix is NaN after file:',ifile,eeg_file,'\n')
+                            self._debug_f_vec_d =f_vec_d
+                            return
 
         trans_list = [(l[0],l[1],i+1) for i,key in enumerate(self.labels2classify) for l in labeled_positions[key]]
         trans_list.sort()
@@ -194,7 +206,9 @@ class GaussianClassifier():
                 fmeta_dict = json.load(f)
             print('Animal:', animal.id, 'file:', i, 'of', len(eegfiles), fmeta_file, end='\r')
             LL = self.log_likelyhoods(f_vec, bias=False, no_scale=False)
+            np.nan_to_num(LL,copy=False)
             R2 = self.log_likelyhoods(f_vec, bias=False, no_scale=True)
+            np.nan_to_num(R2,copy=False)
             start = fmeta_dict['start_timestamp_unix']
             dt = 1/fmeta_dict['fs']
             t  = np.arange(start,start+dt*len(f_vec),dt)
@@ -202,11 +216,12 @@ class GaussianClassifier():
             R2v.append(R2)
             timev.append(t)
 
-        print('Combining results and generating annotations...')
         LLv = np.vstack(LLv)
         R2v = np.vstack(R2v)
         timev = np.hstack(timev)
+        print('\nRunning HMM...')
         pf = self.hmm.forward_backward(LLv.T)
+        print('Combining results and generating annotations...')
         # threshold to reject classifications outside .999 confidence interval of the class distribution
         th = chi2.isf(1e-3,self.Ndim,scale=0.5)
         for i2,label in enumerate(self.labels2classify):
@@ -217,13 +232,15 @@ class GaussianClassifier():
             alist = []
             print('len starts',len(starts))
             for j in range(len(starts)):
-                print('start,end', starts[j], ends[j])
-                c = np.sum(LLv[starts[j]:ends[j],i])-np.sum(LLv[starts[j]:ends[j],0])
+                # c = np.sum(LLv[starts[j]:ends[j],i])-np.sum(LLv[starts[j]:ends[j],0])
+                # c = np.sum(np.log(pf[i,starts[j]:ends[j]])-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
+                c = np.sum(-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
+                print('start,end,confidence', starts[j], ends[j],c)
                 a = AnnotationElement(label='(auto)'+label,start=timev[starts[j]],end=timev[ends[j]],confidence=c)
                 alist.append((c,a))
 
             print(alist)
-            alist.sort()
+            alist.sort(key=lambda c:-c[0])
             animal.annotations.delete_label('(auto)'+label)  # Delete all previous auto generated labels
             try:
                 old_color = animal.annotations.label_color_dict[label]

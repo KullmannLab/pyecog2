@@ -322,7 +322,7 @@ class FileBuffer():  # Consider translating this to cython
         #     print('***debug***',start_times[0][0][0],start_times[1][0][0])
         #     print('***debug***',self.data_ranges)
         #     print('***debug***', self.files)
-        start_times.sort()
+        start_times.sort(key=lambda s:s[0])
         enveloped_data = [d[1] for d in start_times]
         enveloped_time = [d[2] for d in start_times]
 

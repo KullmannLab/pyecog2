@@ -58,7 +58,7 @@ class FeatureExtractor():
                                   'fentropy'
                                   ],
                 feature_time_functions = [np.min,np.max,np.mean,
-                                          lambda x:np.std(x),
+                                          lambda x:np.log(np.std(x)),
                                           stats.kurtosis,
                                           stats.skew,
                                           lambda d:np.log(np.mean(np.abs(np.diff(d,axis=0))))],
@@ -94,6 +94,7 @@ class FeatureExtractor():
         features = np.zeros((len(window_starts), self.settings['number_of_features']),dtype='double')
         for i, window_init in enumerate(window_starts):
             data, time = file_buffer.get_data_from_range([window_init, window_init + self.settings['window_length']]) # get all data from time window
+            data += np.random.randn(*data.shape).astype(data.dtype)*2**(-16) # add a bit of regularizing noise, bellow 24 bit noise floors
             fs = 1/(time[1]-time[0])
             dataf = np.fft.rfft(data,axis=0)/len(data)
             for j,func in enumerate(self.settings['feature_time_functions']):

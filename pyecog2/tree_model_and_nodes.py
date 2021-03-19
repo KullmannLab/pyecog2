@@ -319,7 +319,6 @@ class HDF5FileNode(Node):
         if not os.path.isfile(meta_filepath):
             create_metafile_from_h5(self.get_full_path())
 
-
     def prepare_for_plot(self):
         '''maybe change name?'''
         self.load_metadata()

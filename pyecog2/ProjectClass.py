@@ -11,6 +11,8 @@ from scipy import signal
 def clip(x, a, b):  # utility funciton for file buffer
     return min(max(int(x), a), b)
 
+
+
 def create_metafile_from_h5(file,duration = 3600):
     assert file.endswith('.h5')
     h5_file = H5File(file)
@@ -224,9 +226,9 @@ class FileBuffer():  # Consider translating this to cython
                 self.clear_buffer()
             # fill buffer with the necessary files:
             for i, file in enumerate(self.animal.eeg_files):
-                arange = [self.animal.eeg_init_time[i], self.animal.eeg_init_time[i] + self.animal.eeg_duration[i]]
-                if (arange[0] <= trange[0] <= arange[1]) or (arange[0] <= trange[1] <= arange[1]) or \
-                        (trange[0] <= arange[0] <= trange[1]) or (trange[0] <= arange[1] <= trange[1]):
+                frange = [self.animal.eeg_init_time[i], self.animal.eeg_init_time[i] + self.animal.eeg_duration[i]]
+                if (frange[0] <= trange[0] < frange[1]) or (frange[0] <= trange[1] < frange[1]) or \
+                        (trange[0] <= frange[0] < trange[1]) or (trange[0] <= frange[1] < trange[1]):
                     print('Adding file to buffer: ', file)
                     self.add_file_to_buffer(file)
             print('files in buffer: ', self.files)
@@ -248,6 +250,10 @@ class FileBuffer():  # Consider translating this to cython
         total_sample_range = max(sum([s[1] - s[0] for s in sample_ranges]), 1)
         if n_envelope is None:
             n_envelope = total_sample_range
+        if n_envelope>2**(28): # data is larger than 1 GByte and could bust available RAM 4bytes*2**28 = 1GB
+            print('ERROR: too much data to keep in memory (>1GB)')
+            return [],[]
+
         file_envlopes = [int(n_envelope * (s[1] - s[0]) / total_sample_range) + 1 for s in
                          sample_ranges]  # distribute samples between files
 

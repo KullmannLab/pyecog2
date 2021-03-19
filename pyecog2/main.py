@@ -59,6 +59,7 @@ class MainModel(QObject):
             # print('Current Time emited:', pos)
 
     def set_window_pos(self, pos):
+        pos = [min(pos),max(pos)]
         if pos != self.window:
             self.window = pos
             self.sigWindowChanged.emit(pos)

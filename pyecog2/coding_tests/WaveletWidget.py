@@ -171,18 +171,6 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         self.hist.axis.setLabel( text = 'Amplitude', units = 'Log<sub>10</sub> a.u.')
         self.hist.gradient.loadPreset('viridis')
         self.hist_levels = None
-        #
-        # self.addItem(QtGui.QLabel("Wavelet factor R"))
-        # spin = pg.SpinBox(value=self.R, bounds=[0, None])
-        # self.addItem(spin)
-        # spin.sigValueChanged.connect(lambda s: self.setR(s.value()))
-        #
-        # self.addWidget(QtGui.QLabel("Wavelet channel"))
-        # spin = pg.SpinBox(value=self.channel, int=True, dec=True, minStep=1, step=1)
-        # self.addItem(spin)
-        # spin.sigValueChanged.connect(lambda s: self.setChannel(s.value()))
-
-
 
         # Multithread controls
         self.threadpool = QThreadPool()
@@ -223,6 +211,10 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
                 time = np.arange(300*250)/250
                 print('random data')
             else:
+                if self.main_model.window[1] - self.main_model.window[0] > 3600:
+                    print('Window too large to compute Wavelet (>3600s)')
+                    self.p1.setLabel('bottom', 'Window too large to compute Wavelet (>3600s)')
+                    return
                 # print('window' , self.main_model.window)
                 data, time = self.main_model.project.get_data_from_range(self.main_model.window,channel = self.channel)
             if len(data) <= 10 :

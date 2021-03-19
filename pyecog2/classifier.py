@@ -11,7 +11,7 @@ from numba import jit
 from scipy.stats import chi2
 from pyecog2.annotations_module import AnnotationElement
 
-@jit(nopython=True)
+@jit(nopython=True,nogil=True)
 def MVGD_LL_jit(fdata,mu,inv_cov,LL,no_scale):
     # Calculate Multivariate gaussian distribution log-likelihood
     k = fdata.shape[1]
@@ -30,7 +30,7 @@ def MVGD_LL(fdata,mu,inv_cov,no_scale = False):
     return LL
 
 
-@jit(nopython=True)
+@jit(nopython=True,nogil=True)
 def LL2prob_jit(LL, prob):
     # Convert log-likelyhoods into probabilities
     for i in range(LL.shape[0]):
@@ -83,6 +83,9 @@ def tansitions2rates(B,nblankpoints,nclasspoints):
             A[i+1,0] = 1
     return A
 
+def intervals_overlap(a,b):
+    return (a[0] <= b[0] < a[1]) or (a[0] <= b[1] < a[1]) or (b[0] <= a[0] < b[1]) or (b[0] <= a[1] < b[1])
+
 
 class GaussianClassifier():
     '''
@@ -113,6 +116,7 @@ class GaussianClassifier():
             Something that would standardize blank feature standard deviations, i.e. sqrt(diag(blank_cov)).
             '''
             print('Training with animal:', animal.id)
+            print('Training with classes:', self.labels2classify)
             labeled_positions = {}
             for label in self.labels2classify:
                 labeled_positions[label] = np.array([a.getPos() for a in animal.annotations.get_all_with_label(label)])
@@ -231,13 +235,18 @@ class GaussianClassifier():
             ends = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > .5).astype('int')) < 0)[0]
             alist = []
             print('len starts',len(starts))
+            manual_label_positions = [a.getPos() for a in animal.annotations.get_all_with_label(label)]
+            print('manual label positions:',manual_label_positions)
             for j in range(len(starts)):
-                # c = np.sum(LLv[starts[j]:ends[j],i])-np.sum(LLv[starts[j]:ends[j],0])
-                # c = np.sum(np.log(pf[i,starts[j]:ends[j]])-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
-                c = np.sum(-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
-                print('start,end,confidence', starts[j], ends[j],c)
-                a = AnnotationElement(label='(auto)'+label,start=timev[starts[j]],end=timev[ends[j]],confidence=c)
-                alist.append((c,a))
+                if not any([intervals_overlap([timev[starts[j]],timev[ends[j]]],pos) for pos in manual_label_positions]):
+                    # c = np.sum(LLv[starts[j]:ends[j],i])-np.sum(LLv[starts[j]:ends[j],0])
+                    # c = np.sum(np.log(pf[i,starts[j]:ends[j]])-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
+                    c = np.sum(-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
+                    print('start,end,confidence', starts[j], ends[j],c)
+                    a = AnnotationElement(label='(auto)'+label,start=timev[starts[j]],end=timev[ends[j]],confidence=c)
+                    alist.append((c,a))
+                else:
+                    print('annotation already exists at', starts[j], ends[j])
 
             print(alist)
             alist.sort(key=lambda c:-c[0])
@@ -248,8 +257,9 @@ class GaussianClassifier():
             except Exception:
                 print('did not find color for' , label)
                 old_color = (255,255,255)
-            new_color = tuple([ max(int(c*0.5),0) for c in old_color])
+            new_color = tuple([ max(int(c*0.65),0) for c in old_color])
             animal.annotations.add_label('(auto)'+label,color = new_color)
+
             for c,a in alist[:max_annotations]:
                 animal.annotations.add_annotation(a)
 

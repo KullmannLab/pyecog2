@@ -259,6 +259,10 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
             self.sigRegionChanged.emit(self)
 
     def mouseClickEvent(self, ev):
+        modifiers = ev.modifiers()
+        if modifiers == QtCore.Qt.ShiftModifier:
+            ev.ignore()
+            return
         self.sigClicked.emit(ev)
         if self.moving and ev.button() == QtCore.Qt.RightButton:
             ev.accept()

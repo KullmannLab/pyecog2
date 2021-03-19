@@ -334,9 +334,9 @@ class PairedGraphicsView():
         window_item_i.sigRegionChangeFinished.connect(lambda: window_item_o.setRegion(window_item_i.getRegion()))
         window_item_i.sigRegionChangeFinished.connect(lambda: self.main_model.set_window_pos(window_item_i.getRegion()))
         # window_item_i.sigRegionChangeFinished.connect(lambda: self.main_model.annotations.focusOnAnnotation(None))
-        window_item_i.sigRegionChangeFinished.connect(lambda: self.main_model.set_time_position(self.main_model.window[0]-1))
-        window_item_i.sigClicked.connect(lambda: self.main_model.annotations.focusOnAnnotation(None))
-        window_item_i.sigClicked.connect(lambda: self.main_model.set_time_position(self.main_model.window[0]-1))
+        # window_item_i.sigRegionChangeFinished.connect(lambda: self.main_model.set_time_position(self.main_model.window[0]-1))
+        # window_item_i.sigClicked.connect(lambda: self.main_model.annotations.focusOnAnnotation(None))
+        # window_item_i.sigClicked.connect(lambda: self.main_model.set_time_position(self.main_model.window[0]-1))
         self.main_model.sigWindowChanged.connect(window_item_i.setRegion)
 
     def graphics_object_xchanged(self):
@@ -401,7 +401,7 @@ class PairedGraphicsView():
             self.main_model.annotations.focusOnAnnotation(None)
             if not self.is_setting_window_position:
                 self.main_model.set_window_pos([pos.x(), pos.x()])
-                self.is_setting_window_position = True
+                self.is_setting_window_position = True # pos.x()
                 return
             else:
                 current_pos = self.main_model.window

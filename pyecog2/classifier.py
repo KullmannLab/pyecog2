@@ -2,6 +2,7 @@ import numpy as np
 from ProjectClass import FileBuffer
 import os
 import numpy as np
+from scipy import linalg
 import scipy.stats as stats
 from collections import OrderedDict
 from feature_extractor import FeatureExtractor
@@ -59,6 +60,8 @@ def average_mu_and_cov(mu1,cov1,n1,mu2,cov2,n2):
 
 def transitionslist2matrix(t, dt, n):
     A = np.zeros((n + 1, n + 1))
+    if not t: # no transitions
+        return A
     A[0, t[0][2]] += 1  # first transition from blank
     for i in range(len(t) - 1):
         if t[i][1] >= t[i + 1][0] - dt:  # transitions between labled events
@@ -105,6 +108,37 @@ class GaussianClassifier():
         self.blank_cov     = np.zeros((self.Ndim,self.Ndim))
         self.blank_npoints = 0
         self.hmm           = HMM_LL()
+
+    def all_mu_and_cov(self):
+        mu = self.blank_means[:, np.newaxis]
+        cov = self.blank_cov
+        npoints = self.blank_npoints
+        for i in range(len(self.labels2classify)):
+            muc = self.class_means[i][:, np.newaxis]
+            covc = self.class_cov[i]
+            npointsc = self.class_npoints[i]
+            mu, cov = average_mu_and_cov(mu, cov, npoints, muc, covc, npointsc)
+            npoints += npointsc
+        return (mu,cov,npoints)
+
+    def whitening_mu_W_iW(self): # return mean of full data and whitening matrix such that W(x-mu) has standard normal dist.
+        mu,cov,n = self.all_mu_and_cov() # mean and covariance of full data
+        W = linalg.sqrtm(reg_invcov(cov,n))
+        iW = linalg.inv(W)
+        return mu, W, iW
+
+    def copy_re_normalized_classifier(self,gc):
+        # transform parameters from gc so to match data distribution of self
+        mua, Wa, iWa = gc.whitening_mu_W_iW()
+        mub, Wb, iWb = self.whitening_mu_W_iW()
+        for i in range(len(self.labels2classify)):
+            self.class_means[i][:, np.newaxis] = iWb@Wa@(gc.class_means[i][:, np.newaxis] - mua) + mub
+            self.class_cov[i] = iWb@Wa@gc.class_cov[i]@Wa.T@iWb.T
+            self.class_npoints[i] = gc.class_npoints[i]
+        self.blank_means[:, np.newaxis] = iWb@Wa@(gc.blank_means[:, np.newaxis] - mua) + mub
+        self.blank_cov = iWb@Wa@gc.blank_cov@Wa.T@iWb.T
+        self.blank_npoints = self.blank_npoints
+        self.hmm = gc.hmm
 
     def train(self,animal_list=None):
         if animal_list is None:

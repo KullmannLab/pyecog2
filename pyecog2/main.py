@@ -24,7 +24,7 @@ from pyecog2.coding_tests.plot_controls import PlotControls
 from datetime import datetime
 import pyqtgraph as pg
 import pkg_resources
-#
+
 class MainModel(QObject):
     sigTimeChanged      = QtCore.Signal(object)
     sigWindowChanged    = QtCore.Signal(object)
@@ -131,6 +131,8 @@ class MainWindow(QMainWindow):
         text_edit.setMarkdown(text)
         self.dock_list['Hints'].setWidget(text_edit)
         self.dock_list['Hints'].setObjectName("Hints")
+        self.dock_list['Hints'].setFloating(False)
+        self.dock_list['Hints'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
         self.annotation_table = AnnotationTableWidget(self.main_model.annotations,self) # passing self as parent in position 2
         self.dock_list['Annotations Table'] = QDockWidget("Annotations Table", self)
@@ -176,7 +178,8 @@ class MainWindow(QMainWindow):
         self.setCorner(Qt.BottomLeftCorner,Qt.LeftDockWidgetArea)
         self.setCorner(Qt.BottomRightCorner,Qt.RightDockWidgetArea)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.dock_list['Wavelet'])
-        self.resizeDocks([self.dock_list['File Tree'], self.dock_list['Hints'], self.dock_list['Plot Controls'],self.dock_list['Video']],[300,100,100,300],Qt.Vertical)
+        self.resizeDocks([self.dock_list['File Tree'], self.dock_list['Hints'], self.dock_list['Plot Controls'],self.dock_list['Video']],[350,100,100,300],Qt.Vertical)
+        self.tabifyDockWidget(self.dock_list['Hints'],self.dock_list['File Tree'])
         self.resizeDocks([self.dock_list['Wavelet']],[400],Qt.Vertical)
         self.resizeDocks([self.dock_list['Video']],[400],Qt.Vertical)
         self.resizeDocks([self.dock_list['Video']],[400],Qt.Horizontal)
@@ -507,7 +510,7 @@ class MainWindow(QMainWindow):
         self.annotations_undo = self.menu_annotations.addAction("Undo")
         self.annotations_undo.setShortcut('Ctrl+Z')
         self.annotations_undo.triggered.connect(self.main_model.annotations.step_back_in_history)
-        self.annotations_redo = self.menu_annotations.addAction("Undo")
+        self.annotations_redo = self.menu_annotations.addAction("Redo")
         self.annotations_redo.setShortcut('Ctrl+Shift+Z')
         self.annotations_redo.triggered.connect(self.main_model.annotations.step_forward_in_history)
         self.action_export_annotations = self.menu_annotations.addAction("Export to CSV")

@@ -275,7 +275,8 @@ class GaussianClassifier():
                 if not any([intervals_overlap([timev[starts[j]],timev[ends[j]]],pos) for pos in manual_label_positions]):
                     # c = np.sum(LLv[starts[j]:ends[j],i])-np.sum(LLv[starts[j]:ends[j],0])
                     # c = np.sum(np.log(pf[i,starts[j]:ends[j]])-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
-                    c = np.sum(-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
+                    # c = np.sum(-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
+                    c = np.max(-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
                     print('start,end,confidence', starts[j], ends[j],c)
                     a = AnnotationElement(label='(auto)'+label,start=timev[starts[j]],end=timev[ends[j]],confidence=c)
                     alist.append((c,a))

@@ -80,6 +80,7 @@ class ProjectEditWindow(QMainWindow):
         widget = QWidget(self)
         layout = QGridLayout(widget)
         self.title ='Project Editor'
+        self.setWindowTitle(self.title)
         self.project = project
         # if self.project is None:
         #     self.project = Project(main_model=MainModel())

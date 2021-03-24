@@ -317,9 +317,10 @@ class PyecogCursorItem(pg.InfiniteLine):
                  hoverPen=None, label=None, labelOpts=None, span=(0, 1), markers=None,
                  name=None):
         if pen is None:
-            pen = pg.functions.mkPen(color=(192, 32, 32,192), width=3)
+            # pen = pg.functions.mkPen(color=(192, 32, 32,192), width=3)
+            pen = pg.functions.mkPen(color=(64, 192, 231, 192), width=3)
         if hoverPen is None:
-            hoverPen = pg.functions.mkPen(color=(192, 32, 32, 255), width=3)
+            hoverPen = pg.functions.mkPen(color=(64, 192, 231, 255), width=3)
 
         pg.InfiniteLine.__init__(self, pos=pos, angle=angle, pen=pen, movable=movable, bounds=bounds,
                  hoverPen=hoverPen, label=label, labelOpts=labelOpts, span=span, markers=markers,

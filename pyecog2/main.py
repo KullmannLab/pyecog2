@@ -283,9 +283,9 @@ class MainWindow(QMainWindow):
                                                sep=' ')
                                            )
                     msg.setWindowTitle("Load autosave")
-                    msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+                    msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
                     retval = msg.exec_()
-                    if retval == QMessageBox.Ok:
+                    if retval == QMessageBox.Yes:
                         fname = fname+'_autosave'
 
             self.main_model.project.load_from_json(fname)

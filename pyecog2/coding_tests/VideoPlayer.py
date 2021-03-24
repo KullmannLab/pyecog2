@@ -20,6 +20,9 @@ class VideoWindow(QWidget):
         self.setWindowTitle("Video")
         self.mediaPlayer = QMediaPlayer() #None, QMediaPlayer.VideoSurface)
         self.last_position = 0
+        self.duration = -1
+        self.waiting_for_file = False
+        self.media_state_before_file_transition = self.mediaPlayer.state()
 
         videoWidget = QVideoWidget()
         self.videoWidget = videoWidget
@@ -54,14 +57,15 @@ class VideoWindow(QWidget):
         self.mediaPlayer.stateChanged.connect(self.mediaStateChanged)
         self.mediaPlayer.positionChanged.connect(self.positionChanged)
         self.mediaPlayer.durationChanged.connect(self.durationChanged)
+        self.mediaPlayer.mediaStatusChanged.connect(self.mediaStatusChanged)
         self.mediaPlayer.error.connect(self.handleError)
 
         if self.project is None:
             self.current_time_range = [0,0]
-            self.current_file = 'E:\\Telemetry\\2019 rat ivc\\videos\\206_119\\20190822000455.mp4'
-            self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(self.current_file)))
-            self.playButton.setEnabled(True)
-            self.mediaPlayer.play()
+            self.current_file = ''
+            # self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(self.current_file)))
+            # self.playButton.setEnabled(True)
+            # self.mediaPlayer.play()
         elif self.project.current_animal.video_files:
             self.current_file = self.project.current_animal.video_files[0]
             self.current_time_range = [self.project.current_animal.video_init_time[0],
@@ -99,51 +103,82 @@ class VideoWindow(QWidget):
                     self.style().standardIcon(QStyle.SP_MediaPlay))
 
     def positionChanged(self, position):
-        self.last_position = position
-        if self.current_time_range[0] != 0 and position != 0:  # avoid time changes when switching files
+        # Connected to video player
+        print('positionChanged',position,self.current_time_range)
+        if self.duration == -1:
+            print('no file')
+            return
+        if position != 0 and position != self.duration:  # avoid time changes when switching files
+            self.last_position = position
             self.positionSlider.setValue(position)
             self.sigTimeChanged.emit(position/1000 + self.current_time_range[0])
+        elif position == 0: # go back to previous position - hack to avoid position resets when switching media files
+            pos = self.current_time_range[0] + self.last_position/1000
+            self.setGlobalPosition(pos)
+        else: # position is at the end of file - try to switch to next file
+            pos = self.current_time_range[1] + .08
+            self.setGlobalPosition(pos)
 
     def durationChanged(self, duration):
+        print('duration changed',duration)
+        self.duration = duration
         self.positionSlider.setRange(0, duration)
 
     def setPosition(self, position):
+        # connected to slider
+        print('setPosition',position)
         self.mediaPlayer.setPosition(position) #  milliseconds since the beginning of the media
 
     def setGlobalPosition(self, pos):
+        # Connected to project main model sigTimeChanged
         # open the right media
-        if self.current_time_range[0] <= pos <= self.current_time_range[1]:
+        if self.current_time_range[0] <= pos <= self.current_time_range[1]: # correct file opened
             position = (pos-self.current_time_range[0])*1000
             if self.mediaPlayer.state() == QMediaPlayer.PlayingState and abs(position-self.last_position)<200:
-                # skip position setting to ensure smooth video plaback
+                # skip position setting by signal of main model to ensure smooth video plaback
                 return
             # go to correct relative position
             self.mediaPlayer.setPosition(position)  # UNIX time
             return
         else:
-            for i, file in enumerate(self.project.current_animal.video_files):
+            for i, file in enumerate(self.project.current_animal.video_files): # search for file to open
                 arange = [self.project.current_animal.video_init_time[i],
                           self.project.current_animal.video_init_time[i] + self.project.current_animal.video_duration[i]]
                 if (arange[0] <= pos <= arange[1]):
                     print('Changing video file: ', file)
                     self.current_file = file
+                    self.errorLabel.setText("File: " + self.current_file)
                     self.current_time_range = arange
+                    self.waiting_for_file = True
+                    self.media_state_before_file_transition = self.mediaPlayer.state()
+                    self.mediaPlayer.stop()
                     self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(file)))
                     self.playButton.setEnabled(True)
                     position = (pos-self.current_time_range[0])*1000
-                    self.mediaPlayer.setPosition(position)
-                    # Hack to make the player display the video instead of an black frame
-                    self.play()
-                    time.sleep(.04)
-                    self.play()
+                    self.last_position = position
                     return
         print('no video file found for current position')
+        self.errorLabel.setText("'No video file found for current position")
+        self.mediaPlayer.stop()
         self.mediaPlayer.setMedia(QMediaContent())
         self.current_file = ''
         self.current_time_range = [0, 0]
+        # self.duration = 0
         self.playButton.setEnabled(False)
         self.positionSlider.setRange(0, 0)
         self.positionSlider.setValue(0)
+
+    def mediaStatusChanged(self,status):
+        if self.waiting_for_file:
+            if status == QMediaPlayer.LoadedMedia:
+                print('finished loading file')
+                self.mediaPlayer.setPosition(self.last_position)
+                self.mediaPlayer.play()
+                time.sleep(.05)
+                self.mediaPlayer.pause()
+                if self.media_state_before_file_transition == QMediaPlayer.PlayingState:
+                    self.mediaPlayer.play()
+                self.waiting_for_file = False
 
 
     def handleError(self):

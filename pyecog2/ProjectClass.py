@@ -98,7 +98,7 @@ class Animal():
             self.id = id
 
     def update_eeg_folder(self,eeg_folder):
-        self.eeg_folder = eeg_folder
+        self.eeg_folder = os.path.normpath(eeg_folder)
         print('Looking for files:',eeg_folder,os.path.sep,'*.h5')
         h5files = glob.glob(eeg_folder + os.path.sep + '*.h5')
         h5files.sort()
@@ -123,7 +123,7 @@ class Animal():
             self.eeg_duration.append(metadata['duration'])
 
     def update_video_folder(self,video_folder):
-        self.video_folder = video_folder
+        self.video_folder = os.path.normpath(video_folder)
         self.video_files = glob.glob(video_folder + os.path.sep + '*.mp4')
         self.video_init_time = [
             datetime(*map(int, [fname[-18:-14], fname[-14:-12], fname[-12:-10], fname[-10:-8], fname[-8:-6],
@@ -459,18 +459,20 @@ class Project():
 
     def update_files_from_animal_directories(self):
         for animal in self.animal_list:
-            animal.update_eeg_folder(animal.eeg_folder)
-            animal.update_video_folder(animal.video_folder)
+            animal.update_eeg_folder(os.path.normpath(animal.eeg_folder))
+            animal.update_video_folder(os.path.normpath(animal.video_folder))
         self.main_model.sigProjectChanged.emit()
 
     def update_project_from_root_directories(self):
+        self.eeg_root_folder = os.path.normpath(self.eeg_root_folder)
+        self.video_root_folder = os.path.normpath(self.video_root_folder)
         self.update_files_from_animal_directories()  # first update already existing animals
         existing_eeg_dir = [animal.eeg_folder for animal in self.animal_list]
         eeg_dir_list = glob.glob(self.eeg_root_folder + os.path.sep + '*' + os.path.sep)  # then check for new animals
         video_dir_list = glob.glob(self.video_root_folder + os.path.sep + '*' + os.path.sep)
         for directory in eeg_dir_list:
             if directory not in existing_eeg_dir:
-                id = os.path.split(directory)[-2]
+                id = directory.split(os.path.sep)[-2]
                 print('Creating animal from directory:' ,directory)
                 print('Adding animal with id:',id)
                 video_dir = self.video_root_folder + os.path.sep + id

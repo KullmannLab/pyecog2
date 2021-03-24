@@ -1,4 +1,5 @@
 import os
+os.environ['QT_MULTIMEDIA_PREFERRED_PLUGINS'] = 'windowsmediafoundation'
 import sys
 import webbrowser
 
@@ -289,7 +290,10 @@ class MainWindow(QMainWindow):
 
             self.main_model.project.load_from_json(fname)
             self.tree_element.set_rootnode_from_project(self.main_model.project)
-            init_time = min(self.main_model.project.current_animal.eeg_init_time)
+            if self.main_model.project.current_animal.eeg_init_time:
+                init_time = np.min(self.main_model.project.current_animal.eeg_init_time)
+            else:
+                init_time = 0
             plot_range = np.array([init_time, init_time+3600])
             print('trying to plot ', plot_range)
             self.paired_graphics_view.set_scenes_plot_channel_data(plot_range)
@@ -345,6 +349,8 @@ class MainWindow(QMainWindow):
 
     def toggle_darkmode(self):
         if self.action_darkmode.isChecked():
+
+            # Fusion dark palette adapted from https://gist.github.com/QuantumCD/6245215.
             palette = QPalette()
             palette.setColor(QPalette.Window, QColor(53, 53, 53))
             palette.setColor(QPalette.WindowText, Qt.white)
@@ -641,7 +647,9 @@ class MainWindow(QMainWindow):
                     return
 
 def execute():
+    os.environ['QT_MULTIMEDIA_PREFERRED_PLUGINS'] = 'windowsmediafoundation'
     app = QApplication(sys.argv)
+    app.setApplicationName('PyEcog')
     app.setStyle("fusion")
     # Mikail feel free to play about if you feel so inclined :P
     # Now use a palette to switch to dark colors:

@@ -211,6 +211,7 @@ class ProjectEditWindow(QMainWindow):
                 print('Updating animal with id', id)
                 animal.update_eeg_folder(eeg_dir)
                 animal.update_video_folder(video_dir)
+        print('Project update finished')
 
 
     def update_project_from_roots(self):

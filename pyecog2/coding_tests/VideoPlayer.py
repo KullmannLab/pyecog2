@@ -1,5 +1,6 @@
 # PyQt5 Video player
-#!/usr/bin/env python
+import os
+os.environ['QT_MULTIMEDIA_PREFERRED_PLUGINS'] = 'windowsmediafoundation'
 from PyQt5.QtCore import QDir, Qt, QUrl, pyqtSignal
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
 from PyQt5.QtMultimediaWidgets import QVideoWidget
@@ -17,7 +18,7 @@ class VideoWindow(QWidget):
         super(VideoWindow, self).__init__(parent)
         self.project = project
         self.setWindowTitle("Video")
-        self.mediaPlayer = QMediaPlayer(None, QMediaPlayer.VideoSurface)
+        self.mediaPlayer = QMediaPlayer() #None, QMediaPlayer.VideoSurface)
         self.last_position = 0
 
         videoWidget = QVideoWidget()
@@ -44,7 +45,7 @@ class VideoWindow(QWidget):
         layout = QVBoxLayout()
         layout.addWidget(videoWidget)
         layout.addLayout(controlLayout)
-        # layout.addWidget(self.errorLabel)   # Hide error Label
+        layout.addWidget(self.errorLabel)   # Hide error Label
 
         # Set widget to contain window contents
         self.setLayout(layout)
@@ -55,7 +56,13 @@ class VideoWindow(QWidget):
         self.mediaPlayer.durationChanged.connect(self.durationChanged)
         self.mediaPlayer.error.connect(self.handleError)
 
-        if self.project.current_animal.video_files:
+        if self.project is None:
+            self.current_time_range = [0,0]
+            self.current_file = 'E:\\Telemetry\\2019 rat ivc\\videos\\206_119\\20190822000455.mp4'
+            self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(self.current_file)))
+            self.playButton.setEnabled(True)
+            self.mediaPlayer.play()
+        elif self.project.current_animal.video_files:
             self.current_file = self.project.current_animal.video_files[0]
             self.current_time_range = [self.project.current_animal.video_init_time[0],
                                    self.project.current_animal.video_init_time[0] + self.project.current_animal.video_duration[0]]
@@ -64,7 +71,6 @@ class VideoWindow(QWidget):
         else:
             self.current_file = ''
             self.current_time_range = [0,0]
-
 
     def openFile(self):
         fileName, _ = QFileDialog.getOpenFileName(self, "Open Movie",

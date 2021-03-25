@@ -53,7 +53,7 @@ class FFTWindowItem(pg.PlotWidget):
             dataf = np.mean(np.abs(z),axis=-1).ravel()
             # print('FFT: data shape:',data.shape,'FFT: dataf shape:',dataf.shape,'vf shape:',vf.shape,'z shape:',z.shape)
             # self.p1.setData(x = vf, y = np.abs(dataf[0]))
-            self.p1.setData(x = vf, y = np.abs(dataf))
+            self.p1.setData(x = vf+vf[1], y = np.abs(dataf))
             self.setLabel('bottom', 'Frequency', units = 'Hz')
             # self.setLimits(xMin=vf[0],xMax=vf[-1],yMin=min(0,min(np.abs(dataf))),yMax = 1.1*max(dataf))
             print('Updated FFT')

@@ -37,8 +37,7 @@ class VideoWindow(QWidget):
         self.positionSlider.sliderMoved.connect(self.setPosition)
 
         self.errorLabel = QLabel()
-        self.errorLabel.setSizePolicy(QSizePolicy.Preferred,
-                QSizePolicy.Maximum)
+        self.errorLabel.setSizePolicy(QSizePolicy.Ignored,QSizePolicy.Maximum)
 
         # Create layouts to place inside widget
         controlLayout = QHBoxLayout()
@@ -106,9 +105,18 @@ class VideoWindow(QWidget):
 
     def positionChanged(self, position):
         # Connected to video player
-        # print('positionChanged',position,self.current_time_range)
-        if self.duration == -1:
-            print('positionChanged no file - duration ==-1')
+        # print('positionChanged',position,self.last_position,self.waiting_for_file,self.duration,self.current_time_range)
+        # if self.duration == -1:
+        #     print('positionChanged: no file - duration ==-1')
+        #     return
+        # if self.waiting_for_file:
+        #     print('positionChanged: Waiting to load file')
+        #     return
+        # if position == 0:
+        #     print('positionChanged: avoiding setting positions to 0')
+        #     return
+        if position == 0 or self.waiting_for_file or self.duration == -1 or position == self.last_position:
+            # avoid position changes on file transitions or repeated signals on same position
             return
         if position < self.duration-40:  # avoid time changes when switching files
             self.last_position = position
@@ -120,13 +128,14 @@ class VideoWindow(QWidget):
             self.setGlobalPosition(pos)
 
     def durationChanged(self, duration):
-        print('duration changed',duration)
+        # print('duration changed',duration)
         self.duration = duration
         self.positionSlider.setRange(0, duration)
+        self.mediaPlayer.setPosition(self.position_on_new_file) # if duration changes avoid the position going back to 0
 
     def setPosition(self, position):
         # connected to slider
-        print('setPosition',position)
+        # print('setPosition',position)
         self.mediaPlayer.setPosition(position) #  milliseconds since the beginning of the media
 
     def setGlobalPosition(self, pos):
@@ -152,15 +161,15 @@ class VideoWindow(QWidget):
                     self.waiting_for_file = True
                     self.media_state_before_file_transition = self.mediaPlayer.state()
                     self.mediaPlayer.stop()
-                    self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(file)))
-                    self.playButton.setEnabled(True)
                     position = (pos-self.current_time_range[0])*1000
                     self.position_on_new_file = int(position)
-                    print('Changing position_on_new_file: ', self.position_on_new_file,pos)
+                    # print('Changing position_on_new_file: ', self.position_on_new_file,pos)
+                    self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(file)))
+                    self.playButton.setEnabled(True)
                     # self.duration = (arange[1]-arange[0])*1000
                     return
         print('no video file found for current position')
-        self.errorLabel.setText("'No video file found for current position")
+        self.errorLabel.setText("No video file found for current position")
         self.mediaPlayer.stop()
         self.mediaPlayer.setMedia(QMediaContent())
         self.current_file = ''
@@ -173,15 +182,16 @@ class VideoWindow(QWidget):
     def mediaStatusChanged(self,status):
         if self.waiting_for_file:
             if self.mediaPlayer.mediaStatus() == QMediaPlayer.LoadedMedia:
-                print('finished loading file')
-                self.mediaPlayer.stop()
+                self.waiting_for_file = False
+                # print('finished loading file')
+                # self.mediaPlayer.stop()
                 self.mediaPlayer.setPosition(self.position_on_new_file)
                 self.mediaPlayer.play()
-                time.sleep(.04)
+                time.sleep(.05)
                 self.mediaPlayer.pause()
                 if self.media_state_before_file_transition == QMediaPlayer.PlayingState:
                     self.mediaPlayer.play()
-                self.waiting_for_file = False
+                # print('finished setting position on new file')
 
 
     def handleError(self):

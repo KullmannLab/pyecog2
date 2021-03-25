@@ -179,7 +179,7 @@ class MainWindow(QMainWindow):
         self.setCorner(Qt.BottomLeftCorner,Qt.LeftDockWidgetArea)
         self.setCorner(Qt.BottomRightCorner,Qt.RightDockWidgetArea)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.dock_list['Wavelet'])
-        self.tabifyDockWidget(self.dock_list['Hints'], self.dock_list['File Tree'])
+        # self.tabifyDockWidget(self.dock_list['Hints'], self.dock_list['File Tree'])
         self.resizeDocks([self.dock_list['File Tree'], self.dock_list['Hints'], self.dock_list['Plot Controls'],self.dock_list['Video']],[350,100,100,300],Qt.Vertical)
         self.resizeDocks([self.dock_list['Wavelet']],[400],Qt.Vertical)
         self.resizeDocks([self.dock_list['Video']],[400],Qt.Vertical)

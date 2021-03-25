@@ -20,6 +20,7 @@ class TreeModel(QtCore.QAbstractItemModel):
     lowerUpper is overidded modules
     lower_upper is custom methods
     '''
+    print('Building File Tree...')
     sortRole = QtCore.Qt.UserRole
     filterRole = QtCore.Qt.UserRole + 1 # not sure if this is best for cols?
     prepare_for_plot_role = QtCore.Qt.UserRole + 2
@@ -360,10 +361,20 @@ class AnimalNode(Node):
     def __init__(self, animal, parent=None,path=''):
         super(AnimalNode, self).__init__(str(animal.id),parent=parent,path=path)
         self.animal = animal
+        print('Adding animal:',animal.id)
         self.setFlags(QtCore.Qt.ItemIsEnabled| QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable)
+        if animal.eeg_files: # Assuming all files for a given animal are of a given type to speed-up start-up process
+            file = animal.eeg_files[0]
+        else:
+            file=''
+        if os.path.isfile(os.path.join(self.get_full_path(), file)[:-4] + 'h5'):
+            data_format = 'h5'
+        else:
+            data_format = 'bin'
         for file in sorted(animal.eeg_files):
-            metadata = load_metadata_file(os.path.join(self.get_full_path(),file))
-            if metadata['data_format'] == 'h5':
+            # metadata = load_metadata_file(os.path.join(self.get_full_path(),file))
+            # data_format = metadata['data_format']
+            if data_format == 'h5':
                 HDF5FileNode(file[:-4]+'h5',parent=self) # replace .meta for .h5 to get the h5 file name
             else:
                 LieteNode(file[:-4]+'bin',parent=self) # replace .meta for .bin to get the binary file name

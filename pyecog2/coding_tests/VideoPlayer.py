@@ -4,12 +4,15 @@ os.environ['QT_MULTIMEDIA_PREFERRED_PLUGINS'] = 'windowsmediafoundation'
 from PyQt5.QtCore import QDir, Qt, QUrl, pyqtSignal
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
 from PyQt5.QtMultimediaWidgets import QVideoWidget
-from PyQt5.QtWidgets import (QApplication, QFileDialog, QHBoxLayout, QLabel,
+from PyQt5.QtWidgets import (QApplication, QFileDialog, QHBoxLayout, QLabel, QInputDialog,
         QPushButton, QSizePolicy, QSlider, QStyle, QVBoxLayout, QWidget)
 from PyQt5.QtWidgets import QMainWindow,QWidget, QPushButton, QAction
 from PyQt5.QtGui import QIcon
 import sys
 import time
+
+import pkg_resources
+clock_icon_file = pkg_resources.resource_filename('pyecog2', 'icons/wall-clock.png')
 
 class VideoWindow(QWidget):
     sigTimeChanged = pyqtSignal(object)
@@ -24,6 +27,7 @@ class VideoWindow(QWidget):
         self.duration = -1
         self.waiting_for_file = False
         self.media_state_before_file_transition = self.mediaPlayer.state()
+        self.video_time_offset = 0.0
 
         videoWidget = QVideoWidget()
         self.videoWidget = videoWidget
@@ -31,6 +35,11 @@ class VideoWindow(QWidget):
         self.playButton.setEnabled(False)
         self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
         self.playButton.clicked.connect(self.play)
+
+        self.timeOffsetButton = QPushButton()
+        self.timeOffsetButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+        self.timeOffsetButton.setIcon(QIcon(clock_icon_file))
+        self.timeOffsetButton.clicked.connect(self.setTimeOffset)
 
         self.positionSlider = QSlider(Qt.Horizontal)
         self.positionSlider.setRange(0, 0)
@@ -42,6 +51,7 @@ class VideoWindow(QWidget):
         # Create layouts to place inside widget
         controlLayout = QHBoxLayout()
         controlLayout.setContentsMargins(0, 0, 0, 0)
+        controlLayout.addWidget(self.timeOffsetButton)
         controlLayout.addWidget(self.playButton)
         controlLayout.addWidget(self.positionSlider)
 
@@ -76,6 +86,17 @@ class VideoWindow(QWidget):
         else:
             self.current_file = ''
             self.current_time_range = [0,0]
+
+    def setTimeOffset(self):
+        offset, okpressed = QInputDialog.getDouble(self,'Video time offset',
+                                                   'Offset video time position (seconds)',
+                                                   value = self.video_time_offset)
+        if okpressed:
+            self.video_time_offset = offset
+            current_position = self.current_time_range[0] + self.last_position/1000
+            self.setGlobalPosition(0)
+            self.setGlobalPosition(current_position)
+
 
     def openFile(self):
         fileName, _ = QFileDialog.getOpenFileName(self, "Open Movie",
@@ -151,8 +172,9 @@ class VideoWindow(QWidget):
             return
         else:
             for i, file in enumerate(self.project.current_animal.video_files): # search for file to open
-                arange = [self.project.current_animal.video_init_time[i],
-                          self.project.current_animal.video_init_time[i] + self.project.current_animal.video_duration[i]]
+                arange = [self.project.current_animal.video_init_time[i] + self.video_time_offset,
+                          self.project.current_animal.video_init_time[i] + self.project.current_animal.video_duration[i]
+                          + self.video_time_offset]
                 if (arange[0] <= pos <= arange[1]):
                     print('Changing video file: ', file)
                     self.current_file = file

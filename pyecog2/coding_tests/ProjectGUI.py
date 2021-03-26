@@ -154,7 +154,7 @@ class ProjectEditWindow(QMainWindow):
         self.terminal.setTextColor(color)
 
     def selectEEGFolder(self):
-        dialog = QFileDialog()
+        dialog = QFileDialog(self)
         dialog.setWindowTitle('Select EEG directory')
         dialog.setFileMode(QFileDialog.DirectoryOnly)
         dialog.setOption(QFileDialog.DontUseNativeDialog, True)
@@ -169,7 +169,7 @@ class ProjectEditWindow(QMainWindow):
         # self.project.eeg_root_folder = eeg_root_folder.value(0)
 
     def selectVideoFolder(self):
-        dialog = QFileDialog()
+        dialog = QFileDialog(self)
         dialog.setWindowTitle('Select EEG directory')
         dialog.setFileMode(QFileDialog.DirectoryOnly)
         dialog.setOption(QFileDialog.DontUseNativeDialog, True)

@@ -261,6 +261,9 @@ class FileBuffer():  # Consider translating this to cython
         enveloped_time = []
         no_downsampling = True
         for i, data in enumerate(self.data):
+
+            if channel is not None and channel>=data.shape[1]:
+                continue # skip this file becuase it does not have channel with required index
             start = sample_ranges[i][0]
             stop = sample_ranges[i][1]
             fs = self.metadata[i]['fs']

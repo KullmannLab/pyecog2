@@ -125,10 +125,10 @@ class NDFConverterWindow(QMainWindow):
         self.terminal.setTextColor(color)
 
     def selectNDFFolder(self):
-        dialog = QFileDialog()
+        dialog = QFileDialog(self)
         dialog.setWindowTitle('Select NDF directory')
         dialog.setFileMode(QFileDialog.DirectoryOnly)
-        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         if dialog.exec():
             self.p.param('Directories','Select NDF directory','NDF directory:').setValue(dialog.selectedFiles()[0])
@@ -167,10 +167,10 @@ class NDFConverterWindow(QMainWindow):
 
 
     def selectDestinationFolder(self):
-        dialog = QFileDialog()
+        dialog = QFileDialog(self)
         dialog.setWindowTitle('Select Destination directory')
         dialog.setFileMode(QFileDialog.DirectoryOnly)
-        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         if dialog.exec():
             self.p.param('Directories',

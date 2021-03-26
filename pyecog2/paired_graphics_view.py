@@ -116,12 +116,12 @@ class PairedGraphicsView():
         self.is_setting_ROI_position = False
 
         x_range, y_range = self.insetview_plot.viewRange()
-        pen = pg.mkPen(color=(250, 250, 80), width=2)
-        penh = pg.mkPen(color=(50, 50, 200), width=2)
+        pen = pg.mkPen(color=(44, 133, 160,192), width=2)
+        # penh = pg.mkPen(color=(211, 122, 95,255), width=2)
 
         self.overviewROI = pg.RectROI(pos=(x_range[0], y_range[0]),
                                       size=(x_range[1] - x_range[0], y_range[1] - y_range[0]),
-                                      sideScalers=True, pen=penh, rotatable=False, removable=False)
+                                      sideScalers=True, pen=pen, rotatable=False, removable=False)
         self.overviewROI.sigRegionChanged.connect(self.overviewROIchanged)
         self.overview_plot.addItem(self.overviewROI)
         self.inset_annotations = []

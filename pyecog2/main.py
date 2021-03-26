@@ -258,7 +258,7 @@ class MainWindow(QMainWindow):
 
     def load_project(self,fname = None):
         if type(fname) is not str:
-            dialog = QFileDialog()
+            dialog = QFileDialog(self)
             dialog.setWindowTitle('Load Project ...')
             dialog.setFileMode(QFileDialog.ExistingFile)
             # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
@@ -314,7 +314,7 @@ class MainWindow(QMainWindow):
         self.toggle_auto_save()
 
     def save_as(self):
-        dialog = QFileDialog()
+        dialog = QFileDialog(self)
         dialog.setWindowTitle('Save Project as ...')
         dialog.setFileMode(QFileDialog.AnyFile)
         # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
@@ -384,7 +384,7 @@ class MainWindow(QMainWindow):
         '''
         Method launches a dialog allow user to select a directory
         '''
-        dialog = QFileDialog()
+        dialog = QFileDialog(self)
         dialog.setWindowTitle(label_text)
         dialog.setFileMode(QFileDialog.DirectoryOnly)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
@@ -453,7 +453,7 @@ class MainWindow(QMainWindow):
         self.projectEditor.show()
 
     def export_annotations(self):
-        dialog = QFileDialog()
+        dialog = QFileDialog(self)
         dialog.setWindowTitle('Export annotations as ...')
         dialog.setFileMode(QFileDialog.AnyFile)
         # dialog.setOption(QFileDialog.DontUseNativeDialog, True)

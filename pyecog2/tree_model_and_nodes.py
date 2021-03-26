@@ -123,13 +123,12 @@ class TreeModel(QtCore.QAbstractItemModel):
 
         if role == QtCore.Qt.DisplayRole or role == QtCore.Qt.EditRole:
             if index.column() == 0:
-                return node.name.split('/')[-1]
+                return node.name.split(os.path.sep)[-1]
             else:
                 return node.type_info()
 
         if role == QtCore.Qt.DecorationRole:
             if index.column() == 0:
-
                 icon_file_prefix = pkg_resources.resource_filename('pyecog2', 'icons/')
                 if isinstance(node, DirectoryNode):
                     return QtGui.QIcon(icon_file_prefix+'folder.png')

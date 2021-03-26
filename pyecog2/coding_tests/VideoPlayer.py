@@ -13,6 +13,8 @@ import time
 
 import pkg_resources
 clock_icon_file = pkg_resources.resource_filename('pyecog2', 'icons/wall-clock.png')
+play_icon_file = pkg_resources.resource_filename('pyecog2', 'icons/play.png')
+pause_icon_file = pkg_resources.resource_filename('pyecog2', 'icons/pause.png')
 
 class VideoWindow(QWidget):
     sigTimeChanged = pyqtSignal(object)
@@ -29,16 +31,19 @@ class VideoWindow(QWidget):
         self.media_state_before_file_transition = self.mediaPlayer.state()
         self.video_time_offset = 0.0
 
+        self.play_icon = QIcon(play_icon_file)
+        self.clock_icon = QIcon(clock_icon_file)
+        self.pause_icon = QIcon(pause_icon_file)
+
         videoWidget = QVideoWidget()
         self.videoWidget = videoWidget
         self.playButton = QPushButton()
         self.playButton.setEnabled(False)
-        self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
+        self.playButton.setIcon(self.play_icon)
         self.playButton.clicked.connect(self.play)
 
         self.timeOffsetButton = QPushButton()
-        self.timeOffsetButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
-        self.timeOffsetButton.setIcon(QIcon(clock_icon_file))
+        self.timeOffsetButton.setIcon(self.clock_icon)
         self.timeOffsetButton.clicked.connect(self.setTimeOffset)
 
         self.positionSlider = QSlider(Qt.Horizontal)
@@ -118,11 +123,9 @@ class VideoWindow(QWidget):
 
     def mediaStateChanged(self, state):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
-            self.playButton.setIcon(
-                    self.style().standardIcon(QStyle.SP_MediaPause))
+            self.playButton.setIcon(self.pause_icon)
         else:
-            self.playButton.setIcon(
-                    self.style().standardIcon(QStyle.SP_MediaPlay))
+            self.playButton.setIcon(self.play_icon)
 
     def positionChanged(self, position):
         # Connected to video player

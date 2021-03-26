@@ -75,8 +75,8 @@ def Parameter2Animal(parameter):
     pass
 
 class ProjectEditWindow(QMainWindow):
-    def __init__(self,project = None):
-        QMainWindow.__init__(self)
+    def __init__(self,project = None,parent = None):
+        QMainWindow.__init__(self,parent = parent)
         widget = QWidget(self)
         layout = QGridLayout(widget)
         self.title ='Project Editor'

@@ -444,12 +444,12 @@ class MainWindow(QMainWindow):
 
     def openNDFconverter(self):
         print('opening NDF converter')
-        self.ndf_converter = NDFConverterWindow()
+        self.ndf_converter = NDFConverterWindow(parent=self)
         self.ndf_converter.show()
 
     def openProjectEditor(self):
         print('opening Project Editor')
-        self.projectEditor = ProjectEditWindow(self.main_model.project)
+        self.projectEditor = ProjectEditWindow(self.main_model.project,parent=self)
         self.projectEditor.show()
 
     def export_annotations(self):

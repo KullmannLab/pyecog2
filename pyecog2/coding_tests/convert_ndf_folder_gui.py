@@ -54,8 +54,8 @@ class ScalableGroup(pTypes.GroupParameter):
 
 
 class NDFConverterWindow(QMainWindow):
-    def __init__(self):
-        QMainWindow.__init__(self)
+    def __init__(self,parent = None):
+        QMainWindow.__init__(self,parent = parent)
         widget = QWidget(self)
         layout = QGridLayout(widget)
         self.title = "NDF converter"

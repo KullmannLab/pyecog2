@@ -4,8 +4,7 @@ from PyQt5.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTe
 from pyecog2.ProjectClass import Animal
 # from main import MainModel
 
-import pyqtgraph.parametertree.parameterTypes as pTypes
-from pyqtgraph.parametertree import Parameter, ParameterTree
+from pyqtgraph.parametertree import Parameter
 from pyecog2.coding_tests.pyecogParameterTree import PyecogParameterTree,PyecogGroupParameter
 
 
@@ -42,8 +41,8 @@ class ScalableGroup(PyecogGroupParameter):
     def __init__(self, **opts):
         opts['type'] = 'group'
         opts['addText'] = "Add"
-        opts['addList'] = ['New Animal']  # ,'yellow','magenta','cyan']
-        pTypes.GroupParameter.__init__(self, **opts)
+        opts['addList'] = ['New Animal']
+        PyecogGroupParameter.__init__(self, **opts)
 
     def addNew(self, typ, n=None):
         if n is None:

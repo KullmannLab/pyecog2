@@ -24,6 +24,7 @@ from pyecog2.tree_widget import FileTreeElement
 from pyecog2.coding_tests.plot_controls import PlotControls
 from datetime import datetime
 import pyqtgraph as pg
+from pyqtgraph.console import ConsoleWidget
 import pkg_resources
 
 class MainModel(QObject):
@@ -171,7 +172,14 @@ class MainWindow(QMainWindow):
         self.dock_list['Wavelet'].setObjectName("Wavelet")
         # self.dock_list['Wavelet'].hide()
 
+        self.dock_list['Console'] = QDockWidget("Console", self)
+        self.dock_list['Console'].setWidget(ConsoleWidget(namespace={'MainWindow':self}))
+        self.dock_list['Console'].setObjectName("Console")
+        self.dock_list['Console'].hide()
+
         self.setCentralWidget(self.paired_graphics_view.splitter)
+
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['Console'])
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['File Tree'])
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['Hints'])
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_list['Plot Controls'])
@@ -445,6 +453,10 @@ class MainWindow(QMainWindow):
         self.dock_list['Wavelet'].widget().update_data()
         self.show()
 
+    def open_console_window(self):
+        self.dock_list['Console'].show()
+        self.show()
+
     def openNDFconverter(self):
         print('opening NDF converter')
         self.ndf_converter = NDFConverterWindow(parent=self)
@@ -552,6 +564,9 @@ class MainWindow(QMainWindow):
 
         self.action_open_morlet_window = self.menu_tools.addAction("Morlet Wavelet Transform")
         self.action_open_morlet_window.triggered.connect(self.open_wavelet_window)
+
+        self.action_open_console_window = self.menu_tools.addAction("Console")
+        self.action_open_console_window.triggered.connect(self.open_console_window)
 
         # HELP section
         self.menu_help = self.menu_bar.addMenu("Help")

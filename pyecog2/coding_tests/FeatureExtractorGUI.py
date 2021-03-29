@@ -7,7 +7,7 @@ from pyqtgraph.parametertree import Parameter, ParameterTree
 from pyecog2.ndf_converter import NdfFile, DataHandler
 from pyecog2.coding_tests.WaveletWidget import Worker
 from pyecog2.coding_tests.pyecogParameterTree import PyecogParameterTree,PyecogGroupParameter
-
+from pyecog2.feature_extractor import FeatureExtractor,reg_entropy,powerf,rfft_band_power
 
 class OutputWrapper(QtCore.QObject):
     outputWritten = QtCore.pyqtSignal(object, object)
@@ -42,23 +42,45 @@ class ScalableGroup(PyecogGroupParameter):
     def __init__(self, **opts):
         opts['type'] = 'group'
         opts['addText'] = "Add"
-        opts['addList'] = ['New Animal']  # ,'yellow','magenta','cyan']
+        opts['addList'] = ['New Animal']
         PyecogGroupParameter.__init__(self, **opts)
 
-    def addNew(self, typ):
-        n = (len(self.childs) + 1)
-        self.addChild(
-            dict(name= 'Animal '+str(n), type='str', value='[]', removable=True,
-                 renamable=True))
+    def addNew(self, typ, n=None):
+        if n is None:
+            n = (len(self.childs) + 1)
+        try:
+            self.addChild(Animal2Parameter(Animal(id='Animal '+str(n))))
+        except Exception:
+            print('Animal with name','Animal '+str(n+1),'already exists. Trying to add animal with name:','Animal '+str(n+1))
+            self.addNew(typ,n+1)
+
+def Animal2Parameter(animal):
+    return {'name': animal.id,
+            'type': 'group',
+            'renamable': False,
+            'removable': True,
+            'children' : [
+                {'name': 'new id',
+                 'type': 'str',
+                 'value': animal.id},
+                {'name':'EEG directory',
+                    'type': 'str',
+                    'value': animal.eeg_folder},
+                {'name': 'Video directory',
+                    'type': 'str',
+                    'value': animal.video_folder}
+            ]}
 
 
-class NDFConverterWindow(QMainWindow):
-    def __init__(self,parent = None):
-        QMainWindow.__init__(self,parent = parent)
+
+class FeatureExtractorWindow(QMainWindow):
+    def __init__(self, project=None, parent=None):
+        QMainWindow.__init__(self, parent=parent)
         widget = QWidget(self)
         layout = QGridLayout(widget)
-        self.title = "NDF converter"
+        self.title = 'Feature Extractor'
         self.setWindowTitle(self.title)
+        self.project = project
         self.setCentralWidget(widget)
         self.terminal = QTextBrowser(self)
         self._err_color = QtCore.Qt.red
@@ -212,7 +234,7 @@ class NDFConverterWindow(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    window = NDFConverterWindow()
+    window = FeatureExtractorWindow()
     window.setGeometry(500, 300, 300, 200)
     window.show()
     sys.exit(app.exec_())

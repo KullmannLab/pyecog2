@@ -9,8 +9,7 @@ as well as some customized parameter types
 import numpy as np
 import colorsys
 from pyecog2.annotations_module import i_spaced_nfold
-# import pyqtgraph.parametertree.parameterTypes as pTypes
-from pyqtgraph.parametertree import Parameter, ParameterTree
+from pyqtgraph.parametertree import Parameter
 from PyQt5 import QtGui
 from pyecog2.coding_tests.pyecogParameterTree import PyecogParameterTree, PyecogGroupParameter, PyecogGroupParameterItem
 

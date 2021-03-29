@@ -12,7 +12,7 @@ from pyecog2.ProjectClass import FileBuffer
 
 # @jit(nopython=True)
 def rfft_band_power(fdata, fs, band):
-    return np.log(np.mean(np.abs(fdata[int(len(fdata)*band[0]/fs):int(len(fdata)*band[1]/fs)])))
+    return np.log(np.mean(np.abs(fdata[int(len(fdata)*band[0]/fs):int(len(fdata)*band[1]/fs)]))) # todo consider making this with proper units
 
 
 def powerf(bandi, bandf):

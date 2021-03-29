@@ -1,5 +1,5 @@
 from PyQt5 import QtGui, QtCore
-from pyqtgraph.parametertree import Parameter, ParameterTree
+from pyqtgraph.parametertree import ParameterTree
 from pyqtgraph.parametertree.parameterTypes import GroupParameter, GroupParameterItem, registerParameterType
 
 class PyecogParameterTree(ParameterTree):

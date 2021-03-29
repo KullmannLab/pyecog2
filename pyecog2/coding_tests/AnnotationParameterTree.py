@@ -9,17 +9,20 @@ as well as some customized parameter types
 import numpy as np
 import colorsys
 from pyecog2.annotations_module import i_spaced_nfold
-import pyqtgraph.parametertree.parameterTypes as pTypes
+# import pyqtgraph.parametertree.parameterTypes as pTypes
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from PyQt5 import QtGui
+from pyecog2.coding_tests.pyecogParameterTree import PyecogParameterTree, PyecogGroupParameter, PyecogGroupParameterItem
 
 ## this group includes a menu allowing the user to add new parameters into its child list
-class ScalableGroup(pTypes.GroupParameter):
+# class ScalableGroup(pTypes.GroupParameter):
+class ScalableGroup(PyecogGroupParameter):
     def __init__(self, **opts):
         opts['type'] = 'group'
         opts['addText'] = "Add label"
         opts['addList'] = ['auto','red','green','blue'] #,'yellow','magenta','cyan']
-        pTypes.GroupParameter.__init__(self, **opts)
+        # pTypes.GroupParameter.__init__(self, **opts)
+        PyecogGroupParameter.__init__(self, **opts)
 
     def addNew(self, typ):
         val = { 'auto':     'auto',
@@ -45,9 +48,9 @@ class ScalableGroup(pTypes.GroupParameter):
              'renamable': True,
              'removable': True})
 
-class AnnotationParameterTee(ParameterTree):
+class AnnotationParameterTee(PyecogParameterTree):
     def __init__(self,annotations):
-        ParameterTree.__init__(self)
+        PyecogParameterTree.__init__(self)
         self.annotationPage = annotations
         labels = self.annotationPage.labels
         self.shortcut_keys = dict([(l, i+1) for i,l in enumerate(labels)])
@@ -69,7 +72,7 @@ class AnnotationParameterTee(ParameterTree):
         self.p.sigTreeStateChanged.connect(self.change)
         self.setParameters(self.p, showTop=False)
         self.headerItem().setHidden(True)
-        self.update_color_from_group_parameters()
+        # self.update_color_from_group_parameters()
         # self.last_label_change = None
         self.annotationPage.sigLabelsChanged.connect(self.re_init)
 
@@ -97,8 +100,10 @@ class AnnotationParameterTee(ParameterTree):
         self.p.clearChildren()
         self.params = [ScalableGroup(name="Annotation Labels", children=Label_dict)]
         self.p.addChildren(self.params)
-        self.update_color_from_group_parameters()
+        # self.update_color_from_group_parameters()
         self.p.sigTreeStateChanged.connect(self.change)
+        self.setParameters(self.p, showTop=False)
+        self.headerItem().setHidden(True)
         print('AnnotationParameterTree Re_init finished ')
 
 
@@ -160,17 +165,3 @@ class AnnotationParameterTee(ParameterTree):
             if self.shortcut_keys[k] == shortcutkey:
                 label = k
                 return label
-
-    def update_color_from_group_parameters(self): # massive hack to change fonts and backgrounds
-        try:
-            ch = self.invisibleRootItem().child(0).child(0) # Annotation Labels item
-            for c in [0,1]:
-                ch.setBackground(c, QtGui.QBrush(QtGui.QColor(35, 39, 41)))
-                ch.setForeground(c, QtGui.QBrush(QtGui.QColor(64, 192, 231)))
-            for c0 in range(ch.childCount()-1):
-                if hasattr(ch.child(c0),'setForeground'):
-                    for c in [0, 1]:
-                        ch.child(c0).setBackground(c, QtGui.QBrush(QtGui.QColor(35, 39, 41)))
-                        ch.child(c0).setForeground(c, QtGui.QBrush(QtGui.QColor(250, 250, 250)))
-        except Exception:
-            pass

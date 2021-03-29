@@ -6,6 +6,7 @@ from pyecog2.ProjectClass import Animal
 
 import pyqtgraph.parametertree.parameterTypes as pTypes
 from pyqtgraph.parametertree import Parameter, ParameterTree
+from pyecog2.coding_tests.pyecogParameterTree import PyecogParameterTree,PyecogGroupParameter
 
 
 class OutputWrapper(QtCore.QObject):
@@ -37,7 +38,7 @@ class OutputWrapper(QtCore.QObject):
         except AttributeError:
             pass
 
-class ScalableGroup(pTypes.GroupParameter):
+class ScalableGroup(PyecogGroupParameter):
     def __init__(self, **opts):
         opts['type'] = 'group'
         opts['addText'] = "Add"
@@ -98,9 +99,9 @@ class ProjectEditWindow(QMainWindow):
         self.params = [
             {'name': 'Global Settings','type':'group','children':[
                 {'name': 'Project Title', 'type': 'str', 'value': self.project.title},
-                {'name': 'Project file','type':'action','children':[
-                    {'name':'Project file:','type':'str','value': self.project.project_file}
-                ]},
+                # {'name': 'Project file','type':'action','children':[
+                    {'name':'Project file:','type':'str','value': self.project.project_file},
+                # ]},
                 {'name': 'Select EEG root directory','type':'action','children':[
                     {'name':'EEG root directory:','type':'str','value': self.project.eeg_root_folder}
                 ]},
@@ -126,7 +127,7 @@ class ProjectEditWindow(QMainWindow):
         self.p.param('Global Settings', 'Select Video root directory').sigActivated.connect(
             self.selectVideoFolder)
 
-        self.t = ParameterTree()
+        self.t = PyecogParameterTree()
         self.t.setParameters(self.p, showTop=False)
         self.t.headerItem().setHidden(True)
 

@@ -8,6 +8,7 @@ import pyqtgraph.parametertree.parameterTypes as pTypes
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from pyecog2.ndf_converter import NdfFile, DataHandler
 from pyecog2.coding_tests.WaveletWidget import Worker
+from pyecog2.coding_tests.pyecogParameterTree import PyecogParameterTree,PyecogGroupParameter
 
 
 class OutputWrapper(QtCore.QObject):
@@ -39,12 +40,12 @@ class OutputWrapper(QtCore.QObject):
         except AttributeError:
             pass
 
-class ScalableGroup(pTypes.GroupParameter):
+class ScalableGroup(PyecogGroupParameter):
     def __init__(self, **opts):
         opts['type'] = 'group'
         opts['addText'] = "Add"
         opts['addList'] = ['New Animal']  # ,'yellow','magenta','cyan']
-        pTypes.GroupParameter.__init__(self, **opts)
+        PyecogGroupParameter.__init__(self, **opts)
 
     def addNew(self, typ):
         n = (len(self.childs) + 1)
@@ -95,7 +96,7 @@ class NDFConverterWindow(QMainWindow):
         self.p.param('Directories', 'Select Destination directory', 'Destination directory:').sigValueChanged.connect(
             self.setDestinationFolder)
 
-        self.t = ParameterTree()
+        self.t = PyecogParameterTree()
         self.t.setParameters(self.p, showTop=False)
         self.t.headerItem().setHidden(True)
 

@@ -79,7 +79,7 @@ class MainWindow(QMainWindow):
         if os.name == 'posix':
             pyecog_string = '🇵 🇾 🇪 🇨 🇴 🇬'
         else:
-            pyecog_string = 'P Y E C O G'
+            pyecog_string = 'P y E c o g'
         print('\n',pyecog_string,'\n')
 
         # Initialize Main Window geometry
@@ -92,6 +92,9 @@ class MainWindow(QMainWindow):
         self.app_handle.setWindowIcon(QtGui.QIcon(icon_file))
         self.setWindowTitle(self.title)
         self.setGeometry(0, 0, size.width(), size.height())
+        # self.setWindowFlags(QtCore.Qt.FramelessWindowHint) # fooling around
+        # self.setWindowFlags(QtCore.Qt.CustomizeWindowHint| QtCore.Qt.Tool)
+        # self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
         self.main_model = MainModel()
         self.autosave_timer = QtCore.QTimer()
         self.live_recording_timer = QtCore.QTimer()

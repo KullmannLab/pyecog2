@@ -7,7 +7,8 @@ from pyqtgraph.parametertree import Parameter, ParameterTree
 from pyecog2.ndf_converter import NdfFile, DataHandler
 from pyecog2.coding_tests.WaveletWidget import Worker
 from pyecog2.coding_tests.pyecogParameterTree import PyecogParameterTree,PyecogGroupParameter
-from pyecog2.feature_extractor import FeatureExtractor,reg_entropy,powerf,rfft_band_power
+from pyecog2.feature_extractor import FeatureExtractor,reg_entropy,powerf,rfft_band_power,powerf
+from scipy import stats
 
 class OutputWrapper(QtCore.QObject):
     outputWritten = QtCore.pyqtSignal(object, object)
@@ -42,36 +43,23 @@ class ScalableGroup(PyecogGroupParameter):
     def __init__(self, **opts):
         opts['type'] = 'group'
         opts['addText'] = "Add"
-        opts['addList'] = ['New Animal']
+        opts['addList'] = ['New Feature']
         PyecogGroupParameter.__init__(self, **opts)
 
-    def addNew(self, typ, n=None):
-        if n is None:
-            n = (len(self.childs) + 1)
-        try:
-            self.addChild(Animal2Parameter(Animal(id='Animal '+str(n))))
-        except Exception:
-            print('Animal with name','Animal '+str(n+1),'already exists. Trying to add animal with name:','Animal '+str(n+1))
-            self.addNew(typ,n+1)
+    def addNew(self, typ):
+        self.addChild({'name': 'feature label',
+                       'type': 'str',
+                       'renamable': True,
+                       'removable': True,
+                       'value': 'lambda x: np.std(x)'})
 
-def Animal2Parameter(animal):
-    return {'name': animal.id,
-            'type': 'group',
-            'renamable': False,
-            'removable': True,
-            'children' : [
-                {'name': 'new id',
-                 'type': 'str',
-                 'value': animal.id},
-                {'name':'EEG directory',
-                    'type': 'str',
-                    'value': animal.eeg_folder},
-                {'name': 'Video directory',
-                    'type': 'str',
-                    'value': animal.video_folder}
-            ]}
-
-
+class ScalableGroupF(ScalableGroup):
+    def addNew(self, typ):
+        self.addChild({'name': 'power 1Hz to 4Hz',
+                       'type': 'str',
+                       'renamable': True,
+                       'removable': True,
+                       'value': 'lambda f: powerf(1, 4)'})
 
 class FeatureExtractorWindow(QMainWindow):
     def __init__(self, project=None, parent=None):
@@ -84,37 +72,41 @@ class FeatureExtractorWindow(QMainWindow):
         self.setCentralWidget(widget)
         self.terminal = QTextBrowser(self)
         self._err_color = QtCore.Qt.red
-        self.folder2convert = ''
-        self.button3 = QPushButton('Convert Files!', self)
-        self.button3.clicked.connect(self.runConvertFiles)
+        self.button1 = QPushButton('Set Project feature Extractor', self)
+        self.button1.clicked.connect(self.setProjectFeatureExtraction)
+        self.button2 = QPushButton('Extract!', self)
+        self.button2.clicked.connect(self.runFeatureExtraction)
 
-        self.animal_dict = [{'name': 'Animal 0',
-                                'type': 'str',
-                                'value': '[0]',
-                                'renamable': True,
-                                'removable': True}]
         self.params = [
-            {'name': 'Directories','type':'group','children':[
-                {'name': 'Select NDF directory','type':'action','children':[
-                    {'name':'NDF directory:','type':'str','value': os.getcwd()}
+            {'name': 'Feature Extractor Settings','type':'group','children':[
+                {'name': 'Window settings','type':'group','children':[
+                    {'name': 'tyoe:', 'type': 'list', 'values': ['rectangular','triang','blackman','hamming','hann',
+                                                                 'bartlett','flattop','parzen','bohman','blackmanharris',
+                                                                 'nuttall','barthann']},
+                    {'name':'Length (s):','type':'float','value': 5},
+                    {'name': 'Overlap ratio:', 'type': 'float', 'value': .5}
                 ]},
-                {'name': 'Select Destination directory', 'type': 'action', 'children': [
-                    {'name': 'Destination directory:', 'type': 'str', 'value': os.getcwd()+'h5'}
-                ]}
-            ]},
-            {'name': 'Date Range', 'type': 'group', 'children': [
-                {'name': 'Start', 'type': 'str', 'value': '00/00/00 00:00:00'},
-                {'name': 'End', 'type': 'str', 'value': '00/00/00 00:00:00'},
-                ]},
-            ScalableGroup(name='Animal id: [TID1,TID2,...]', children=self.animal_dict)]
+                ScalableGroup(name='Features in time domain',children = [
+                    {'name': 'minimum', 'renamable': True, 'type': 'str', 'value': 'np.min'},
+                    {'name': 'maximum', 'renamable': True, 'type': 'str', 'value': 'np.max'},
+                    {'name': 'mean', 'renamable': True, 'type': 'str', 'value': 'np.mean'},
+                    {'name': 'log std', 'renamable': True, 'type': 'str', 'value': 'lambda x: np.log(np.std(x))'},
+                    {'name': 'kurtosis', 'renamable': True, 'type': 'str', 'value': 'stats.kurtosis'},
+                    {'name': 'skewness', 'renamable': True, 'type': 'str', 'value': 'stats.skew'},
+                    {'name': 'log coastline', 'renamable': True, 'type': 'str', 'value': 'lambda x: np.log(np.mean(np.abs(np.diff(x, axis=0))))'}]),
+                ScalableGroupF(name='Features in frequency domain', children=[
+                    {'name': 'power 1Hz to 4Hz', 'type': 'str', 'value': 'powerf(1, 4)'},
+                    {'name': 'power 1Hz to 4Hz', 'type': 'str', 'value': 'powerf(4, 8)'},
+                    {'name': 'power 1Hz to 4Hz', 'type': 'str', 'value': 'powerf(8, 12)'},
+                    {'name': 'power 1Hz to 4Hz', 'type': 'str', 'value': 'powerf(12, 30)'},
+                    {'name': 'power 1Hz to 4Hz', 'type': 'str', 'value': 'powerf(30, 50)'},
+                    {'name': 'power 1Hz to 4Hz', 'type': 'str', 'value': 'powerf(50, 70)'},
+                    {'name': 'power 1Hz to 4Hz', 'type': 'str', 'value': 'powerf(70, 120)'},
+                    {'name': 'power 1Hz to 4Hz', 'type': 'str', 'value': 'reg_entropy'}])
+            ]}]
 
         ## Create tree of Parameter objects
         self.p = Parameter.create(name='params', type='group', children=self.params)
-        self.p.param('Directories', 'Select NDF directory').sigActivated.connect(self.selectNDFFolder)
-        self.p.param('Directories', 'Select NDF directory','NDF directory:').sigValueChanged.connect(self.setNDFFolder)
-        self.p.param('Directories', 'Select Destination directory').sigActivated.connect(self.selectDestinationFolder)
-        self.p.param('Directories', 'Select Destination directory', 'Destination directory:').sigValueChanged.connect(
-            self.setDestinationFolder)
 
         self.t = PyecogParameterTree()
         self.t.setParameters(self.p, showTop=False)

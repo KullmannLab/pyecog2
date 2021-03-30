@@ -6,7 +6,8 @@ from collections import OrderedDict
 import json
 from numba import jit
 from pyecog2.ProjectClass import FileBuffer
-
+from scipy.signal import get_window
+from importlib import import_module
 
 # constructors for functions that grab the power from frequency bands
 
@@ -45,8 +46,8 @@ class FeatureExtractor():
                 window_length = 5,  # length in seconds for the segments on which to compute features
                 overlap = .5,        # overlap ratio between windows
                 window = 'rectangular',
-                power_bands = [(1, 4), (4, 8), (8, 12), (12, 30), (30, 50), (50, 70), (70, 120)],
-                number_of_features = 15,
+                # power_bands = [(1, 4), (4, 8), (8, 12), (12, 30), (30, 50), (50, 70), (70, 120)],
+                # number_of_features = 15,
                 feature_labels = ['min','max','mean','log std','kurtosis','skewness','log coastline (log sum of abs diff)',
                                   'log powerf(1, 4)',
                                   'log powerf(4, 8)',
@@ -71,6 +72,9 @@ class FeatureExtractor():
                                         powerf(70, 120),
                                         reg_entropy]
             )
+    @property
+    def number_of_features(self):
+        return len(self.settings['feature_time_functions']) + len(self.settings['feature_freq_functions'])
 
     def extract_features_from_animal(self,animal,re_write = False):
         # Create feature files for each eeg file
@@ -92,9 +96,13 @@ class FeatureExtractor():
         window_starts = np.arange(time_range[0], time_range[1], window_step)
         print('window_starts:',window_starts)
         features = np.zeros((len(window_starts), self.settings['number_of_features']),dtype='double')
+        window = get_window(self.settings['window'],1)
         for i, window_init in enumerate(window_starts):
             data, time = file_buffer.get_data_from_range([window_init, window_init + self.settings['window_length']]) # get all data from time window
             data += np.random.randn(*data.shape).astype(data.dtype)*2**(-16) # add a bit of regularizing noise, bellow 24 bit noise floors
+            if len(data) != len(window):
+                window = get_window(self.settings['window'],len(data))
+            data *= window
             fs = 1/(time[1]-time[0])
             dataf = np.fft.rfft(data,axis=0)/len(data)
             for j,func in enumerate(self.settings['feature_time_functions']):

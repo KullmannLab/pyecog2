@@ -1,3 +1,4 @@
+![PyEcog](./icons/banner_small.png)
 ## Keyboard and Mouse shortcuts
 
 ---
@@ -29,10 +30,10 @@
 ### Project:
 - **Ctrl + S** - Save Project
 - **Ctrl + Shift + S** - Save Project as a new file
-  
-<img src="/home/mfpleite/PycharmProjects/pyecog2/pyecog2/icons/repository-open-graph.png" alt="PyEcog" width="200"/>
 
-![PyEcog](./icons/repository-open-graph.png)
+
+
+
 
 
 

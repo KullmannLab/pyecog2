@@ -157,7 +157,7 @@ class ProjectEditWindow(QMainWindow):
         dialog = QFileDialog(self)
         dialog.setWindowTitle('Select EEG directory')
         dialog.setFileMode(QFileDialog.DirectoryOnly)
-        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         if dialog.exec():
             self.p.param('Global Settings', 'Select EEG root directory','EEG root directory:').setValue(dialog.selectedFiles()[0])
@@ -172,7 +172,7 @@ class ProjectEditWindow(QMainWindow):
         dialog = QFileDialog(self)
         dialog.setWindowTitle('Select EEG directory')
         dialog.setFileMode(QFileDialog.DirectoryOnly)
-        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         if dialog.exec():
             self.p.param('Global Settings', 'Select Video root directory','Video root directory:').setValue(dialog.selectedFiles()[0])

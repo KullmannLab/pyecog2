@@ -158,11 +158,14 @@ class FileBuffer():  # Consider translating this to cython
         if metadata['data_format'] == 'h5':
             h5file = H5File(fname[:-4] + 'h5')
             channels = []
+            duration = metadata['duration']
             for tid in h5file.attributes['t_ids']:
-                channels.append(h5file[tid]['data'])
+                if duration < 3600: # H5 file is screwed u, so will only grab the start of the data points
+                    channels.append(h5file[tid]['data'][:duration*metadata['fs']])
+                else:
+                    channels.append(h5file[tid]['data'])
             arr = np.vstack(channels).T
             self.data.append(arr)
-
         else:  # it is a bin file and can be mememaped
             try:
                 print('opening binary fie:',fname[:-4] + 'bin')

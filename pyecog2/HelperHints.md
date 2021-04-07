@@ -1,4 +1,4 @@
-![PyEcog](./icons/banner_small.png)
+![PyEcog](icons/banner_small.png)
 ## Keyboard and Mouse shortcuts
 
 ---
@@ -30,6 +30,9 @@
 ### Project:
 - **Ctrl + S** - Save Project
 - **Ctrl + Shift + S** - Save Project as a new file
+---
+
+
 
 
 

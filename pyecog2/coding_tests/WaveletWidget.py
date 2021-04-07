@@ -95,7 +95,7 @@ def morlet_wavelet_fft(input_signal, dt=1, R=7, freq_interval=(), progress_signa
 
     mask = np.zeros(result.shape)
 
-    Nlist = (.5 * R / vf / dt).astype('int')  # 3 sigma COI
+    Nlist = (.5 * R / vf / dt).astype('int')  # 2 sigma COI
     for k in range(len(Nlist)):
         mask[k, :Nlist[k]] = np.nan
         mask[k, -Nlist[k]:] = np.nan

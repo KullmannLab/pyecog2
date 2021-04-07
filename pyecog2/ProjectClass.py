@@ -11,7 +11,8 @@ from scipy import signal
 def clip(x, a, b):  # utility funciton for file buffer
     return min(max(int(x), a), b)
 
-
+def intervals_overlap(a,b):
+    return (a[0] <= b[0] < a[1]) or (a[0] <= b[1] < a[1]) or (b[0] <= a[0] < b[1]) or (b[0] <= a[1] < b[1])
 
 def create_metafile_from_h5(file,duration = 3600):
     assert file.endswith('.h5')
@@ -139,13 +140,14 @@ class Animal():
 
 
 class FileBuffer():  # Consider translating this to cython
-    def __init__(self, animal=None):
+    def __init__(self, animal=None, verbose=True):
         self.files = []
         self.range = [np.Inf, -np.Inf]
         self.data = []
         self.data_ranges = []
         self.metadata = []
         self.animal = animal
+        self.verbose =verbose
 
     def add_file_to_buffer(self, fname):
         if fname in self.files:  # skip if file is already buffered
@@ -168,7 +170,7 @@ class FileBuffer():  # Consider translating this to cython
             self.data.append(arr)
         else:  # it is a bin file and can be mememaped
             try:
-                print('opening binary fie:',fname[:-4] + 'bin')
+                if self.verbose: print('opening binary fie:',fname[:-4] + 'bin')
                 m = np.memmap(fname[:-4] + 'bin', mode='r', dtype =metadata['data_format'] )
             except ValueError:
                 m = np.zeros(0)  # binary file is empty so just create empty array
@@ -220,30 +222,31 @@ class FileBuffer():  # Consider translating this to cython
     def get_data_from_range(self, trange, channel=None, n_envelope=None, for_plot=False, filter_settings=(False,0,0)):
         # First check if data is already buffered, most of the time this will be the case:
         if trange[0] >= self.range[0] and trange[1] <= self.range[1]:
-            # print('Data already in buffer')
+            # if self.verbose: print('Data already in buffer')
             pass
         else:
             # Now clear buffer if range is not contiguous to previous range
             if trange[1] <= self.range[0] or trange[0] >= self.range[1]:
-                print('Non-contiguous data: restarting buffer...')
+                if self.verbose: print('Non-contiguous data: restarting buffer...')
                 self.clear_buffer()
             # fill buffer with the necessary files:
             for i, file in enumerate(self.animal.eeg_files):
                 frange = [self.animal.eeg_init_time[i], self.animal.eeg_init_time[i] + self.animal.eeg_duration[i]]
-                if (frange[0] <= trange[0] < frange[1]) or (frange[0] <= trange[1] < frange[1]) or \
-                        (trange[0] <= frange[0] < trange[1]) or (trange[0] <= frange[1] < trange[1]):
-                    print('Adding file to buffer: ', file)
+                # if (frange[0] <= trange[0] < frange[1]) or (frange[0] <= trange[1] < frange[1]) or \
+                #         (trange[0] <= frange[0] < trange[1]) or (trange[0] <= frange[1] < trange[1]):
+                if intervals_overlap(frange,trange):
+                    if self.verbose: print('Adding file to buffer: ', file)
                     self.add_file_to_buffer(file)
-            print('files in buffer: ', self.files)
+            if self.verbose: print('files in buffer: ', self.files)
 
         #  Find sample ranges from time data_ranges:
         sample_ranges = []
-        # print('range:', self.range)
-        # print('data ranges:', self.data_ranges)
+        # if self.verbose: print('range:', self.range)
+        # if self.verbose: print('data ranges:', self.data_ranges)
         for i, ranges in enumerate(self.data_ranges):
-            # print('metadata', i, ':', self.metadata[i])
+            # if self.verbose: print('metadata', i, ':', self.metadata[i])
             fs = self.metadata[i]['fs']
-            # print(((trange[0] - ranges[0]) * fs, 0, len(self.data[i])))
+            # if self.verbose: print(((trange[0] - ranges[0]) * fs, 0, len(self.data[i])))
             # sample_ranges.append([clip((trange[0] - ranges[0]) * fs, 0, len(self.data[i])),
             #                       clip((trange[1] - ranges[0]) * fs, 0, len(self.data[i]))])  # this does not work because len of data might be larger than falid h5durations
 
@@ -254,7 +257,7 @@ class FileBuffer():  # Consider translating this to cython
         if n_envelope is None:
             n_envelope = total_sample_range
         if n_envelope>2**(28): # data is larger than 1 GByte and could bust available RAM 4bytes*2**28 = 1GB
-            print('ERROR: too much data to keep in memory (>1GB)')
+            if self.verbose: print('ERROR: too much data to keep in memory (>1GB)')
             return [],[]
 
         file_envlopes = [int(n_envelope * (s[1] - s[0]) / total_sample_range) + 1 for s in
@@ -324,23 +327,23 @@ class FileBuffer():  # Consider translating this to cython
             if len(enveloped_time[-1]) == 0:
                 del (enveloped_time[-1])
                 del (enveloped_data[-1])
-            # print('env data shapes')
-            # print([data.shape for data in enveloped_data])
-            # print([data.shape for data in enveloped_time])
+            # if self.verbose: print('env data shapes')
+            # if self.verbose: print([data.shape for data in enveloped_data])
+            # if self.verbose: print([data.shape for data in enveloped_time])
         # sort vectors with enveloped_time:
         start_times = [(t[0], enveloped_data[i], t) for (i, t) in enumerate(enveloped_time)]
-        # print('***debug***',len(start_times))
+        # if self.verbose: print('***debug***',len(start_times))
         # if len(start_times) ==2:
-        #     print('***debug***',start_times[0][0][0],start_times[1][0][0])
-        #     print('***debug***',self.data_ranges)
-        #     print('***debug***', self.files)
+        #     if self.verbose: print('***debug***',start_times[0][0][0],start_times[1][0][0])
+        #     if self.verbose: print('***debug***',self.data_ranges)
+        #     if self.verbose: print('***debug***', self.files)
         start_times.sort(key=lambda s:s[0])
         enveloped_data = [d[1] for d in start_times]
         enveloped_time = [d[2] for d in start_times]
 
-        # print('env data shapes')
-        # print([data.shape for data in enveloped_data])
-        # print([data.shape for data in enveloped_time])
+        # if self.verbose: print('env data shapes')
+        # if self.verbose: print([data.shape for data in enveloped_data])
+        # if self.verbose: print([data.shape for data in enveloped_time])
         if len(enveloped_data) > 0:
             data = np.vstack(enveloped_data)
             time = np.vstack(enveloped_time)
@@ -352,11 +355,11 @@ class FileBuffer():  # Consider translating this to cython
                 lpcutoff = min(max(filter_settings[2] / nyq, 0.001), 1)
                 # for some reason the bandpass butterworth filter is very unstable
                 if lpcutoff<.99:  # don't apply filter if LP cutoff freqquency is above nyquist freq.
-                    # print('applying LP filter to display data:', filter_settings, fs, nyq, lpcutoff)
+                    # if self.verbose: print('applying LP filter to display data:', filter_settings, fs, nyq, lpcutoff)
                     b, a = signal.butter(2, lpcutoff, 'lowpass', analog=False)
                     data = signal.filtfilt(b, a, data,axis =0,method='gust')
                 if hpcutoff > .001: # don't apply filter if HP cutoff frequency too low.
-                    # print('applying HP filter to display data:', filter_settings, fs, nyq, hpcutoff)
+                    # if self.verbose: print('applying HP filter to display data:', filter_settings, fs, nyq, hpcutoff)
                     b, a = signal.butter(2, hpcutoff, 'highpass', analog=False)
                     data = signal.filtfilt(b, a, data,axis =0,method='gust')
         else:

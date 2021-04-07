@@ -1,14 +1,14 @@
 import sys, os, glob
 from datetime import datetime
 from PyQt5 import QtGui, QtCore
-from PyQt5.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog
+from PyQt5.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog, QProgressBar
 
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from pyecog2.ndf_converter import NdfFile, DataHandler
 from pyecog2.coding_tests.WaveletWidget import Worker
 from pyecog2.coding_tests.pyecogParameterTree import PyecogParameterTree,PyecogGroupParameter
 from pyecog2.feature_extractor import FeatureExtractor,reg_entropy,powerf,rfft_band_power,powerf
-from scipy import stats
+from collections import OrderedDict
 
 class OutputWrapper(QtCore.QObject):
     outputWritten = QtCore.pyqtSignal(object, object)
@@ -61,6 +61,59 @@ class ScalableGroupF(ScalableGroup):
                        'removable': True,
                        'value': 'lambda f: powerf(1, 4)'})
 
+class ScalableGroupM(PyecogGroupParameter):
+    def __init__(self, **opts):
+        opts['type'] = 'group'
+        opts['addText'] = "Add"
+        opts['addList'] = ['New Module']
+        PyecogGroupParameter.__init__(self, **opts)
+
+    def addNew(self, typ):
+        self.addChild({'name': 'module',
+                       'type': 'str',
+                       'renamable': True,
+                       'removable': True,
+                       'value': 'alias'})
+
+def settings2params(settings):
+    ntimefuncs = len(settings['feature_time_functions'])
+    return [
+            {'name': 'Feature Extractor Settings','type':'group','children':
+                [
+                {'name': 'Window settings','type':'group','children':[
+                    {'name': 'Type:', 'type': 'list','value':settings['window'],
+                     'values': ['rectangular','triang','blackman','hamming','hann',
+                                                                 'bartlett','flattop','parzen','bohman','blackmanharris',
+                                                                 'nuttall','barthann']},
+                    {'name':'Length (s):','type':'float','value': settings['window_length']},
+                    {'name': 'Overlap ratio:', 'type': 'float', 'value': settings['overlap']}]},
+                ScalableGroup(name='Features in time domain',children = [
+                    {'name': label, 'renamable': True, 'type': 'str', 'value': func}
+                    for label,func in zip(settings['feature_labels'][:ntimefuncs], settings['feature_time_functions'])]),
+                ScalableGroupF(name='Features in frequency domain', children=[
+                    {'name': label, 'renamable': True, 'type': 'str', 'value': func}
+                    for label,func in zip(settings['feature_labels'][ntimefuncs:], settings['feature_freq_functions'])]),
+                ScalableGroupM(name='Module dependencies to import', children=[
+                    {'name': module, 'renamable': True, 'type': 'str', 'value': alias}
+                    for module, alias in settings['function_module_dependencies']])
+                    ]
+             }]
+
+def params2settings(params):
+    window_settings = params[0]['children'][0]['children']
+    feature_time_functions = params[0]['children'][1].children()
+    feature_freq_functions = params[0]['children'][2].children()
+    function_module_dependencies = params[0]['children'][3].children()
+    return OrderedDict(
+        window_length=window_settings[1]['value'],  # length in seconds for the segments on which to compute features
+        overlap=window_settings[2]['value'],  # overlap ratio between windows
+        window=window_settings[0]['value'], # window type
+        feature_labels=[f.name() for f in feature_time_functions] + [f.name() for f in feature_freq_functions],
+        feature_time_functions=[f.value() for f in feature_time_functions],
+        feature_freq_functions=[f.value() for f in feature_freq_functions],
+        function_module_dependencies=[(d.name(),d.value()) for d in function_module_dependencies]
+        )
+
 class FeatureExtractorWindow(QMainWindow):
     def __init__(self, project=None, parent=None):
         QMainWindow.__init__(self, parent=parent)
@@ -69,6 +122,10 @@ class FeatureExtractorWindow(QMainWindow):
         self.title = 'Feature Extractor'
         self.setWindowTitle(self.title)
         self.project = project
+        if project is None or not hasattr(project,'feature_extractor'):
+            self.feature_extractor = FeatureExtractor()
+        else:
+            self.feature_extractor = project.feature_extractor
         self.setCentralWidget(widget)
         self.terminal = QTextBrowser(self)
         self._err_color = QtCore.Qt.red
@@ -76,34 +133,10 @@ class FeatureExtractorWindow(QMainWindow):
         self.button1.clicked.connect(self.setProjectFeatureExtraction)
         self.button2 = QPushButton('Extract!', self)
         self.button2.clicked.connect(self.runFeatureExtraction)
+        self.progressBar0 = QProgressBar()
+        self.progressBar1 = QProgressBar()
 
-        self.params = [
-            {'name': 'Feature Extractor Settings','type':'group','children':[
-                {'name': 'Window settings','type':'group','children':[
-                    {'name': 'tyoe:', 'type': 'list', 'values': ['rectangular','triang','blackman','hamming','hann',
-                                                                 'bartlett','flattop','parzen','bohman','blackmanharris',
-                                                                 'nuttall','barthann']},
-                    {'name':'Length (s):','type':'float','value': 5},
-                    {'name': 'Overlap ratio:', 'type': 'float', 'value': .5}
-                ]},
-                ScalableGroup(name='Features in time domain',children = [
-                    {'name': 'minimum', 'renamable': True, 'type': 'str', 'value': 'np.min'},
-                    {'name': 'maximum', 'renamable': True, 'type': 'str', 'value': 'np.max'},
-                    {'name': 'mean', 'renamable': True, 'type': 'str', 'value': 'np.mean'},
-                    {'name': 'log std', 'renamable': True, 'type': 'str', 'value': 'lambda x: np.log(np.std(x))'},
-                    {'name': 'kurtosis', 'renamable': True, 'type': 'str', 'value': 'stats.kurtosis'},
-                    {'name': 'skewness', 'renamable': True, 'type': 'str', 'value': 'stats.skew'},
-                    {'name': 'log coastline', 'renamable': True, 'type': 'str', 'value': 'lambda x: np.log(np.mean(np.abs(np.diff(x, axis=0))))'}]),
-                ScalableGroupF(name='Features in frequency domain', children=[
-                    {'name': 'power 1Hz to 4Hz', 'type': 'str', 'value': 'powerf(1, 4)'},
-                    {'name': 'power 1Hz to 4Hz', 'type': 'str', 'value': 'powerf(4, 8)'},
-                    {'name': 'power 1Hz to 4Hz', 'type': 'str', 'value': 'powerf(8, 12)'},
-                    {'name': 'power 1Hz to 4Hz', 'type': 'str', 'value': 'powerf(12, 30)'},
-                    {'name': 'power 1Hz to 4Hz', 'type': 'str', 'value': 'powerf(30, 50)'},
-                    {'name': 'power 1Hz to 4Hz', 'type': 'str', 'value': 'powerf(50, 70)'},
-                    {'name': 'power 1Hz to 4Hz', 'type': 'str', 'value': 'powerf(70, 120)'},
-                    {'name': 'power 1Hz to 4Hz', 'type': 'str', 'value': 'reg_entropy'}])
-            ]}]
+        self.params = settings2params(self.feature_extractor.settings)
 
         ## Create tree of Parameter objects
         self.p = Parameter.create(name='params', type='group', children=self.params)
@@ -116,9 +149,12 @@ class FeatureExtractorWindow(QMainWindow):
         layout.setRowStretch(0,10)
         layout.setRowMinimumHeight(0,400)
         layout.setColumnMinimumWidth(0,600)
-        layout.addWidget(self.button3)
+        layout.addWidget(self.button1)
+        layout.addWidget(self.button2)
+        layout.addWidget(self.progressBar0)
+        layout.addWidget(self.progressBar1)
         layout.addWidget(self.terminal)
-        layout.setRowMinimumHeight(2,300)
+        layout.setRowMinimumHeight(5,300)
         stdout = OutputWrapper(self, True)
         stdout.outputWritten.connect(self.handleOutput)
         stderr = OutputWrapper(self, False)
@@ -137,92 +173,22 @@ class FeatureExtractorWindow(QMainWindow):
         self.terminal.insertPlainText(text)
         self.terminal.setTextColor(color)
 
-    def selectNDFFolder(self):
-        dialog = QFileDialog(self)
-        dialog.setWindowTitle('Select NDF directory')
-        dialog.setFileMode(QFileDialog.DirectoryOnly)
-        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
-        dialog.setAcceptMode(QFileDialog.AcceptOpen)
-        if dialog.exec():
-            self.p.param('Directories','Select NDF directory','NDF directory:').setValue(dialog.selectedFiles()[0])
-        else:
-            sys.stderr.write('No folder selected\n')
+    def setProjectFeatureExtraction(self):
+        self.feature_extractor.update_from_settings(params2settings(self.params))
+        print(self.feature_extractor.settings)
 
-    def setNDFFolder(self, folder2convertParam):
-        self.folder2convert = folder2convertParam.value()
-        print('Inspecting',self.folder2convert)
-        ndf_files = glob.glob(self.folder2convert + os.path.sep + '*.ndf')
-        ndf_files.sort()
-        print('Converting folder:', self.folder2convert)
-        print('There are', len(ndf_files), ' *.ndf files to convert...')
-        if len(ndf_files) == 0:
-            print('Folder does not have *.ndf files to convert!')
-            return
-        start_timestamp = int(os.path.split(ndf_files[0])[-1][1:-4])
-        end_timestamp = int(os.path.split(ndf_files[-1])[-1][1:-4])
-        self.p.param('Date Range','Start').setValue(datetime.fromtimestamp(start_timestamp).strftime(self.dfrmt))
-        self.p.param('Date Range','End').setValue(datetime.fromtimestamp(end_timestamp).strftime(self.dfrmt))
-        print('testing file',ndf_files[0])
-        test_file = NdfFile(ndf_files[0])
-        test_file.read_file_metadata()
-        test_file.get_valid_tids_and_fs()
-        print('Found TIDs', test_file.tid_set, ' valid in first file (there might be more in other files)')
-        self.animal_dict.clear()
-        for i, id in enumerate(test_file.tid_set):
-            self.animal_dict.append({'name': 'Animal ' + str(i),
-                                     'type': 'str',
-                                     'value': '[' + str(id) + ']',
-                                     'renamable': True,
-                                     'removable': True})
-
-        self.p.param('Animal id: [TID1,TID2,...]').clearChildren()
-        self.p.param('Animal id: [TID1,TID2,...]').addChildren(self.animal_dict)
-
-
-    def selectDestinationFolder(self):
-        dialog = QFileDialog(self)
-        dialog.setWindowTitle('Select Destination directory')
-        dialog.setFileMode(QFileDialog.DirectoryOnly)
-        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
-        dialog.setAcceptMode(QFileDialog.AcceptOpen)
-        if dialog.exec():
-            self.p.param('Directories',
-                         'Select Destination directory',
-                         'Destination directory:').setValue(dialog.selectedFiles()[0])
-
-    def setDestinationFolder(self,destinationFolderParam):
-        self.destination_folder = destinationFolderParam.value()
-        print('Saving files to folder:', self.destination_folder)
-
-    def runConvertFiles(self):
-        worker = Worker(self.convertFiles)
-        print('Starting file conversion...')
+    def runFeatureExtraction(self):
+        print('Starting feature extraction...')
+        worker = Worker(self.extractFeatures)
         self.threadpool.start(worker)
 
-    def convertFiles(self):
-        dh = DataHandler()
-        start_string = self.p.param('Date Range','Start').value()
-        start_file_name = 'M' + str(int(datetime.strptime(start_string,self.dfrmt).timestamp())) + '.ndf'
-        end_string = self.p.param('Date Range','End').value()
-        end_file_name = 'M' + str(int(datetime.strptime(end_string,self.dfrmt).timestamp())) + '.ndf'
-        self.files2convert = [os.path.join(self.folder2convert, f) for f in os.listdir(self.folder2convert)
-                              if (start_file_name <= f <= end_file_name)]
-        print(len(self.files2convert), 'files between:', start_file_name, 'and', end_file_name)
-
-        for a in self.p.param('Animal id: [TID1,TID2,...]').children():
-            print('***\n Starting to convert', a.name(), a.value(),'\n***')
-            tids = a.value()
-            animal_destination_folder = self.destination_folder + os.sep + a.name()
-            if not os.path.isdir(self.destination_folder):
-                os.mkdir(self.destination_folder)
-            if not os.path.isdir(animal_destination_folder):
-                os.mkdir(animal_destination_folder)
-            dh.convert_ndf_directory_to_h5(self.files2convert,tids=tids,save_dir=animal_destination_folder)
-        return (1,1) # wavelet worker expects to emit tuple when done...
-
-
-
-
+    def extractFeatures(self):
+        for i,animal in enumerate(self.project.animal_list):
+            self.feature_extractor.extract_features_from_animal(animal, re_write = True, n_cores = -1,
+                                                                progress_bar = self.progressBar1)
+            self.progressBar0.setValue((100*(i+1))//len(self.project.animal_list))
+        print('Finnished')
+        return (1, 1)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

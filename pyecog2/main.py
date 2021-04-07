@@ -7,7 +7,7 @@ import numpy as np
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtGui import QPalette, QColor
 from PyQt5.QtCore import Qt, QSettings, QByteArray, QObject
-from PyQt5.QtWidgets import QApplication, QPlainTextEdit, QTextEdit, QDockWidget, QMainWindow, QFileDialog, QMessageBox
+from PyQt5.QtWidgets import QApplication, QPlainTextEdit, QTextEdit,QTextBrowser, QDockWidget, QMainWindow, QFileDialog, QMessageBox
 
 from pyecog2.ProjectClass import Project, Animal
 from pyecog2.annotation_table_widget import AnnotationTableWidget
@@ -18,6 +18,7 @@ from pyecog2.coding_tests.ProjectGUI import ProjectEditWindow
 from pyecog2.coding_tests.VideoPlayer import VideoWindow
 from pyecog2.coding_tests.WaveletWidget import WaveletWindow
 from pyecog2.coding_tests.convert_ndf_folder_gui import NDFConverterWindow
+from pyecog2.coding_tests.FeatureExtractorGUI import FeatureExtractorWindow
 from pyecog2.paired_graphics_view import PairedGraphicsView
 from pyecog2.tree_model_and_nodes import TreeModel
 from pyecog2.tree_widget import FileTreeElement
@@ -102,7 +103,6 @@ class MainWindow(QMainWindow):
 
         # Populate Main window with widgets
         # self.createDockWidget()
-        self.build_menubar()
         self.dock_list = {}
         self.paired_graphics_view = PairedGraphicsView(parent=self)
 
@@ -128,16 +128,17 @@ class MainWindow(QMainWindow):
         self.dock_list['Plot Controls'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
         self.dock_list['Hints'] = QDockWidget("Hints", self)
-        text_edit = QTextEdit()
+        self.text_edit = QTextBrowser()
         hints_file = pkg_resources.resource_filename('pyecog2', 'HelperHints.md')
         # text = open('HelperHints.md').read()
         print('hints file:',hints_file)
         text = open(hints_file).read()
-        text_edit.setMarkdown(text)
-        self.dock_list['Hints'].setWidget(text_edit)
+        text = text.replace('icons/banner_small.png',pkg_resources.resource_filename('pyecog2', 'icons/banner_small.png'))
+        self.text_edit.setMarkdown(text)
+        self.dock_list['Hints'].setWidget(self.text_edit)
         self.dock_list['Hints'].setObjectName("Hints")
-        self.dock_list['Hints'].setFloating(False)
-        self.dock_list['Hints'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
+        # self.dock_list['Hints'].setFloating(False)
+        # self.dock_list['Hints'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
         self.annotation_table = AnnotationTableWidget(self.main_model.annotations,self) # passing self as parent in position 2
         self.dock_list['Annotations Table'] = QDockWidget("Annotations Table", self)
@@ -176,6 +177,8 @@ class MainWindow(QMainWindow):
         self.dock_list['Console'].setWidget(ConsoleWidget(namespace={'MainWindow':self}))
         self.dock_list['Console'].setObjectName("Console")
         self.dock_list['Console'].hide()
+
+        self.build_menubar()
 
         self.setCentralWidget(self.paired_graphics_view.splitter)
 
@@ -467,6 +470,10 @@ class MainWindow(QMainWindow):
         self.projectEditor = ProjectEditWindow(self.main_model.project,parent=self)
         self.projectEditor.show()
 
+    def openFeatureExtractor(self):
+        self.featureExtractorWindow = FeatureExtractorWindow(self.main_model.project,parent=self)
+        self.featureExtractorWindow.show()
+
     def export_annotations(self):
         dialog = QFileDialog(self)
         dialog.setWindowTitle('Export annotations as ...')
@@ -547,7 +554,7 @@ class MainWindow(QMainWindow):
         self.action_train_classifier = self.menu_classifier.addAction("Train classifier")
         self.action_run_classifier   = self.menu_classifier.addAction("Run classifier")
         self.action_review_classifications   = self.menu_classifier.addAction("Review classifications")
-        self.action_setup_feature_extractor.setDisabled(True)
+        self.action_setup_feature_extractor.triggered.connect(self.openFeatureExtractor)
         self.action_run_feature_extractor.setDisabled(True)
         self.action_setup_classifier.setDisabled(True)
         self.action_train_classifier.setDisabled(True)
@@ -570,6 +577,9 @@ class MainWindow(QMainWindow):
 
         # HELP section
         self.menu_help = self.menu_bar.addMenu("Help")
+        self.action_show_hints    = self.menu_help.addAction("Show Hints")
+        self.action_show_hints.triggered.connect(self.dock_list['Hints'].show)
+
         self.action_reset_geometry    = self.menu_help.addAction("Reset Main Window layout")
         self.action_reset_geometry.triggered.connect(self.reset_geometry)
 

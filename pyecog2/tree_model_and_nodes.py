@@ -404,13 +404,13 @@ class ProjectNode(Node):
         for animal in self.project.animal_list:
             AnimalNode(animal, parent=self)
 
-
     def set_name(self, value):
         self.name = str(value)
         self.project.title = value
 
     def type_info(self):
         return 'Project: ' + self.name
+
 
 class FileTreeProxyModel(QtCore.QAbstractProxyModel):
     '''Reimplement some of the virtual methods? '''

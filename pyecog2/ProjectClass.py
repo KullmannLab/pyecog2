@@ -517,6 +517,7 @@ class Project():
         i = np.Inf
         e = -np.Inf
         for animal in self.animal_list:
-            i = min(min(animal.eeg_init_time),i)
-            e = max(max(np.array(animal.eeg_init_time) + np.array(animal.eeg_duration)),e)
+            if animal.eeg_init_time: # only consider animals with files
+                i = min(min(animal.eeg_init_time),i)
+                e = max(max(np.array(animal.eeg_init_time) + np.array(animal.eeg_duration)),e)
         return np.array([i,e])

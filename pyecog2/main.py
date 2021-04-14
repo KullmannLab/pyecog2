@@ -215,11 +215,9 @@ class MainWindow(QMainWindow):
         # print(self.settings.value("windowGeometry", type=QByteArray))
         self.restoreGeometry(self.settings.value("windowGeometry", type=QByteArray))
         self.restoreState(self.settings.value("windowState", type=QByteArray))
-        self.action_darkmode.setChecked(self.settings.value("darkMode",type=bool))
-        self.toggle_darkmode()
-        self.action_autosave.setChecked(self.settings.value("autoSave",type=bool))
-        self.toggle_auto_save()
 
+        self.action_darkmode.setChecked(self.settings.value("darkMode",type=bool))
+        self.toggle_darkmode()  # pre toggle darkmode to make sure project loading dialogs are made with the correct color pallete
         try:
             settings = QSettings("PyEcog","PyEcog")
             settings.beginGroup("ProjectSettings")
@@ -234,6 +232,11 @@ class MainWindow(QMainWindow):
         except Exception as e:
             print('ERROR in tree build')
             print(e)
+
+        self.action_darkmode.setChecked(self.settings.value("darkMode",type=bool))
+        self.toggle_darkmode() # toggle again darkmode just to make sure the wavelet window and FFT are updated as well
+        self.action_autosave.setChecked(self.settings.value("autoSave",type=bool))
+        self.toggle_auto_save()
 
     def get_available_screen(self):
         app = QApplication.instance()
@@ -363,7 +366,7 @@ class MainWindow(QMainWindow):
 
     def toggle_darkmode(self):
         if self.action_darkmode.isChecked():
-
+            print('Setting Dark Mode')
             # Fusion dark palette adapted from https://gist.github.com/QuantumCD/6245215.
             palette = QPalette()
             palette.setColor(QPalette.Window, QColor(53, 53, 53))
@@ -387,6 +390,7 @@ class MainWindow(QMainWindow):
             self.main_model.sigWindowChanged.emit(self.main_model.window)
 
         else:
+            print('Setting Light Mode')
             palette = QPalette()
             self.app_handle.setPalette(palette)
             self.main_model.color_settings['pen'].setColor(QColor(0,0,0,100))
@@ -703,8 +707,8 @@ def execute():
     # pg.setConfigOption('foreground', 'k')
     pg.setConfigOption('antialias', True)
 
-    # pg.setConfigOption('useWeave',True)
-    # pg.setConfigOption('useOpenGL', False)
+    pg.setConfigOption('useWeave',True)
+    # pg.setConfigOption('useOpenGL', True)
 
     screen = MainWindow(app_handle =app)
     screen.get_available_screen()

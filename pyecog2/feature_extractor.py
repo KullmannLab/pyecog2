@@ -37,8 +37,8 @@ def my_worker_flist_init(time_flist,freq_flist):
     _freq_flist = freq_flist
     _time_flist = time_flist
 
-def my_worker_flist(x):
-    return [f(x) for f in _flist]
+# def my_worker_flist(x):
+#     return [f(x) for f in _flist]
 
 
 class FeatureExtractor():
@@ -111,6 +111,7 @@ class FeatureExtractor():
             n_cores = multiprocessing.cpu_count()
         Nfiles = len(animal.eeg_files)
         tuples = [(animal,i,re_write) for i in range(Nfiles)]
+        # The following is not working yet...
         # with multiprocessing.Pool(processes=n_cores,initializer=my_worker_flist_init,
         #                           initargs = (self.feature_time_functions,self.feature_freq_functions)) as pool:
         #     for i, _ in enumerate(pool.imap(self.extract_features_from_file, tuples)):

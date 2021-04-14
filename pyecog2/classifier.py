@@ -100,7 +100,7 @@ class GaussianClassifier():
         if labels is None:
             labels = ['seizure','outlier']
         self.labels2classify = labels # Populate this with the annotation labels to classify
-        self.Ndim = feature_extractor.settings['number_of_features']
+        self.Ndim = feature_extractor.number_of_features
         self.class_means   = np.zeros((len(self.labels2classify),self.Ndim))
         self.class_cov     = np.tile(np.eye(self.Ndim),(len(self.labels2classify),1,1))
         self.class_npoints = np.zeros(len(self.labels2classify))

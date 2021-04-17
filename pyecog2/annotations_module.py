@@ -262,9 +262,10 @@ class AnnotationPage(QObject):
     def change_label_channel_range(self,label,channel_range):
         # Receives string and tries to interpret it as a list
         try:
-            if not channel_range.startswith('['):
-                channel_range = '[' + channel_range + ']'
+            # if not channel_range.startswith('['):
+            #     channel_range = '[' + channel_range + ']'
             c = list(eval(channel_range))
+            min(c) # check that we can compute min of c
         except Exception:
             c = None
         self.label_channel_range_dict[label] = c

@@ -19,6 +19,7 @@ from pyecog2.coding_tests.VideoPlayer import VideoWindow
 from pyecog2.coding_tests.WaveletWidget import WaveletWindow
 from pyecog2.coding_tests.convert_ndf_folder_gui import NDFConverterWindow
 from pyecog2.coding_tests.FeatureExtractorGUI import FeatureExtractorWindow
+from pyecog2.coding_tests.ClassifierGUI import ClassifierWindow
 from pyecog2.paired_graphics_view import PairedGraphicsView
 from pyecog2.tree_model_and_nodes import TreeModel
 from pyecog2.tree_widget import FileTreeElement
@@ -81,7 +82,7 @@ class MainWindow(QMainWindow):
         if os.name == 'posix':
             pyecog_string = '🇵 🇾 🇪 🇨 🇴 🇬'
         else:
-            pyecog_string = 'P y E c o g'
+            pyecog_string = 'PyEcog'
         print('\n',pyecog_string,'\n')
 
         # Initialize Main Window geometry
@@ -371,9 +372,10 @@ class MainWindow(QMainWindow):
             palette = QPalette()
             palette.setColor(QPalette.Window, QColor(53, 53, 53))
             palette.setColor(QPalette.WindowText, Qt.white)
-            # palette.setColor(QPalette.Base, QColor(25, 25, 25))
-            palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+            # palette.setColor(QPalette.Base, QColor(25, 25, 25)) # too Dark
             palette.setColor(QPalette.Base, QColor(35, 39, 41))
+            # palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+            palette.setColor(QPalette.AlternateBase, QColor(45, 50, 53))
             palette.setColor(QPalette.ToolTipBase, Qt.black)
             palette.setColor(QPalette.ToolTipText, Qt.white)
             palette.setColor(QPalette.Text, Qt.white)
@@ -478,6 +480,10 @@ class MainWindow(QMainWindow):
         self.featureExtractorWindow = FeatureExtractorWindow(self.main_model.project,parent=self)
         self.featureExtractorWindow.show()
 
+    def openClassifier(self):
+        self.ClassifierWindow = ClassifierWindow(self.main_model.project,parent=self)
+        self.ClassifierWindow.show()
+
     def export_annotations(self):
         dialog = QFileDialog(self)
         dialog.setWindowTitle('Export annotations as ...')
@@ -553,14 +559,12 @@ class MainWindow(QMainWindow):
         # CLASSIFIER section
         self.menu_classifier = self.menu_bar.addMenu("Classifier")
         self.action_setup_feature_extractor = self.menu_classifier.addAction("Setup feature extractor")
-        self.action_run_feature_extractor = self.menu_classifier.addAction("Run feature extractor")
         self.action_setup_classifier = self.menu_classifier.addAction("Setup classifier")
         self.action_train_classifier = self.menu_classifier.addAction("Train classifier")
         self.action_run_classifier   = self.menu_classifier.addAction("Run classifier")
         self.action_review_classifications   = self.menu_classifier.addAction("Review classifications")
         self.action_setup_feature_extractor.triggered.connect(self.openFeatureExtractor)
-        self.action_run_feature_extractor.setDisabled(True)
-        self.action_setup_classifier.setDisabled(True)
+        self.action_setup_classifier.triggered.connect(self.openClassifier)
         self.action_train_classifier.setDisabled(True)
         self.action_run_classifier.setDisabled(True)
         self.action_review_classifications.setDisabled(True)

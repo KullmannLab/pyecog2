@@ -26,6 +26,9 @@ setuptools.setup(
                     'matplotlib==3.3.3',
                     'h5py==3.1.0',
                     'pyqtgraph==0.11.0',
-                    'numba==0.52.0'],
+                    'numba==0.52.0',
+                    'pyopengl==3.1.1a1',
+                    'pyopengl-accelerate==3.1.3b1'
+                    ],
    include_package_data = True
   )

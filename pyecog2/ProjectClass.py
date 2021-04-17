@@ -12,7 +12,8 @@ def clip(x, a, b):  # utility funciton for file buffer
     return min(max(int(x), a), b)
 
 def intervals_overlap(a,b):
-    return (a[0] <= b[0] < a[1]) or (a[0] <= b[1] < a[1]) or (b[0] <= a[0] < b[1]) or (b[0] <= a[1] < b[1])
+    # return (a[0] <= b[0] < a[1]) or (a[0] <= b[1] < a[1]) or (b[0] <= a[0] < b[1]) or (b[0] <= a[1] < b[1])
+    return (a[0] <= b[0] < a[1]) or (a[0] < b[1] <= a[1]) or (b[0] <= a[0] < b[1]) or (b[0] < a[1] <= b[1])
 
 def create_metafile_from_h5(file,duration = 3600):
     assert file.endswith('.h5')
@@ -521,3 +522,6 @@ class Project():
                 i = min(min(animal.eeg_init_time),i)
                 e = max(max(np.array(animal.eeg_init_time) + np.array(animal.eeg_duration)),e)
         return np.array([i,e])
+
+    def get_all_labels(self):
+        return set([l for a in self.animal_list for l in a.annotations.labels if not l.startswith('(auto)')])

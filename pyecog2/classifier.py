@@ -54,6 +54,8 @@ def average_mu_and_cov(mu1,cov1,n1,mu2,cov2,n2):
     np.nan_to_num(mu2,copy=False)
     np.nan_to_num(cov1,copy=False)
     np.nan_to_num(cov2,copy=False)
+    if n1==0 and n2==0:
+        return ((mu1+mu2)/2 , (cov1+cov2)/2 ) #  the returned values in this case should not really matter much...
     mu = (mu1*n1 + mu2*n2)/(n1 + n2)
     cov = n1/(n1+n2)*(cov1 + (mu-mu1)@(mu-mu1).T) + n2/(n1+n2)*(cov2 + (mu-mu2)@(mu-mu2).T)
     return (mu,cov)
@@ -89,6 +91,63 @@ def tansitions2rates(B,nblankpoints,nclasspoints):
 def intervals_overlap(a,b):
     return (a[0] <= b[0] < a[1]) or (a[0] <= b[1] < a[1]) or (b[0] <= a[0] < b[1]) or (b[0] <= a[1] < b[1])
 
+class ProjectClassifier():
+    '''
+    Class to bundle and assimilate classifiers for the different animals in a project
+    '''
+    def __init__(self,project,feature_extractor,labels = None):
+        self.project = project
+        self.feature_extractor = feature_extractor
+        self.global_classifier = GaussianClassifier(project, feature_extractor,labels)
+        self.animal_classifier_dict = dict([(a.id,GaussianClassifier(project,feature_extractor,labels)) for a in project.animal_list])
+        self.imported_classifier = GaussianClassifier(project, feature_extractor)
+
+    def save(self):
+        classifier_dir = self.project.filename+'_classifiers'
+        if not os.path.isdir(classifier_dir):
+            os.mkdir(classifier_dir)
+        self.global_classifier.save(os.path.join(classifier_dir,'_global.npz'))
+        self.imported_classifier.save(os.path.join(classifier_dir,'_imported.npz'))
+        self.feature_extractor
+        for animal_id in self.animal_classifier_dict:
+            self.animal_classifier_dict[animal_id].save(os.path.join(classifier_dir, animal_id+'.npz'))
+
+    def load(self):
+        classifier_dir = self.project.filename + '_classifiers'
+        if not os.path.isdir(classifier_dir):
+            print('No classifiers saved for current project yet')
+            return
+        self.global_classifier.load(os.path.join(classifier_dir,'_global.npz'))
+        self.imported_classifier.load(os.path.join(classifier_dir,'_imported.npz'))
+        self.animal_classifier_dict = dict([(a.id,GaussianClassifier(self.project,
+                                                                     self.feature_extractor,
+                                                                     self.global_classifier.labels2classify))
+                                            for a in self.project.animal_list]) # generate classifiers for all animals
+        for animal_id in self.animal_classifier_dict: # load classifiers for the ones that exist
+            try:
+                self.animal_classifier_dict[animal_id].load(os.path.join(classifier_dir, animal_id+'.npz'))
+            except Exception:
+                print(animal_id,'does not have a classifier yet')
+
+    def import_classifier(self,fname):
+        self.imported_classifier.load(fname)
+
+    def assimilate_global_classifier(self):
+        self.global_classifier = self.imported_classifier # start with either blank classifier or something imported
+        for _, gc in self.animal_classifier_dict.itmes():
+            self.global_classifier.assimilate_classifier(gc)
+
+    def train_animal(self,animal_id):
+        a = self.project.get_animal(animal_id)
+        if animal_id in self.animal_classifier_dict.keys():
+            gc = self.animal_classifier_dict[animal_id]
+        else:
+            gc = GaussianClassifier(self.project,self.feature_extractor,self.global_classifier.labels2classify)
+            self.animal_classifier_dict[animal_id] = gc
+
+
+
+
 
 class GaussianClassifier():
     '''
@@ -98,16 +157,17 @@ class GaussianClassifier():
     def __init__(self,project,feature_extractor,labels=None):
         self.project = project
         if labels is None:
-            labels = ['seizure','outlier']
+            labels = self.project.get_all_labels()
         self.labels2classify = labels # Populate this with the annotation labels to classify
         self.Ndim = feature_extractor.number_of_features
         self.class_means   = np.zeros((len(self.labels2classify),self.Ndim))
         self.class_cov     = np.tile(np.eye(self.Ndim),(len(self.labels2classify),1,1))
         self.class_npoints = np.zeros(len(self.labels2classify))
         self.blank_means   = np.zeros(self.Ndim)
-        self.blank_cov     = np.zeros((self.Ndim,self.Ndim))
+        self.blank_cov     = np.eye(self.Ndim)
         self.blank_npoints = 0
-        self.hmm           = HMM_LL()
+        self.transitions_matrix = np.zeros((len(self.labels2classify)+1, len(self.labels2classify)+1))
+        # self.hmm           = HMM_LL()
 
     def all_mu_and_cov(self):
         mu = self.blank_means[:, np.newaxis]
@@ -123,8 +183,12 @@ class GaussianClassifier():
 
     def whitening_mu_W_iW(self): # return mean of full data and whitening matrix such that W(x-mu) has standard normal dist.
         mu,cov,n = self.all_mu_and_cov() # mean and covariance of full data
-        W = linalg.sqrtm(reg_invcov(cov,n))
-        iW = linalg.inv(W)
+        if n: # if the datapoints considered are more than 0
+            W = linalg.sqrtm(reg_invcov(cov,n))
+            iW = linalg.inv(W)
+        else:
+            W = np.eye(self.Ndim)
+            iW = np.eye(self.Ndim)
         return mu, W, iW
 
     def copy_re_normalized_classifier(self,gc):
@@ -137,8 +201,35 @@ class GaussianClassifier():
             self.class_npoints[i] = gc.class_npoints[i]
         self.blank_means[:, np.newaxis] = iWb@Wa@(gc.blank_means[:, np.newaxis] - mua) + mub
         self.blank_cov = iWb@Wa@gc.blank_cov@Wa.T@iWb.T
-        self.blank_npoints = self.blank_npoints
-        self.hmm = gc.hmm
+        self.blank_npoints = gc.blank_npoints
+        self.transitions_matrix = gc.transitions_matrix
+        # self.hmm = gc.hmm
+
+    def assimilate_classifier(self,gc):
+        # weighted average of re-normalized means and covariances for all classes
+        mua, Wa, iWa = gc.whitening_mu_W_iW()
+        mub, Wb, iWb = self.whitening_mu_W_iW()
+        for i in range(len(self.labels2classify)):
+            j, = np.where(gc.labels2classify == self.labels2classify[i])
+            if not j:
+                continue
+            j = j[0]  # if the label exists in gc, grab its index
+            normalized_gc_mu = iWb@Wa@(gc.class_means[j][:, np.newaxis] - mua) + mub
+            normalized_gc_cov = iWb@Wa@gc.class_cov[j]@Wa.T@iWb.T
+            mu, cov = average_mu_and_cov(self.class_means[i][:, np.newaxis], self.class_cov[i],
+                                         self.class_npoints[i], normalized_gc_mu, normalized_gc_cov, gc.class_npoints[j])
+            self.class_means[i][:, np.newaxis] = mu
+            self.class_cov[i] = cov
+            self.class_npoints[i] += gc.class_npoints[j]
+
+        normalized_gc_mu =  iWb@Wa@(gc.blank_means[:, np.newaxis] - mua) + mub
+        normalized_gc_cov =  iWb@Wa@gc.blank_cov@Wa.T@iWb.T
+        mu, cov = average_mu_and_cov(self.blank_means[:, np.newaxis], self.blank_cov,
+                                     self.blank_npoints, normalized_gc_mu, normalized_gc_cov, gc.blank_npoints)
+        self.blank_means[:, np.newaxis] = mu
+        self.blank_cov = cov
+        self.blank_npoints += gc.blank_npoints
+        self.transitions_matrix = gc.transitions_matrix
 
     def train(self,animal_list=None):
         if animal_list is None:
@@ -146,8 +237,8 @@ class GaussianClassifier():
 
         for animal in animal_list:
             '''
-            A scaling matrix should be implemented to allow for differences in animal recordings.
-            Something that would standardize blank feature standard deviations, i.e. sqrt(diag(blank_cov)).
+            recieving animal list to possibly allow to lump different datasets into a single GC, but usually the animal 
+            list will only contain one animal
             '''
             print('Training with animal:', animal.id)
             print('Training with classes:', self.labels2classify)
@@ -211,10 +302,10 @@ class GaussianClassifier():
 
         trans_list = [(l[0],l[1],i+1) for i,key in enumerate(self.labels2classify) for l in labeled_positions[key]]
         trans_list.sort()
-        T = transitionslist2matrix(trans_list, 1/fmeta_dict['fs'], len(self.labels2classify))
-        print('Transitions:\n', T)
-        self.hmm.A = tansitions2rates(T, self.blank_npoints, self.class_npoints)
-        print('HMM.A:\n',self.hmm.A)
+        self.transitions_matrix = transitionslist2matrix(trans_list, 1/fmeta_dict['fs'], len(self.labels2classify))
+        print('Transitions:\n', self.transitions_matrix)
+        # self.hmm.A = tansitions2rates(T, self.blank_npoints, self.class_npoints)
+        # print('HMM.A:\n',self.hmm.A)
                 
     def log_likelyhoods(self, f_vec, bias=True, no_scale = False):
         LL = np.zeros((f_vec.shape[0], self.class_means.shape[0]+1))
@@ -258,7 +349,9 @@ class GaussianClassifier():
         R2v = np.vstack(R2v)
         timev = np.hstack(timev)
         print('\nRunning HMM...')
-        pf = self.hmm.forward_backward(LLv.T)
+        hmm = HMM_LL()
+        hmm.A = tansitions2rates(self.transitions_matrix, self.blank_npoints, self.class_npoints)
+        pf = hmm.forward_backward(LLv.T)
         print('Combining results and generating annotations...')
         # threshold to reject classifications outside .999 confidence interval of the class distribution
         th = chi2.isf(1e-3,self.Ndim,scale=0.5)
@@ -300,5 +393,16 @@ class GaussianClassifier():
 
         return (LLv,R2v,pf,timev)
 
+    def save(self,filename):
+        project = self.project
+        self.project = np.array([])
+        np.savez(filename,**self.__dict__)
+        self.project = project
+
+    def load(self,filename):
+        project = self.project # keep project field
+        with np.load(filename) as d:
+            self.__dict__= dict([(file,d[file]) for file in d.files]) # copy all arrays from file
+        self.project = project
                 
 

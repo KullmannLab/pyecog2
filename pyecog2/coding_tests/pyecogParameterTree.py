@@ -16,6 +16,7 @@ class PyecogGroupParameterItem(GroupParameterItem):
         if depth == 0:
             for c in [0,1]:
                 self.setBackground(c, QtGui.QBrush(QtGui.QColor(35, 39, 41)))
+                # self.setBackground(c, QtGui.QBrush(QtGui.QColor(0, 0, 0)))
                 self.setForeground(c, QtGui.QBrush(QtGui.QColor(64, 192, 231)))
                 font = self.font(c)
                 font.setBold(True)
@@ -25,7 +26,9 @@ class PyecogGroupParameterItem(GroupParameterItem):
         else:
             for c in [0,1]:
                 self.setBackground(c, QtGui.QBrush(QtGui.QColor(35, 39, 41)))
+                # self.setBackground(c, QtGui.QBrush(QtGui.QColor(0, 0, 0)))
                 self.setForeground(c, QtGui.QBrush(QtGui.QColor(250, 250, 250)))
+                # self.setForeground(c, QtGui.QBrush(QtGui.QColor(124, 124, 124)))
                 font = self.font(c)
                 font.setBold(True)
                 #font.setPointSize(font.pointSize()+1)

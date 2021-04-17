@@ -40,107 +40,85 @@ class OutputWrapper(QtCore.QObject):
         except AttributeError:
             pass
 
-class ScalableGroup(PyecogGroupParameter):
-    def __init__(self, **opts):
-        opts['type'] = 'group'
-        opts['addText'] = "Add"
-        opts['addList'] = ['New Feature']
-        PyecogGroupParameter.__init__(self, **opts)
+def Animal2Parameter(animal):
+    return {'name': animal.id,
+            'type': 'group',
+            'renamable': False,
+            'removable': False,
+            'children' : [
+                {'name': 'Video directory',
+                    'type': 'str',
+                    'value': animal.video_folder}
+            ]}
 
-    def addNew(self, typ):
-        self.addChild({'name': 'feature label',
-                       'type': 'str',
-                       'renamable': True,
-                       'removable': True,
-                       'value': 'lambda x: np.std(x)'})
 
-class ScalableGroupF(ScalableGroup):
-    def addNew(self, typ):
-        self.addChild({'name': 'power 1Hz to 4Hz',
-                       'type': 'str',
-                       'renamable': True,
-                       'removable': True,
-                       'value': 'lambda f: powerf(1, 4)'})
+def Parameter2Animal(parameter):
+    pass
 
-class ScalableGroupM(PyecogGroupParameter):
-    def __init__(self, **opts):
-        opts['type'] = 'group'
-        opts['addText'] = "Add"
-        opts['addList'] = ['New Module']
-        PyecogGroupParameter.__init__(self, **opts)
-
-    def addNew(self, typ):
-        self.addChild({'name': 'module',
-                       'type': 'str',
-                       'renamable': True,
-                       'removable': True,
-                       'value': 'alias'})
-
-def settings2params(settings):
-    ntimefuncs = len(settings['feature_time_functions'])
-    return [
-            {'name': 'Feature Extractor Settings','type':'group','children':
-                [
-                {'name': 'Window settings','type':'group','children':[
-                    {'name': 'Type:', 'type': 'list','value':settings['window'],
-                     'values': ['rectangular','triang','blackman','hamming','hann',
-                                                                 'bartlett','flattop','parzen','bohman','blackmanharris',
-                                                                 'nuttall','barthann']},
-                    {'name':'Length (s):','type':'float','value': settings['window_length']},
-                    {'name': 'Overlap ratio:', 'type': 'float', 'value': settings['overlap']}]},
-                ScalableGroup(name='Features in time domain',children = [
-                    {'name': label, 'renamable': True, 'type': 'str', 'value': func}
-                    for label,func in zip(settings['feature_labels'][:ntimefuncs], settings['feature_time_functions'])]),
-                ScalableGroupF(name='Features in frequency domain', children=[
-                    {'name': label, 'renamable': True, 'type': 'str', 'value': func}
-                    for label,func in zip(settings['feature_labels'][ntimefuncs:], settings['feature_freq_functions'])]),
-                ScalableGroupM(name='Module dependencies to import', children=[
-                    {'name': module, 'renamable': True, 'type': 'str', 'value': alias}
-                    for module, alias in settings['function_module_dependencies']])
-                    ]
-             }]
-
-def params2settings(params):
-    window_settings = params[0]['children'][0]['children']
-    feature_time_functions = params[0]['children'][1].children()
-    feature_freq_functions = params[0]['children'][2].children()
-    function_module_dependencies = params[0]['children'][3].children()
-    return OrderedDict(
-        window_length=window_settings[1]['value'],  # length in seconds for the segments on which to compute features
-        overlap=window_settings[2]['value'],  # overlap ratio between windows
-        window=window_settings[0]['value'], # window type
-        feature_labels=[f.name() for f in feature_time_functions] + [f.name() for f in feature_freq_functions],
-        feature_time_functions=[f.value() for f in feature_time_functions],
-        feature_freq_functions=[f.value() for f in feature_freq_functions],
-        function_module_dependencies=[(d.name(),d.value()) for d in function_module_dependencies]
-        )
-
-class FeatureExtractorWindow(QMainWindow):
-    def __init__(self, project=None, parent=None):
-        QMainWindow.__init__(self, parent=parent)
+class ClassifierWindow(QMainWindow):
+    def __init__(self,project = None,parent = None):
+        QMainWindow.__init__(self,parent = parent)
         widget = QWidget(self)
         layout = QGridLayout(widget)
-        self.title = 'Feature Extractor'
+        self.title ='Classifier Editor'
         self.setWindowTitle(self.title)
         self.project = project
-        if project is None or not hasattr(project,'feature_extractor'):
-            self.feature_extractor = FeatureExtractor()
-        else:
-            self.feature_extractor = project.feature_extractor
+        # if self.project is None:
+        #     self.project = Project(main_model=MainModel())
+        #     self.project.add_animal(Animal(id='0'))
         self.setCentralWidget(widget)
         self.terminal = QTextBrowser(self)
         self._err_color = QtCore.Qt.red
-        self.button1 = QPushButton('Set Project feature Extractor', self)
-        self.button1.clicked.connect(self.setProjectFeatureExtraction)
-        self.button2 = QPushButton('Extract!', self)
-        self.button2.clicked.connect(self.runFeatureExtraction)
-        self.progressBar0 = QProgressBar()
-        self.progressBar1 = QProgressBar()
+        self.button = QPushButton('Update', self)
+        self.button.clicked.connect(self.update_project_settings)
 
-        self.params = settings2params(self.feature_extractor.settings)
+        self.animal_dict = [Animal2Parameter(animal) for animal in self.project.animal_list]
+        print(self.animal_dict)
+        all_labels = self.project.get_all_labels()
+        #set([l for a in self.project.animal_list for l in a.annotations.labels if not l.startswith('(auto)') ])
+        self.params = [
+            {'name': 'Global Settings','type':'group','children':[
+                {'name': 'Lablels to train',
+                 'type': 'group',
+                 'children': [{'name': l, 'type': 'bool', 'value': True} for l in all_labels]
+                 },
+                {'name': 'Lablels to annotate',
+                 'type': 'group',
+                 'children': [{'name': l, 'type': 'bool', 'value': True} for l in all_labels]
+                 },
+                {'name': 'Train global classifier','type': 'action', 'children':[
+                    {'name': 'Training Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}
+                ]},
+                {'name': 'Auto-generate Annotations with global classifier', 'type': 'action', 'children': [
+                    {'name': 'Annotation Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}
+                ]}
+            ]},
+            {'name': 'Animal Settings', 'type': 'group', 'expanded': False, 'children': [
+                {'name': animal.id, 'type': 'group','children':[
+                    {'name': 'Use animal for global classifier', 'type': 'bool', 'value': True},
+                    {'name': 'Train animal-specific classifier', 'type': 'action','children':[
+                        {'name': 'Training Progress', 'type': 'float', 'readonly': True, 'value': 0,'suffix':'%'}]},
+                    {'name': 'Auto-generate Annotations with animal-specific classifier', 'type': 'action','children':[
+                        {'name': 'Annotation Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}]},
+                    {'name': 'Auto-generate Annotations with global classifier', 'type': 'action','children':[
+                        {'name': 'Annotation Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}]},
+                ]}
+                for animal in self.project.animal_list]
+                 },
+            ]
 
         ## Create tree of Parameter objects
         self.p = Parameter.create(name='params', type='group', children=self.params)
+        # self.p.param('Global Settings','Project Title').sigValueChanged.connect(self.setProjectTitle)
+        # self.p.param('Global Settings', 'Update project from root folders').sigActivated.connect(self.update_project_from_roots)
+        # self.p.param('Global Settings', 'Select EEG root directory','EEG root directory:').sigValueChanged.connect(
+        #     self.setEEGFolder)
+        # self.p.param('Global Settings', 'Select EEG root directory').sigActivated.connect(
+        #     self.selectEEGFolder)
+        # self.p.param('Global Settings', 'Select Video root directory','Video root directory:').sigValueChanged.connect(
+        #     self.setVideoFolder)
+        # self.p.param('Global Settings', 'Select Video root directory').sigActivated.connect(
+        #     self.selectVideoFolder)
 
         self.t = PyecogParameterTree()
         self.t.setParameters(self.p, showTop=False)
@@ -150,12 +128,9 @@ class FeatureExtractorWindow(QMainWindow):
         layout.setRowStretch(0,10)
         layout.setRowMinimumHeight(0,400)
         layout.setColumnMinimumWidth(0,600)
-        layout.addWidget(self.button1)
-        layout.addWidget(self.button2)
-        layout.addWidget(self.progressBar0)
-        layout.addWidget(self.progressBar1)
+        layout.addWidget(self.button)
         layout.addWidget(self.terminal)
-        layout.setRowMinimumHeight(5,300)
+        layout.setRowMinimumHeight(2,300)
         stdout = OutputWrapper(self, True)
         stdout.outputWritten.connect(self.handleOutput)
         stderr = OutputWrapper(self, False)
@@ -165,8 +140,6 @@ class FeatureExtractorWindow(QMainWindow):
 
         self.dfrmt = '%Y-%m-%d %H:%M:%S'  # Format to use in date elements
 
-
-
     def handleOutput(self, text, stdout):
         color = self.terminal.textColor()
         self.terminal.setTextColor(color if stdout else self._err_color)
@@ -174,26 +147,83 @@ class FeatureExtractorWindow(QMainWindow):
         self.terminal.insertPlainText(text)
         self.terminal.setTextColor(color)
 
-    def setProjectFeatureExtraction(self):
-        self.feature_extractor.update_from_settings(params2settings(self.params))
-        print(self.feature_extractor.settings)
+    def selectEEGFolder(self):
+        dialog = QFileDialog(self)
+        dialog.setWindowTitle('Select EEG directory')
+        dialog.setFileMode(QFileDialog.DirectoryOnly)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setAcceptMode(QFileDialog.AcceptOpen)
+        if dialog.exec():
+            self.p.param('Global Settings', 'Select EEG root directory','EEG root directory:').setValue(dialog.selectedFiles()[0])
+        else:
+            sys.stderr.write('No folder selected\n')
 
-    def runFeatureExtraction(self):
-        print('Starting feature extraction...')
-        worker = Worker(self.extractFeatures)
-        self.threadpool.start(worker)
+    def setEEGFolder(self, eeg_root_folder_param):
+        pass  # Currently we are only accepting changes when clicking the Update button
+        # self.project.eeg_root_folder = eeg_root_folder.value(0)
 
-    def extractFeatures(self):
-        for i,animal in enumerate(self.project.animal_list):
-            self.feature_extractor.extract_features_from_animal(animal, re_write = True, n_cores = -1,
-                                                                progress_bar = self.progressBar1)
-            self.progressBar0.setValue((100*(i+1))//len(self.project.animal_list))
-        print('Finnished')
-        return (1, 1)
+    def selectVideoFolder(self):
+        dialog = QFileDialog(self)
+        dialog.setWindowTitle('Select EEG directory')
+        dialog.setFileMode(QFileDialog.DirectoryOnly)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setAcceptMode(QFileDialog.AcceptOpen)
+        if dialog.exec():
+            self.p.param('Global Settings', 'Select Video root directory','Video root directory:').setValue(dialog.selectedFiles()[0])
+        else:
+            sys.stderr.write('No folder selected\n')
+
+
+    def setProjectTitle(self, eeg_root_folder_param):
+        print('Changing project title to:',eeg_root_folder_param.value())
+        self.project.setTitle(eeg_root_folder_param.value())
+
+
+    def setVideoFolder(self, eeg_root_folder_param):
+        pass  # Currently we are only accepting changes when clicking the Update button
+        # self.project.eeg_root_folder = eeg_root_folder.value(0)
+
+    def update_project_settings(self):
+        animal_param_list = self.p.param('Animal list:').getValues()
+        old_animal_list = [a.id for a in self.project.animal_list]
+        deleted_animals = list(set(old_animal_list)-set(animal_param_list))
+
+        for a in deleted_animals:
+            print('Deleting animal with id',a)
+            self.project.delete_animal(a)
+
+        for p in animal_param_list:
+            animal = self.project.get_animal(p)
+            id = self.p.param('Animal list:',p,'new id').value()
+            eeg_dir = self.p.param('Animal list:',p,'EEG directory').value()
+            video_dir = self.p.param('Animal list:',p,'Video directory').value()
+            self.p.param('Animal list:',p).setName(id)
+            if animal is None:
+                print('Adding new animal with id', id)
+                self.project.add_animal(Animal(id=id,eeg_folder=eeg_dir,video_folder=video_dir))
+            else:
+                print('Updating animal with id', id)
+                animal.update_eeg_folder(eeg_dir)
+                animal.update_video_folder(video_dir)
+        print('Project update finished')
+
+
+    def update_project_from_roots(self):
+        self.project.eeg_root_folder = self.p.param('Global Settings', 'Select EEG root directory','EEG root directory:').value()
+        self.project.video_root_folder = self.p.param('Global Settings', 'Select Video root directory','Video root directory:').value()
+        print('Updating project from root directories...')
+        print('processing', self.project.eeg_root_folder)
+        self.project.update_project_from_root_directories()
+
+        # update animal list in GUI
+        self.animal_dict = [Animal2Parameter(animal) for animal in self.project.animal_list]
+        self.p.param('Animal list:').clearChildren()
+        self.p.param('Animal list:').addChildren(self.animal_dict)
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    window = FeatureExtractorWindow()
+    window = ClassifierWindow()
     window.setGeometry(500, 300, 300, 200)
     window.show()
     sys.exit(app.exec_())

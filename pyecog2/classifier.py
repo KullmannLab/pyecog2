@@ -1,12 +1,12 @@
 import numpy as np
-from ProjectClass import FileBuffer
+from pyecog2.ProjectClass import FileBuffer
 import os
 import numpy as np
 from scipy import linalg
 import scipy.stats as stats
 from collections import OrderedDict
-from feature_extractor import FeatureExtractor
-from hmm_pyecog import HMM_LL
+from pyecog2.feature_extractor import FeatureExtractor
+from pyecog2.hmm_pyecog import HMM_LL
 import json
 from numba import jit
 from scipy.stats import chi2
@@ -75,7 +75,7 @@ def transitionslist2matrix(t, dt, n):
     A[t[-1][2],0] += 1
     return A
 
-def tansitions2rates(B,nblankpoints,nclasspoints):
+def transitions2rates(B,nblankpoints,nclasspoints):
     A = B
     A[0,0] = nblankpoints - np.sum(A[0,:])
     A[0,:] /= np.sum(A[0,:])
@@ -86,7 +86,7 @@ def tansitions2rates(B,nblankpoints,nclasspoints):
         else: # For classes that do not occur, default to transition to blanks
             A[i+1,:] = 0
             A[i+1,0] = 1
-    return A
+    return A/A.sum(axis=1,keepdims=True)
 
 def intervals_overlap(a,b):
     return (a[0] <= b[0] < a[1]) or (a[0] <= b[1] < a[1]) or (b[0] <= a[0] < b[1]) or (b[0] <= a[1] < b[1])
@@ -95,34 +95,53 @@ class ProjectClassifier():
     '''
     Class to bundle and assimilate classifiers for the different animals in a project
     '''
-    def __init__(self,project,feature_extractor,labels = None):
+    def __init__(self, project,labels = None):
         self.project = project
-        self.feature_extractor = feature_extractor
-        self.global_classifier = GaussianClassifier(project, feature_extractor,labels)
-        self.animal_classifier_dict = dict([(a.id,GaussianClassifier(project,feature_extractor,labels)) for a in project.animal_list])
-        self.imported_classifier = GaussianClassifier(project, feature_extractor)
+        classifier_dir = project.project_file + '_classifier'
+        self.feature_extractor = FeatureExtractor()
+        if os.path.isfile(os.path.join(classifier_dir, '_feature_extractor.json')):
+            self.feature_extractor.load_settings(os.path.join(classifier_dir, '_feature_extractor.json'))
+        self.global_classifier = GaussianClassifier(project, self.feature_extractor,labels)
+        self.imported_classifier = GaussianClassifier(project, self.feature_extractor)
+        if os.path.isdir(classifier_dir):
+            self.load()
+        else:
+            print('creating classifier folder:',classifier_dir)
+            os.mkdir(classifier_dir)
+            self.animal_classifier_dict = OrderedDict([(a.id, GaussianClassifier(project, self.feature_extractor, labels)) for a in project.animal_list])
 
     def save(self):
-        classifier_dir = self.project.filename+'_classifiers'
+        classifier_dir = self.project.project_file+'_classifier'
         if not os.path.isdir(classifier_dir):
             os.mkdir(classifier_dir)
         self.global_classifier.save(os.path.join(classifier_dir,'_global.npz'))
         self.imported_classifier.save(os.path.join(classifier_dir,'_imported.npz'))
-        self.feature_extractor
+        self.feature_extractor.save_settings(os.path.join(classifier_dir, '_feature_extractor.json'))
         for animal_id in self.animal_classifier_dict:
             self.animal_classifier_dict[animal_id].save(os.path.join(classifier_dir, animal_id+'.npz'))
 
     def load(self):
-        classifier_dir = self.project.filename + '_classifiers'
+        classifier_dir = self.project.project_file + '_classifier'
+        print('loading',classifier_dir)
+        self.animal_classifier_dict = OrderedDict([(a.id, GaussianClassifier(self.project,
+                                                                      self.feature_extractor,
+                                                                      self.global_classifier.labels2classify))
+                                            for a in self.project.animal_list])  # generate classifiers for all animals
         if not os.path.isdir(classifier_dir):
             print('No classifiers saved for current project yet')
             return
-        self.global_classifier.load(os.path.join(classifier_dir,'_global.npz'))
-        self.imported_classifier.load(os.path.join(classifier_dir,'_imported.npz'))
-        self.animal_classifier_dict = dict([(a.id,GaussianClassifier(self.project,
-                                                                     self.feature_extractor,
-                                                                     self.global_classifier.labels2classify))
-                                            for a in self.project.animal_list]) # generate classifiers for all animals
+        try:
+            self.global_classifier.load(os.path.join(classifier_dir,'_global.npz'))
+        except Exception:
+            print('Could not load global classifier')
+        try:
+            self.imported_classifier.load(os.path.join(classifier_dir,'_imported.npz'))
+        except Exception:
+            print('Could not load imported classifier')
+        try:
+            self.feature_extractor.load_settings(os.path.join(classifier_dir, '_feature_extractor.json'))
+        except:
+            print('Could not load feature extractor')
         for animal_id in self.animal_classifier_dict: # load classifiers for the ones that exist
             try:
                 self.animal_classifier_dict[animal_id].load(os.path.join(classifier_dir, animal_id+'.npz'))
@@ -134,16 +153,19 @@ class ProjectClassifier():
 
     def assimilate_global_classifier(self):
         self.global_classifier = self.imported_classifier # start with either blank classifier or something imported
-        for _, gc in self.animal_classifier_dict.itmes():
+        for k, gc in self.animal_classifier_dict.items():
+            print('assimilating',k)
             self.global_classifier.assimilate_classifier(gc)
 
-    def train_animal(self,animal_id):
+    def train_animal(self,animal_id,pbar=None):
         a = self.project.get_animal(animal_id)
         if animal_id in self.animal_classifier_dict.keys():
             gc = self.animal_classifier_dict[animal_id]
         else:
             gc = GaussianClassifier(self.project,self.feature_extractor,self.global_classifier.labels2classify)
             self.animal_classifier_dict[animal_id] = gc
+        gc.train([a],progress_bar=pbar)
+        gc.save(os.path.join(self.project.project_file + '_classifier',animal_id+'.npz'))
 
 
 
@@ -158,11 +180,11 @@ class GaussianClassifier():
         self.project = project
         if labels is None:
             labels = self.project.get_all_labels()
-        self.labels2classify = labels # Populate this with the annotation labels to classify
+        self.labels2classify = np.array(list(labels)) # Populate this with the annotation labels to classify
         self.Ndim = feature_extractor.number_of_features
         self.class_means   = np.zeros((len(self.labels2classify),self.Ndim))
         self.class_cov     = np.tile(np.eye(self.Ndim),(len(self.labels2classify),1,1))
-        self.class_npoints = np.zeros(len(self.labels2classify))
+        self.class_npoints = np.zeros(len(self.labels2classify),dtype=int)
         self.blank_means   = np.zeros(self.Ndim)
         self.blank_cov     = np.eye(self.Ndim)
         self.blank_npoints = 0
@@ -231,11 +253,11 @@ class GaussianClassifier():
         self.blank_npoints += gc.blank_npoints
         self.transitions_matrix = gc.transitions_matrix
 
-    def train(self,animal_list=None):
+    def train(self,animal_list=None,progress_bar=None):
         if animal_list is None:
             animal_list = self.project.animal_list
-
-        for animal in animal_list:
+        Nanimals = len(animal_list)
+        for ianimal, animal in enumerate(animal_list):
             '''
             recieving animal list to possibly allow to lump different datasets into a single GC, but usually the animal 
             list will only contain one animal
@@ -245,10 +267,9 @@ class GaussianClassifier():
             labeled_positions = {}
             for label in self.labels2classify:
                 labeled_positions[label] = np.array([a.getPos() for a in animal.annotations.get_all_with_label(label)])
-
-            for ifile,eeg_file in enumerate(animal.eeg_files[:]):
+            Nfiles = len(animal.eeg_files[:])
+            for ifile, eeg_file in enumerate(animal.eeg_files[:]):
                 feature_file = '.'.join(eeg_file.split('.')[:-1] + ['features'])
-                print('Animal:', animal.id, 'file:',ifile,'of',len(animal.eeg_files), feature_file,end='\r')
                 fmeta_file = '.'.join(eeg_file.split('.')[:-1] + ['fmeta'])
                 with open(fmeta_file) as f:
                     fmeta_dict = json.load(f)
@@ -300,10 +321,17 @@ class GaussianClassifier():
                             self._debug_f_vec_d =f_vec_d
                             return
 
+                if progress_bar is not None:
+                    progress_bar.setValue(100*(ianimal + ifile/Nfiles)/Nanimals)
+                else:
+                    print('Animal:', animal.id, 'file:', ifile, 'of', len(animal.eeg_files), feature_file, end='\r')
+
         trans_list = [(l[0],l[1],i+1) for i,key in enumerate(self.labels2classify) for l in labeled_positions[key]]
         trans_list.sort()
         self.transitions_matrix = transitionslist2matrix(trans_list, 1/fmeta_dict['fs'], len(self.labels2classify))
         print('Transitions:\n', self.transitions_matrix)
+        if progress_bar is not None:
+            progress_bar.setValue(100)
         # self.hmm.A = tansitions2rates(T, self.blank_npoints, self.class_npoints)
         # print('HMM.A:\n',self.hmm.A)
                 
@@ -319,12 +347,13 @@ class GaussianClassifier():
             LL = LL + bias_v.T
         return LL
 
-    def classify_animal(self, animal,max_annotations=-1):
+    def classify_animal(self, animal,progress_bar=None,max_annotations=-1):
         LLv = []
         R2v = []
         timev = []
         eegfiles = animal.eeg_files.copy()
         eegfiles.sort()
+        Nfiles = len(eegfiles)
         for i,eegfname in enumerate(eegfiles):
             fname = '.'.join(eegfname.split('.')[:-1] + ['features'])
             f_vec = np.fromfile(fname, dtype='float64')
@@ -333,7 +362,6 @@ class GaussianClassifier():
             fmeta_file = '.'.join(eegfname.split('.')[:-1] + ['fmeta'])
             with open(fmeta_file) as f:
                 fmeta_dict = json.load(f)
-            print('Animal:', animal.id, 'file:', i, 'of', len(eegfiles), fmeta_file, end='\r')
             LL = self.log_likelyhoods(f_vec, bias=False, no_scale=False)
             np.nan_to_num(LL,copy=False)
             R2 = self.log_likelyhoods(f_vec, bias=False, no_scale=True)
@@ -344,22 +372,28 @@ class GaussianClassifier():
             LLv.append(LL)
             R2v.append(R2)
             timev.append(t)
+            if progress_bar is not None:
+                progress_bar.setValue(90*i/Nfiles)  # This takes about 90%of the time
+            else:
+                print('Animal:', animal.id, 'file:', i, 'of', len(eegfiles), fmeta_file, end='\r')
 
         LLv = np.vstack(LLv)
         R2v = np.vstack(R2v)
         timev = np.hstack(timev)
         print('\nRunning HMM...')
         hmm = HMM_LL()
-        hmm.A = tansitions2rates(self.transitions_matrix, self.blank_npoints, self.class_npoints)
+        hmm.A = transitions2rates(self.transitions_matrix, self.blank_npoints, self.class_npoints)
         pf = hmm.forward_backward(LLv.T)
+        if progress_bar is not None:
+            progress_bar.setValue(99)   # Almost done...
         print('Combining results and generating annotations...')
         # threshold to reject classifications outside .999 confidence interval of the class distribution
         th = chi2.isf(1e-3,self.Ndim,scale=0.5)
         for i2,label in enumerate(self.labels2classify):
             i = i2+1
             print(i,label)
-            starts = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > .5).astype('int')) > 0)[0]
-            ends = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > .5).astype('int')) < 0)[0]
+            starts = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > .5).astype('int')) > 0)[0] + 1
+            ends = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > .5).astype('int')) < 0)[0] + 1
             alist = []
             print('len starts',len(starts))
             manual_label_positions = [a.getPos() for a in animal.annotations.get_all_with_label(label)]
@@ -369,8 +403,11 @@ class GaussianClassifier():
                     # c = np.sum(LLv[starts[j]:ends[j],i])-np.sum(LLv[starts[j]:ends[j],0])
                     # c = np.sum(np.log(pf[i,starts[j]:ends[j]])-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
                     # c = np.sum(-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
+                    if ends[j]-starts[j]<1:
+                        print('interval too small:',starts[j],ends[j])
+                        continue
                     c = np.max(-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
-                    print('start,end,confidence', starts[j], ends[j],c)
+                    # print('start,end,confidence', starts[j], ends[j],c)
                     a = AnnotationElement(label='(auto)'+label,start=timev[starts[j]],end=timev[ends[j]],confidence=c)
                     alist.append((c,a))
                 else:
@@ -390,7 +427,8 @@ class GaussianClassifier():
 
             for c,a in alist[:max_annotations]:
                 animal.annotations.add_annotation(a)
-
+        if progress_bar is not None:
+            progress_bar.setValue(100)   # Done
         return (LLv,R2v,pf,timev)
 
     def save(self,filename):

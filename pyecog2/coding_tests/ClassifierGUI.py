@@ -8,7 +8,9 @@ from pyecog2.ndf_converter import NdfFile, DataHandler
 from pyecog2.coding_tests.WaveletWidget import Worker
 from pyecog2.coding_tests.pyecogParameterTree import PyecogParameterTree,PyecogGroupParameter
 from pyecog2.feature_extractor import FeatureExtractor
-from pyecog2.classifier import GaussianClassifier
+from pyecog2.classifier import GaussianClassifier, ProjectClassifier
+from pyecog2.ProjectClass import Project
+from pyecog2.coding_tests.WaveletWidget import Worker
 from collections import OrderedDict
 
 class OutputWrapper(QtCore.QObject):
@@ -62,7 +64,10 @@ class ClassifierWindow(QMainWindow):
         layout = QGridLayout(widget)
         self.title ='Classifier Editor'
         self.setWindowTitle(self.title)
+        if project is None:
+            project = Project()
         self.project = project
+        self.classifier = ProjectClassifier(project)
         # if self.project is None:
         #     self.project = Project(main_model=MainModel())
         #     self.project.add_animal(Animal(id='0'))
@@ -70,10 +75,9 @@ class ClassifierWindow(QMainWindow):
         self.terminal = QTextBrowser(self)
         self._err_color = QtCore.Qt.red
         self.button = QPushButton('Update', self)
-        self.button.clicked.connect(self.update_project_settings)
+        # self.button.clicked.connect(self.update_project_settings)
+        self.threadpool = QtCore.QThreadPool()
 
-        self.animal_dict = [Animal2Parameter(animal) for animal in self.project.animal_list]
-        print(self.animal_dict)
         all_labels = self.project.get_all_labels()
         #set([l for a in self.project.animal_list for l in a.annotations.labels if not l.startswith('(auto)') ])
         self.params = [
@@ -86,39 +90,51 @@ class ClassifierWindow(QMainWindow):
                  'type': 'group',
                  'children': [{'name': l, 'type': 'bool', 'value': True} for l in all_labels]
                  },
-                {'name': 'Train global classifier','type': 'action', 'children':[
-                    {'name': 'Training Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}
-                ]},
-                {'name': 'Auto-generate Annotations with global classifier', 'type': 'action', 'children': [
-                    {'name': 'Annotation Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}
-                ]}
+                {'name': 'Assimilate global classifier from individual animals', 'type': 'action'},
+                # {'name': 'Train global classifier','type': 'action', 'children':[
+                #     {'name': 'Training Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}
+                # ]},
+                # {'name': 'Auto-generate Annotations with global classifier', 'type': 'action', 'children': [
+                #     {'name': 'Annotation Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}
+                # ]}
             ]},
             {'name': 'Animal Settings', 'type': 'group', 'expanded': False, 'children': [
-                {'name': animal.id, 'type': 'group','children':[
+                {'name': animal, 'type': 'group','children':[
                     {'name': 'Use animal for global classifier', 'type': 'bool', 'value': True},
                     {'name': 'Train animal-specific classifier', 'type': 'action','children':[
-                        {'name': 'Training Progress', 'type': 'float', 'readonly': True, 'value': 0,'suffix':'%'}]},
+                        {'name': 'Training Progress', 'type': 'float', 'readonly': True, 'suffix':'%',
+                         'value': 100*(self.classifier.animal_classifier_dict[animal].blank_npoints>0)}]},
                     {'name': 'Auto-generate Annotations with animal-specific classifier', 'type': 'action','children':[
                         {'name': 'Annotation Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}]},
                     {'name': 'Auto-generate Annotations with global classifier', 'type': 'action','children':[
                         {'name': 'Annotation Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}]},
                 ]}
-                for animal in self.project.animal_list]
+                for animal in self.classifier.animal_classifier_dict.keys()]
                  },
             ]
 
         ## Create tree of Parameter objects
         self.p = Parameter.create(name='params', type='group', children=self.params)
-        # self.p.param('Global Settings','Project Title').sigValueChanged.connect(self.setProjectTitle)
-        # self.p.param('Global Settings', 'Update project from root folders').sigActivated.connect(self.update_project_from_roots)
-        # self.p.param('Global Settings', 'Select EEG root directory','EEG root directory:').sigValueChanged.connect(
-        #     self.setEEGFolder)
-        # self.p.param('Global Settings', 'Select EEG root directory').sigActivated.connect(
-        #     self.selectEEGFolder)
-        # self.p.param('Global Settings', 'Select Video root directory','Video root directory:').sigValueChanged.connect(
-        #     self.setVideoFolder)
-        # self.p.param('Global Settings', 'Select Video root directory').sigActivated.connect(
-        #     self.selectVideoFolder)
+        self.p.param(
+            'Global Settings', 'Assimilate global classifier from individual animals'
+            ).sigActivated.connect(self.classifier.assimilate_global_classifier)
+
+        for animal_id in self.classifier.animal_classifier_dict.keys():
+            pbar = self.p.param('Animal Settings',animal_id,'Train animal-specific classifier', 'Training Progress')
+            self.p.param(
+                'Animal Settings',animal_id,'Train animal-specific classifier'
+                        ).sigActivated.connect(self.trainClassifierGenerator(animal_id, pbar))
+
+            pbar = self.p.param('Animal Settings', animal_id,'Auto-generate Annotations with animal-specific classifier', 'Annotation Progress')
+            self.p.param(
+                'Animal Settings',animal_id,'Auto-generate Annotations with animal-specific classifier'
+                        ).sigActivated.connect(self.runAnimalClassifierGenerator(animal_id,pbar))
+
+            pbar = self.p.param('Animal Settings', animal_id,'Auto-generate Annotations with global classifier', 'Annotation Progress')
+            self.p.param(
+                'Animal Settings',animal_id,'Auto-generate Annotations with global classifier'
+                        ).sigActivated.connect(self.runGlobalClassifierGenerator(animal_id,pbar))
+
 
         self.t = PyecogParameterTree()
         self.t.setParameters(self.p, showTop=False)
@@ -147,78 +163,34 @@ class ClassifierWindow(QMainWindow):
         self.terminal.insertPlainText(text)
         self.terminal.setTextColor(color)
 
-    def selectEEGFolder(self):
-        dialog = QFileDialog(self)
-        dialog.setWindowTitle('Select EEG directory')
-        dialog.setFileMode(QFileDialog.DirectoryOnly)
-        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
-        dialog.setAcceptMode(QFileDialog.AcceptOpen)
-        if dialog.exec():
-            self.p.param('Global Settings', 'Select EEG root directory','EEG root directory:').setValue(dialog.selectedFiles()[0])
-        else:
-            sys.stderr.write('No folder selected\n')
+    def trainClassifierGenerator(self,animal_id,pbar=None):
+        return lambda: self.trainClassifier(animal_id,pbar)
 
-    def setEEGFolder(self, eeg_root_folder_param):
-        pass  # Currently we are only accepting changes when clicking the Update button
-        # self.project.eeg_root_folder = eeg_root_folder.value(0)
+    def trainClassifier(self,animal_id,pbar=None):
+        print('Training', animal_id)
+        worker = Worker(self.classifier.train_animal,animal_id,pbar)
+        self.threadpool.start(worker)
+        return (1,1)
 
-    def selectVideoFolder(self):
-        dialog = QFileDialog(self)
-        dialog.setWindowTitle('Select EEG directory')
-        dialog.setFileMode(QFileDialog.DirectoryOnly)
-        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
-        dialog.setAcceptMode(QFileDialog.AcceptOpen)
-        if dialog.exec():
-            self.p.param('Global Settings', 'Select Video root directory','Video root directory:').setValue(dialog.selectedFiles()[0])
-        else:
-            sys.stderr.write('No folder selected\n')
+    def runAnimalClassifierGenerator(self,animal_id,pbar=None):
+        return lambda: self.runAnimalClassifier(animal_id,pbar)
 
+    def runAnimalClassifier(self,animal_id,pbar=None):
+        print('Training', animal_id)
+        animal = self.project.get_animal(animal_id)
+        worker = Worker(self.classifier.animal_classifier_dict[animal_id].classify_animal,animal,pbar,max_annotations=100)
+        self.threadpool.start(worker)
+        (1, 1)
 
-    def setProjectTitle(self, eeg_root_folder_param):
-        print('Changing project title to:',eeg_root_folder_param.value())
-        self.project.setTitle(eeg_root_folder_param.value())
+    def runGlobalClassifierGenerator(self, animal_id,pbar=None):
+        return lambda: self.runGlobalClassifier(animal_id,pbar)
 
-
-    def setVideoFolder(self, eeg_root_folder_param):
-        pass  # Currently we are only accepting changes when clicking the Update button
-        # self.project.eeg_root_folder = eeg_root_folder.value(0)
-
-    def update_project_settings(self):
-        animal_param_list = self.p.param('Animal list:').getValues()
-        old_animal_list = [a.id for a in self.project.animal_list]
-        deleted_animals = list(set(old_animal_list)-set(animal_param_list))
-
-        for a in deleted_animals:
-            print('Deleting animal with id',a)
-            self.project.delete_animal(a)
-
-        for p in animal_param_list:
-            animal = self.project.get_animal(p)
-            id = self.p.param('Animal list:',p,'new id').value()
-            eeg_dir = self.p.param('Animal list:',p,'EEG directory').value()
-            video_dir = self.p.param('Animal list:',p,'Video directory').value()
-            self.p.param('Animal list:',p).setName(id)
-            if animal is None:
-                print('Adding new animal with id', id)
-                self.project.add_animal(Animal(id=id,eeg_folder=eeg_dir,video_folder=video_dir))
-            else:
-                print('Updating animal with id', id)
-                animal.update_eeg_folder(eeg_dir)
-                animal.update_video_folder(video_dir)
-        print('Project update finished')
-
-
-    def update_project_from_roots(self):
-        self.project.eeg_root_folder = self.p.param('Global Settings', 'Select EEG root directory','EEG root directory:').value()
-        self.project.video_root_folder = self.p.param('Global Settings', 'Select Video root directory','Video root directory:').value()
-        print('Updating project from root directories...')
-        print('processing', self.project.eeg_root_folder)
-        self.project.update_project_from_root_directories()
-
-        # update animal list in GUI
-        self.animal_dict = [Animal2Parameter(animal) for animal in self.project.animal_list]
-        self.p.param('Animal list:').clearChildren()
-        self.p.param('Animal list:').addChildren(self.animal_dict)
+    def runGlobalClassifier(self, animal_id,pbar=None):
+        print('Training', animal_id)
+        animal = self.project.get_animal(animal_id)
+        worker = Worker(self.classifier.global_classifier.classify_animal, animal, pbar, max_annotations=100)
+        self.threadpool.start(worker)
+        (1, 1)
 
 
 if __name__ == '__main__':

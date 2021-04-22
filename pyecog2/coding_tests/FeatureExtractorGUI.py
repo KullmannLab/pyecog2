@@ -122,10 +122,10 @@ class FeatureExtractorWindow(QMainWindow):
         self.title = 'Feature Extractor'
         self.setWindowTitle(self.title)
         self.project = project
-        if project is None or not hasattr(project,'feature_extractor'):
-            self.feature_extractor = FeatureExtractor()
-        else:
-            self.feature_extractor = project.feature_extractor
+        self.feature_extractor = FeatureExtractor()
+        classifier_dir = self.project.project_file + '_classifier' if project is not None else ''
+        if os.path.isfile(os.path.join(classifier_dir, '_feature_extractor.json')):
+            self.feature_extractor.load_settings(os.path.join(classifier_dir, '_feature_extractor.json'))
         self.setCentralWidget(widget)
         self.terminal = QTextBrowser(self)
         self._err_color = QtCore.Qt.red
@@ -179,6 +179,10 @@ class FeatureExtractorWindow(QMainWindow):
 
     def runFeatureExtraction(self):
         print('Starting feature extraction...')
+        classifier_dir = self.project.filename + '_classifier'
+        if not os.path.isdir(classifier_dir):
+            os.mkdir(classifier_dir)
+        self.feature_extractor.save_settings(os.path.join(classifier_dir, '_feature_extractor.json'))
         worker = Worker(self.extractFeatures)
         self.threadpool.start(worker)
 

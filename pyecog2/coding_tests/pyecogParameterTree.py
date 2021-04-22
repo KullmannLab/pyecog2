@@ -41,4 +41,4 @@ class PyecogGroupParameter(GroupParameter):
         GroupParameter.__init__(self,*args,**kwargs)
 
 
-registerParameterType('group', PyecogGroupParameter, override=True) # Not sure if this does anything at this point....
+registerParameterType('group', PyecogGroupParameter, override=True) # Override original pyqtgraph group parameter type

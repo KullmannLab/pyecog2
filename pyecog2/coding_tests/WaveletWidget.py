@@ -138,6 +138,8 @@ class Worker(QRunnable):
             self.signals.error.emit((exctype, value, traceback.format_exc()))
         else:
             # print('worker emiting result')
+            if type(result) is not tuple:
+                result = (1,1)
             self.signals.result.emit(result)  # Return the result of the processing
         finally:
             # print('worker emiting finished')

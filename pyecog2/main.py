@@ -9,7 +9,7 @@ from PyQt5.QtGui import QPalette, QColor
 from PyQt5.QtCore import Qt, QSettings, QByteArray, QObject
 from PyQt5.QtWidgets import QApplication, QPlainTextEdit, QTextEdit,QTextBrowser, QDockWidget, QMainWindow, QFileDialog, QMessageBox
 
-from pyecog2.ProjectClass import Project, Animal
+from pyecog2.ProjectClass import Project, Animal, MainModel
 from pyecog2.annotation_table_widget import AnnotationTableWidget
 from pyecog2.annotations_module import AnnotationElement, AnnotationPage
 from pyecog2.coding_tests.AnnotationParameterTree import AnnotationParameterTee
@@ -29,45 +29,6 @@ import pyqtgraph as pg
 from pyqtgraph.console import ConsoleWidget
 import pkg_resources
 
-class MainModel(QObject):
-    sigTimeChanged      = QtCore.Signal(object)
-    sigWindowChanged    = QtCore.Signal(object)
-    sigProjectChanged   = QtCore.Signal()
-
-    def __init__(self):
-        super().__init__()
-        self.data_eeg = np.array([])
-        self.time_range = np.array([0,0])
-        self.data_acc = np.array([])
-        self.time_position = 0
-        self.time_position_emited = self.time_position
-        self.window = [0, 0]
-        self.filenames_dict = {'eeg': '', 'meta' : '', 'anno': '', 'acc': ''}
-        self.file_meta_dict = {}
-        self.annotations = AnnotationPage()
-        self.project = Project(self)
-        self.annotations_history = []
-        self.annotations_history_backcounter = 0
-
-        pen = pg.mkPen((0, 0, 0, 100))  # (1, 1, 1, 100)
-        brush = pg.mkBrush((255, 255, 255, 255))  # (1, 1, 1, 100)
-        self.color_settings = {'pen':pen,'brush':brush}
-
-
-    def set_time_position(self, pos):
-        self.time_position = pos
-        # print('Current Time:', pos)
-        if abs(pos - self.time_position_emited) > .01: # only emit signal if time_position actually changed
-            self.time_position_emited = pos
-            self.sigTimeChanged.emit(pos)
-            # print('Current Time emited:', pos)
-
-    def set_window_pos(self, pos):
-        pos = [min(pos),max(pos)]
-        if pos != self.window:
-            self.window = pos
-            self.sigWindowChanged.emit(pos)
-            print('Window changesd to:', pos)
 
 class MainWindow(QMainWindow):
     '''
@@ -294,7 +255,8 @@ class MainWindow(QMainWindow):
                     msg = QMessageBox()
                     msg.setIcon(QMessageBox.Information)
                     msg.setText("A more recently modified autosave file exists, do you want to load it instead?")
-                    msg.setDetailedText("Last autosave file modification: " +
+                    msg.setDetailedText("File name:" + fname +
+                                        "\nLast autosave file modification: " +
                                            datetime.fromtimestamp(last_autosave_modification).isoformat(sep=' ') +
                                            "\nLast project file modification: " +
                                            datetime.fromtimestamp(last_file_modification).isoformat(

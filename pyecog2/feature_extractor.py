@@ -101,6 +101,15 @@ class FeatureExtractor():
         self.feature_freq_functions = [eval(f,module_dict) for f in self.settings['feature_freq_functions']]
         my_worker_flist_init(self.feature_time_functions, self.feature_freq_functions) # Workaround for multiprocessing
 
+    def load_settings(self,fname):
+        with open(fname) as f:
+            settings = json.load(f)
+        self.update_from_settings(settings)
+
+    def save_settings(self,fname):
+        with open(fname, 'w') as json_file:
+            json.dump(self.settings, json_file, indent=2, sort_keys=True)
+
     @property
     def number_of_features(self):
         return len(self.settings['feature_time_functions']) + len(self.settings['feature_freq_functions'])
@@ -185,3 +194,6 @@ class FeatureExtractor():
         with open(feature_metafname, 'w') as json_file:
             json.dump(metadata, json_file, indent=2, sort_keys=True)
         features.tofile(feature_fname)
+
+    def __repr__(self):
+        return 'FeatureExtractor with settings: ' + self.settings.__repr__()

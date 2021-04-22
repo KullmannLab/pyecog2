@@ -6,6 +6,9 @@ import glob, os
 from datetime import datetime
 from pyecog2.annotations_module import AnnotationPage
 from scipy import signal
+from PyQt5 import QtCore
+import pyqtgraph as pg
+
 
 
 def clip(x, a, b):  # utility funciton for file buffer
@@ -370,7 +373,7 @@ class FileBuffer():  # Consider translating this to cython
 
 
 class Project():
-    def __init__(self, main_model, eeg_data_folder=None, video_data_folder=None, title='New Project', project_file='',
+    def __init__(self, main_model=None, eeg_data_folder=None, video_data_folder=None, title='New Project', project_file='',
                  dict=None):
         if dict is not None:
             self.__dict__ = dict
@@ -379,6 +382,8 @@ class Project():
             self.current_animal = Animal(dict=dict['current_animal'])
             self.main_model = main_model
             return
+        if main_model is None:
+            main_model = MainModel()
         self.main_model = main_model
         self.animal_list = []
         self.eeg_root_folder = eeg_data_folder
@@ -419,10 +424,11 @@ class Project():
             'current_animal'] = self.current_animal.id  # Animal().dict() # self.current_animal.dict() # Otherwise when loading the current animal would not be in the animal_list
         dict['file_buffer'] = None
         # print(dict)
-        json.dump(dict, open(fname, 'w'), indent=4)
+        json.dump(dict, open(fname, 'w'), indent=2)
 
     def load_from_json(self, fname):
-        dict = json.load(open(fname))
+        with open(fname) as f:
+            dict = json.load(f)
         dict['animal_list'] = [Animal(dict=animal) for animal in dict['animal_list']]  # make dicts into animals
         dict['animal_list'].sort(key=lambda animal: animal.id)
         current_animal_id = dict['current_animal']  # save id
@@ -525,3 +531,44 @@ class Project():
 
     def get_all_labels(self):
         return set([l for a in self.animal_list for l in a.annotations.labels if not l.startswith('(auto)')])
+
+
+class MainModel(QtCore.QObject):
+    sigTimeChanged      = QtCore.Signal(object)
+    sigWindowChanged    = QtCore.Signal(object)
+    sigProjectChanged   = QtCore.Signal()
+
+    def __init__(self):
+        super().__init__()
+        self.data_eeg = np.array([])
+        self.time_range = np.array([0,0])
+        self.data_acc = np.array([])
+        self.time_position = 0
+        self.time_position_emited = self.time_position
+        self.window = [0, 0]
+        self.filenames_dict = {'eeg': '', 'meta' : '', 'anno': '', 'acc': ''}
+        self.file_meta_dict = {}
+        self.annotations = AnnotationPage()
+        self.project = Project(self)
+        self.annotations_history = []
+        self.annotations_history_backcounter = 0
+
+        pen = pg.mkPen((0, 0, 0, 100))  # (1, 1, 1, 100)
+        brush = pg.mkBrush((255, 255, 255, 255))  # (1, 1, 1, 100)
+        self.color_settings = {'pen':pen,'brush':brush}
+
+
+    def set_time_position(self, pos):
+        self.time_position = pos
+        # print('Current Time:', pos)
+        if abs(pos - self.time_position_emited) > .01: # only emit signal if time_position actually changed
+            self.time_position_emited = pos
+            self.sigTimeChanged.emit(pos)
+            # print('Current Time emited:', pos)
+
+    def set_window_pos(self, pos):
+        pos = [min(pos),max(pos)]
+        if pos != self.window:
+            self.window = pos
+            self.sigWindowChanged.emit(pos)
+            print('Window changesd to:', pos)

@@ -59,20 +59,24 @@ def read_neuropixels_metadata(fname):
 
 
 def load_metadata_file(fname):
-    if not os.path.isfile(fname):
-        if os.path.isfile(fname[:-4]+'h5'):
-            create_metafile_from_h5(fname[:-4]+'h5') # create metafiles for h5 files if they do not exist
-        else:
-            print('Non-existent metafile')
-    try:
+    try:  # most common scenario
         with open(fname, 'r') as json_file:
             metadata = json.load(json_file)
     except Exception:
-        try:
+        try: # in case of neuropixels data
             metadata = read_neuropixels_metadata(fname)
         except Exception:
             metadata = None
-            print('Unrecognized metafile format')
+            try:
+                if not os.path.isfile(fname):  # in case of h5 files never seen beforehand
+                    if os.path.isfile(fname[:-4] + 'h5'):
+                        create_metafile_from_h5(fname[:-4] + 'h5')  # create metafiles for h5 files if they do not exist
+                        with open(fname, 'r') as json_file:
+                            metadata = json.load(json_file)
+                    else:
+                        print('Non-existent file:', fname)
+            except Exception:
+                print('Unrecognized metafile format')
     return metadata
 
 

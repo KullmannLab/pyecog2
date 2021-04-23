@@ -315,9 +315,9 @@ class HDF5FileNode(Node):
     def __init__(self, name, parent=None,path=None):
         super(HDF5FileNode, self).__init__(name,parent,path)
         self.name = name
-        meta_filepath = self.get_full_path()[:-3] + '.meta'
-        if not os.path.isfile(meta_filepath):
-            create_metafile_from_h5(self.get_full_path())
+        # meta_filepath = self.get_full_path()[:-3] + '.meta' # no longer necessary as we are now checking this at file load time
+        # if not os.path.isfile(meta_filepath):
+        #     create_metafile_from_h5(self.get_full_path())
 
     def prepare_for_plot(self):
         '''maybe change name?'''

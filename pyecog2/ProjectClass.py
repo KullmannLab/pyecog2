@@ -59,6 +59,11 @@ def read_neuropixels_metadata(fname):
 
 
 def load_metadata_file(fname):
+    if not os.path.isfile(fname):
+        if os.path.isfile(fname[:-4]+'h5'):
+            create_metafile_from_h5(fname[:-4]+'h5') # create metafiles for h5 files if they do not exist
+        else:
+            print('Non-existent metafile')
     try:
         with open(fname, 'r') as json_file:
             metadata = json.load(json_file)

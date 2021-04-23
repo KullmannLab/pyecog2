@@ -157,9 +157,9 @@ class ProjectClassifier():
             print('assimilating',k)
             self.global_classifier.assimilate_classifier(gc)
 
-    def train_animal(self,animal_id,pbar=None):
+    def train_animal(self,animal_id,pbar=None,labels2classify=None):
         a = self.project.get_animal(animal_id)
-        if animal_id in self.animal_classifier_dict.keys():
+        if False:  # animal_id in self.animal_classifier_dict.keys(): # At this point ther is no point on keping the previous classifier
             gc = self.animal_classifier_dict[animal_id]
         else:
             gc = GaussianClassifier(self.project,self.feature_extractor,self.global_classifier.labels2classify)
@@ -267,6 +267,8 @@ class GaussianClassifier():
             labeled_positions = {}
             for label in self.labels2classify:
                 labeled_positions[label] = np.array([a.getPos() for a in animal.annotations.get_all_with_label(label)])
+                for a in animal.annotations.get_all_with_label(label):
+                    a.setConfidence(float('inf')) # set manually checked annotations to infinite confidence
             Nfiles = len(animal.eeg_files[:])
             for ifile, eeg_file in enumerate(animal.eeg_files[:]):
                 feature_file = '.'.join(eeg_file.split('.')[:-1] + ['features'])
@@ -400,13 +402,13 @@ class GaussianClassifier():
             print('manual label positions:',manual_label_positions)
             for j in range(len(starts)):
                 if not any([intervals_overlap([timev[starts[j]],timev[ends[j]]],pos) for pos in manual_label_positions]):
-                    # c = np.sum(LLv[starts[j]:ends[j],i])-np.sum(LLv[starts[j]:ends[j],0])
-                    # c = np.sum(np.log(pf[i,starts[j]:ends[j]])-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
-                    # c = np.sum(-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
                     if ends[j]-starts[j]<1:
                         print('interval too small:',starts[j],ends[j])
                         continue
-                    c = np.max(-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
+                    # c = np.sum(LLv[starts[j]:ends[j],i])-np.sum(LLv[starts[j]:ends[j],0])
+                    # c = np.sum(np.log(pf[i,starts[j]:ends[j]])-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
+                    # c = np.sum(-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
+                    c = np.max(-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],2**-50)))
                     # print('start,end,confidence', starts[j], ends[j],c)
                     a = AnnotationElement(label='(auto)'+label,start=timev[starts[j]],end=timev[ends[j]],confidence=c)
                     alist.append((c,a))

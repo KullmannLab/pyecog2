@@ -198,6 +198,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         for annotation in annotations_to_change:
             print('changing annotation label', annotation.getLabel(),annotation.getPos())
             annotation.setLabel(label)
+            # annotation.setConfidence(float('inf'))  # not convenient because of annotation jumps if ordered by confidence
         # a bit of a pity that this signal cannot be emited by the anotationPage
         self.annotationsPage.sigLabelsChanged.emit(label)
         self.annotationsPage.history_is_paused = False

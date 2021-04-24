@@ -156,6 +156,10 @@ class ClassifierWindow(QMainWindow):
 
         self.dfrmt = '%Y-%m-%d %H:%M:%S'  # Format to use in date elements
 
+    def getLables2Annotate(self):
+        all_labels = self.project.get_all_labels()
+        return [label for label in all_labels if self.p.param('Global Settings', 'Lablels to annotate', label).value()]
+
     def handleOutput(self, text, stdout):
         color = self.terminal.textColor()
         self.terminal.setTextColor(color if stdout else self._err_color)
@@ -178,7 +182,8 @@ class ClassifierWindow(QMainWindow):
     def runAnimalClassifier(self,animal_id,pbar=None):
         print('Training', animal_id)
         animal = self.project.get_animal(animal_id)
-        worker = Worker(self.classifier.animal_classifier_dict[animal_id].classify_animal,animal,pbar,max_annotations=100)
+        worker = Worker(self.classifier.animal_classifier_dict[animal_id].classify_animal,
+                        animal,pbar,max_annotations=100, labels2annotate = self.getLables2Annotate())
         self.threadpool.start(worker)
         (1, 1)
 

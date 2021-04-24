@@ -349,7 +349,9 @@ class GaussianClassifier():
             LL = LL + bias_v.T
         return LL
 
-    def classify_animal(self, animal,progress_bar=None,max_annotations=-1):
+    def classify_animal(self, animal,progress_bar=None,max_annotations=-1,labels2annotate=None):
+        if labels2annotate is None:
+            labels2annotate = self.labels2classify
         LLv = []
         R2v = []
         timev = []
@@ -392,6 +394,8 @@ class GaussianClassifier():
         # threshold to reject classifications outside .999 confidence interval of the class distribution
         th = chi2.isf(1e-3,self.Ndim,scale=0.5)
         for i2,label in enumerate(self.labels2classify):
+            if label not in labels2annotate: # ignore labels that are not in labels2annotate
+                continue
             i = i2+1
             print(i,label)
             starts = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > .5).astype('int')) > 0)[0] + 1

@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
   name = 'pyecog2',
-  version = '0.0.1a',
+  version = '0.0.1b',
   description = 'For visualizing and classifying video-ECoG recordings (iEEG)',
   long_description=long_description,
   long_description_content_type="text/markdown",

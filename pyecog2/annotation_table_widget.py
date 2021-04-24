@@ -76,6 +76,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
                          2:date_fmt}  # stores per-column formats and entire table format
 
         self.sortModes = {}  # stores per-column sort mode
+        self.table_paused = False  # to use when doing batch updates e.g. deleting all annotation with a given label
         self.itemChanged.connect(self.handleItemChanged)
 
         self.contextMenu = QtWidgets.QMenu()
@@ -90,6 +91,10 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         self.currentItemChanged.connect(self.my_item_clicekd)
         self.annotationsPage.sigAnnotationAdded.connect(self.appendData)
         self.annotationsPage.sigLabelsChanged.connect(lambda: self.setData(annotationsPage.annotations_list))
+        self.annotationsPage.sigPauseTable.connect(self.pauseTable)
+
+    def pauseTable(self,b=False):
+        self.table_paused = b
 
     def my_item_clicekd(self,item):
         if item is not None:
@@ -176,6 +181,9 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
     def myremoveRow(self,r):
         # couldn't figure out any other way apart from reseting all the data
         # plus when reseting the table, for some reason the annotations are not fully removed
+        if self.table_paused:
+            print('Table paused: skiping deleting annotation and reseting table data...', r, '(', self.rowCount(), ')')
+            return
         print('Deleting annotation and reseting table data...',r,'(',self.rowCount(),')')
         if len(self.annotationsPage.annotations_list)<self.rowCount():
             self.setData(self.annotationsPage.annotations_list)
@@ -186,9 +194,12 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
     def removeSelection(self):
         annotations_to_remove = list(set([item.annotation for item in self.selectedItems()]))
         self.annotationsPage.history_is_paused = True # Avoid filling history with all the deletion steps - slightly unelegant to do this here
+        self.pauseTable(True)
         for annotation in annotations_to_remove:
             print('Removing annotation:', annotation.getLabel(),annotation.getPos())
             self.annotationsPage.delete_annotation(annotation)
+        self.pauseTable(False)
+        self.setData(self.annotationsPage.annotations_list)
         self.annotationsPage.history_is_paused = False
         self.annotationsPage.cache_to_history()
 

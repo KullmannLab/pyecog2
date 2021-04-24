@@ -111,7 +111,7 @@ class AnnotationPage(QObject):
     sigFocusOnAnnotation = QtCore.pyqtSignal(object)
     sigAnnotationAdded   = QtCore.pyqtSignal(object)
     sigLabelsChanged     = QtCore.pyqtSignal(object)
-
+    sigPauseTable        = QtCore.pyqtSignal(bool)
     def __init__(self, alist=None, fname=None, dic=None, history = [],history_step=-1):
         super().__init__()
         if dic is not None:
@@ -218,6 +218,7 @@ class AnnotationPage(QObject):
         return result
 
     def delete_all_with_label(self, label,cache_history=True):
+        self.sigPauseTable.emit(True)
         for i, a in reversed(list(enumerate(self.annotations_list))):
             if a.getLabel() == label:
                 self.delete_annotation(i,cache_history=False)
@@ -236,6 +237,8 @@ class AnnotationPage(QObject):
                     del self.labels[i]
         print('labels after', self.labels)
         self.cache_to_history()
+        self.sigPauseTable.emit(False)
+        self.sigLabelsChanged.emit(None)
 
     def change_label_name(self,old_label, new_label):
         self.history_is_paused = True

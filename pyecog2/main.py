@@ -443,6 +443,12 @@ class MainWindow(QMainWindow):
         self.featureExtractorWindow.show()
 
     def openClassifier(self):
+        if hasattr(self,'ClassifierWindow'):
+            self.ClassifierWindow.setWindowState((self.ClassifierWindow.windowState() & ~Qt.WindowMinimized)|Qt.WindowActive)
+            self.ClassifierWindow.raise_()
+            self.ClassifierWindow.show()
+
+            return
         self.ClassifierWindow = ClassifierWindow(self.main_model.project,parent=self)
         self.ClassifierWindow.show()
 
@@ -520,16 +526,13 @@ class MainWindow(QMainWindow):
 
         # CLASSIFIER section
         self.menu_classifier = self.menu_bar.addMenu("Classifier")
-        self.action_setup_feature_extractor = self.menu_classifier.addAction("Setup feature extractor")
-        self.action_setup_classifier = self.menu_classifier.addAction("Setup classifier")
-        self.action_train_classifier = self.menu_classifier.addAction("Train classifier")
-        self.action_run_classifier   = self.menu_classifier.addAction("Run classifier")
-        self.action_review_classifications   = self.menu_classifier.addAction("Review classifications")
+        self.action_setup_feature_extractor = self.menu_classifier.addAction("Feature Extractor Options")
+        self.action_setup_classifier = self.menu_classifier.addAction("Classifier Options")
         self.action_setup_feature_extractor.triggered.connect(self.openFeatureExtractor)
         self.action_setup_classifier.triggered.connect(self.openClassifier)
-        self.action_train_classifier.setDisabled(True)
-        self.action_run_classifier.setDisabled(True)
-        self.action_review_classifications.setDisabled(True)
+        # self.action_train_classifier.setDisabled(True)
+        # self.action_run_classifier.setDisabled(True)
+        # self.action_review_classifications.setDisabled(True)
 
         # TOOLS section
         self.menu_tools = self.menu_bar.addMenu("Tools")
@@ -592,6 +595,7 @@ class MainWindow(QMainWindow):
         #     # settings.setValue("windowState", self.dock_list[dock_name].saveState())
         #     settings.endGroup()
         self.saveState()
+        print('Finished closeEvent')
 
     def keyPressEvent(self, evt):
         print('Key press captured by Main', evt.key())

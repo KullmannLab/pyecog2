@@ -86,7 +86,7 @@ def transitions2rates(B,nblankpoints,nclasspoints):
         else: # For classes that do not occur, default to transition to blanks
             A[i+1,:] = 0
             A[i+1,0] = 1
-    return A/A.sum(axis=1,keepdims=True)
+    return A/A.sum(axis=1,keepdims=True)  #force normalization to get rid of numerical errors
 
 def intervals_overlap(a,b):
     return (a[0] <= b[0] < a[1]) or (a[0] <= b[1] < a[1]) or (b[0] <= a[0] < b[1]) or (b[0] <= a[1] < b[1])
@@ -157,17 +157,25 @@ class ProjectClassifier():
             print('assimilating',k)
             self.global_classifier.assimilate_classifier(gc)
 
-    def train_animal(self,animal_id,pbar=None,labels2classify=None):
+    def train_animal(self,animal_id,pbar=None,labels2train=None):
         a = self.project.get_animal(animal_id)
-        if False:  # animal_id in self.animal_classifier_dict.keys(): # At this point ther is no point on keping the previous classifier
+        if False:  # animal_id in self.animal_classifier_dict.keys(): # At this point there is no point on keping the previous classifier
             gc = self.animal_classifier_dict[animal_id]
         else:
-            gc = GaussianClassifier(self.project,self.feature_extractor,self.global_classifier.labels2classify)
+            gc = GaussianClassifier(self.project,self.feature_extractor,labels = labels2train)
             self.animal_classifier_dict[animal_id] = gc
         gc.train([a],progress_bar=pbar)
         gc.save(os.path.join(self.project.project_file + '_classifier',animal_id+'.npz'))
 
-
+    def classify_animal_with_global(self, animal, progress_bar=None,max_annotations=-1,labels2annotate=None):
+        gc = GaussianClassifier(self.project,self.feature_extractor)
+        gc.copy_from(self.animal_classifier_dict[animal.id])
+        if gc.blank_npoints == 0:
+            progress_bar.setValue(0.1)
+            print('Training animal specific classifier first...')
+            gc.train([animal])
+        gc.copy_re_normalized_classifier(self.global_classifier)
+        gc.classify_animal(animal,progress_bar,max_annotations,labels2annotate)
 
 
 
@@ -251,7 +259,7 @@ class GaussianClassifier():
         self.blank_means[:, np.newaxis] = mu
         self.blank_cov = cov
         self.blank_npoints += gc.blank_npoints
-        self.transitions_matrix = gc.transitions_matrix
+        self.transitions_matrix += gc.transitions_matrix
 
     def train(self,animal_list=None,progress_bar=None):
         if animal_list is None:
@@ -448,5 +456,10 @@ class GaussianClassifier():
         with np.load(filename) as d:
             self.__dict__= dict([(file,d[file]) for file in d.files]) # copy all arrays from file
         self.project = project
+
+    def copy_from(self,gaussian_classifier):
+        for key in self.__dict__.keys():
+            if key != 'project':
+                self.__dict__[key] = gaussian_classifier.__dict__[key]
                 
 

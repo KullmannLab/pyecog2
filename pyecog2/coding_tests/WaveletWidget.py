@@ -11,6 +11,7 @@ import numpy as np
 import scipy.signal as sg
 from timeit import default_timer as timer
 import traceback, inspect, sys
+from pyecog2.pyecog_plot_item import PyecogCursorItem
 
 
 
@@ -162,6 +163,11 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         self.p1.getAxis('right').setZValue(1)
         self.p1.showGrid(x=False, y=True, alpha=1) # Haven't been able to make this work
         self.p1.setLogMode(y=True)
+        cursor = PyecogCursorItem(pos=0)
+        self.main_model.sigTimeChanged.connect(lambda: cursor.setPos(self.main_model.time_position - self.main_model.window[0]))
+        cursor.sigPositionChanged.connect(lambda: self.main_model.set_time_position(cursor.getXPos()+ self.main_model.window[0]))
+        self.p1.addItem(cursor)
+
         self.channel = 0
         self.R = 14
         self.setBackground(self.main_model.color_settings['brush'])

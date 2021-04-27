@@ -86,6 +86,7 @@ class ClassifierWindow(QMainWindow):
                  'type': 'group',
                  'children': [{'name': l, 'type': 'bool', 'value': True} for l in all_labels]
                  },
+                {'name': 'Homogenize ticked labels across project', 'type': 'action'},
                 {'name': 'Lablels to annotate',
                  'type': 'group',
                  'children': [{'name': l, 'type': 'bool', 'value': True} for l in all_labels]
@@ -118,6 +119,9 @@ class ClassifierWindow(QMainWindow):
         self.p.param(
             'Global Settings', 'Assimilate global classifier from individual animals'
             ).sigActivated.connect(self.classifier.assimilate_global_classifier)
+        self.p.param(
+            'Global Settings', 'Homogenize ticked labels across project'
+            ).sigActivated.connect(self.homogenize_labels)
 
         for animal_id in self.classifier.animal_classifier_dict.keys():
             pbar = self.p.param('Animal Settings',animal_id,'Train animal-specific classifier', 'Training Progress')
@@ -160,6 +164,25 @@ class ClassifierWindow(QMainWindow):
         all_labels = self.project.get_all_labels()
         return [label for label in all_labels if self.p.param('Global Settings', 'Lablels to annotate', label).value()]
 
+    def getLables2train(self):
+        all_labels = self.project.get_all_labels()
+        return [label for label in all_labels if self.p.param('Global Settings', 'Lablels to train', label).value()]
+
+    def homogenize_labels(self):
+        labels = self.getLables2train()
+        for animal in self.project.animal_list:
+            annotation_page = animal.annotations
+            for label in annotation_page.labels:
+                if label not in labels:  # only copy labels that are ticked to train
+                    continue
+                for animal2 in self.project.animal_list:
+                    if label not in animal2.annotations.labels:
+                        animal2.annotations.add_label(label,annotation_page.label_color_dict[label])
+
+
+
+
+
     def handleOutput(self, text, stdout):
         color = self.terminal.textColor()
         self.terminal.setTextColor(color if stdout else self._err_color)
@@ -172,7 +195,7 @@ class ClassifierWindow(QMainWindow):
 
     def trainClassifier(self,animal_id,pbar=None):
         print('Training', animal_id)
-        worker = Worker(self.classifier.train_animal,animal_id,pbar)
+        worker = Worker(self.classifier.train_animal,animal_id,pbar,self.getLables2train())
         self.threadpool.start(worker)
         return (1,1)
 
@@ -191,9 +214,10 @@ class ClassifierWindow(QMainWindow):
         return lambda: self.runGlobalClassifier(animal_id,pbar)
 
     def runGlobalClassifier(self, animal_id,pbar=None):
-        print('Training', animal_id)
+        print('Labeling', animal_id)
         animal = self.project.get_animal(animal_id)
-        worker = Worker(self.classifier.global_classifier.classify_animal, animal, pbar, max_annotations=100)
+        worker = Worker(self.classifier.classify_animal_with_global, animal, pbar, max_annotations=100,
+                        labels2annotate = self.getLables2Annotate())
         self.threadpool.start(worker)
         (1, 1)
 

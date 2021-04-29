@@ -239,11 +239,13 @@ class GaussianClassifier():
         # weighted average of re-normalized means and covariances for all classes
         mua, Wa, iWa = gc.whitening_mu_W_iW()
         mub, Wb, iWb = self.whitening_mu_W_iW()
+        common_label_indices = [] # save common labels to assimilate transition matrix
         for i in range(len(self.labels2classify)):
             j, = np.where(gc.labels2classify == self.labels2classify[i])
             if not j:
                 continue
             j = j[0]  # if the label exists in gc, grab its index
+            common_label_indices.append((i,j))
             normalized_gc_mu = iWb@Wa@(gc.class_means[j][:, np.newaxis] - mua) + mub
             normalized_gc_cov = iWb@Wa@gc.class_cov[j]@Wa.T@iWb.T
             mu, cov = average_mu_and_cov(self.class_means[i][:, np.newaxis], self.class_cov[i],
@@ -259,7 +261,8 @@ class GaussianClassifier():
         self.blank_means[:, np.newaxis] = mu
         self.blank_cov = cov
         self.blank_npoints += gc.blank_npoints
-        self.transitions_matrix += gc.transitions_matrix
+        i,j = tuple(zip(*common_label_indices))  # self labels i correspond to gc labels j
+        self.transitions_matrix[np.ix_(i,i)] += gc.transitions_matrix[np.ix_(j,j)]
 
     def train(self,animal_list=None,progress_bar=None):
         if animal_list is None:

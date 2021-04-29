@@ -327,6 +327,12 @@ class MainWindow(QMainWindow):
         else:
             self.autosave_timer.stop()
 
+    def toggle_fullscreen(self):
+        if self.action_fullscreen.isChecked():
+            self.showFullScreen()
+        else:
+            self.showNormal()
+
     def toggle_darkmode(self):
         if self.action_darkmode.isChecked():
             print('Setting Dark Mode')
@@ -447,9 +453,11 @@ class MainWindow(QMainWindow):
             self.ClassifierWindow.setWindowState((self.ClassifierWindow.windowState() & ~Qt.WindowMinimized)|Qt.WindowActive)
             self.ClassifierWindow.raise_()
             self.ClassifierWindow.show()
-
             return
         self.ClassifierWindow = ClassifierWindow(self.main_model.project,parent=self)
+        geometry = self.ClassifierWindow.geometry()
+        geometry.setHeight(self.geometry().height())
+        self.ClassifierWindow.setGeometry(geometry)
         self.ClassifierWindow.show()
 
     def export_annotations(self):
@@ -556,11 +564,16 @@ class MainWindow(QMainWindow):
         self.action_reset_geometry    = self.menu_help.addAction("Reset Main Window layout")
         self.action_reset_geometry.triggered.connect(self.reset_geometry)
 
+        self.action_fullscreen = self.menu_help.addAction("Full Screen")
+        self.action_fullscreen.setCheckable(True)
+        self.action_fullscreen.toggled.connect(self.toggle_fullscreen)
+        self.action_fullscreen.setChecked(False)
+
         self.action_darkmode = self.menu_help.addAction("Dark mode")
         self.action_darkmode.setCheckable(True)
         self.action_darkmode.toggled.connect(self.toggle_darkmode)
         self.action_darkmode.setChecked(False)
-        # self.toggle_darkmode()
+
 
         self.menu_help.addSeparator()
         self.action_go_to_git = self.menu_help.addAction("Go to Git Repository")

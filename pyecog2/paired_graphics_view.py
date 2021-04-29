@@ -89,6 +89,7 @@ class PairedGraphicsView():
         self.overview_plot = overview_layout_widget.addPlot(axisItems={'bottom':overview_date_axis})
         # self.overview_plot.showAxis('left', show=False)
         # self.overview_plot.setLabel('bottom', text='Time', units='s')
+        self.overview_plot.setLabel('bottom', units=None)
 
         # this doesnt work (getting the scroll)
         overview_layout_widget.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
@@ -98,7 +99,8 @@ class PairedGraphicsView():
         self.insetview_plot = insetview_layout_widget.addPlot(axisItems={'bottom':insetview_date_axis})
         # self.insetview_plot.showAxis('left', show=False)
         self.insetview_plot.showGrid(x=True, y=True, alpha=0.15)
-        self.insetview_plot.setLabel('bottom', text='Time', units='s')
+        # self.insetview_plot.setLabel('bottom', text='Time', units='s')
+        self.insetview_plot.setLabel('bottom', units=None)
 
         self.insetview_plot.vb.state['autoRange'] = [False, False]
         self.overview_plot.vb.state['autoRange'] = [False, False]
@@ -173,6 +175,7 @@ class PairedGraphicsView():
             self.scale = 1 / (6 * np.mean(np.std(arr, axis=0, keepdims=True), axis=1))
             self.overview_plot.vb.setYRange(-2, arr.shape[1] + 1)
             self.insetview_plot.vb.setYRange(-2, arr.shape[1] + 1)
+            self.overview_plot.setTitle('<p style="font-size:large"> Animal: ' + self.main_model.project.current_animal.id + '</b>')
 
         for i in range(self.n_channels):
             if pens is None:
@@ -202,6 +205,7 @@ class PairedGraphicsView():
         self.main_model.annotations.sigFocusOnAnnotation.connect(self.set_focus_on_annotation)
         self.set_scene_window(self.main_model.window)
         self.set_scene_cursor()
+
 
     def set_plotitem_channel_data(self, pen, index, init_scale):
         '''
@@ -294,15 +298,24 @@ class PairedGraphicsView():
             return
         state = self.overviewROI.getState()
         annotation_pos = annotation.getPos()
-        self.main_model.set_time_position(annotation_pos[0]-1)
+        self.main_model.set_time_position(annotation_pos[0]-0.9)
         self.main_model.set_window_pos([annotation_pos[0]-1, annotation_pos[1]+1])
-        if annotation_pos[0] > state['pos'][0] and annotation_pos[0] < state['pos'][0] + state['size'][0]:
-            return # skip if start of annotation is already in the plot area
+        if annotation_pos[0] > state['pos'][0] and annotation_pos[1] < state['pos'][0] + state['size'][0]:
+            return # skip if annotation is already completely in the plot area
 
         state['pos'][0] = annotation_pos[0] - .25*(state['size'][0])  # put start of annotation in first quarter of screen
         self.insetview_plot.setRange(xRange=(state['pos'][0], state['pos'][0] + state['size'][0]),
                                      yRange=(state['pos'][1], state['pos'][1] + state['size'][1]),
                                      padding=0)
+
+        xmin, xmax = self.overview_plot.viewRange()[0]
+        x_range = xmax - xmin
+        if annotation_pos[1]-annotation_pos[0] < 0.8*x_range:
+            new_xrange = ( (annotation_pos[1]+annotation_pos[0]-x_range)/2, (annotation_pos[1]+annotation_pos[0]+x_range)/2)
+        else:
+            new_xrange = ( annotation_pos[0]-x_range*.1, annotation_pos[0]+x_range*.9)
+        self.overview_plot.setRange(xRange=new_xrange, padding=0)
+
 
     def set_scene_cursor(self):
         cursor_o = PyecogCursorItem(pos=0)
@@ -517,5 +530,6 @@ class DateAxis(pg.AxisItem):
             label = time.strftime(label1, time.localtime(min(values)))+time.strftime(label2, time.localtime(max(values)))
         except ValueError:
             label = ''
-        self.setLabel(text=label)
+        self.autoSIPrefix = False
+        self.setLabel(text=label,units=None)
         return strns

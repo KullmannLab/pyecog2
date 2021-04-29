@@ -225,7 +225,7 @@ class HMM_LL():
         return self._A
     @A.setter
     def A(self, A):
-        assert all(np.sum(A, axis=1) == 1), 'collumns shouls sum to 1:' + A.__repr__()
+        # assert all(np.sum(A, axis=1) == 1), 'collumns shouls sum to 1:' + A.__repr__()
         # transpose to get left eigen vector
         eigen_vals, eigen_vecs = np.linalg.eig(A.T)
         ind = np.where(eigen_vals == np.max(eigen_vals))[0]

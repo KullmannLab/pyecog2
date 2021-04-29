@@ -99,7 +99,7 @@ class ClassifierWindow(QMainWindow):
                 #     {'name': 'Annotation Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}
                 # ]}
             ]},
-            {'name': 'Animal Settings', 'type': 'group', 'expanded': False, 'children': [
+            {'name': 'Animal Settings', 'type': 'group', 'expanded': True, 'children': [
                 {'name': animal, 'type': 'group','children':[
                     {'name': 'Use animal for global classifier', 'type': 'bool', 'value': True},
                     {'name': 'Train animal-specific classifier', 'type': 'action','children':[

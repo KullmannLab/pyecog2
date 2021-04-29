@@ -336,7 +336,7 @@ class AnnotationPage(QObject):
         dict['labels'] = self.labels.copy()
         dict['label_color_dict'] = self.label_color_dict.copy()
         dict['label_channel_range_dict'] = self.label_channel_range_dict.copy()
-        dict['focused_annotation'] = None
+        dict['focused_annotation'] = self.get_annotation_index(self.focused_annotation)
         dict['history'] = None
         dict['history_step'] = None
         return dict
@@ -347,6 +347,8 @@ class AnnotationPage(QObject):
         self.labels = dic['labels'].copy()
         self.label_color_dict = dic['label_color_dict'].copy()
         self.label_channel_range_dict = dic['label_channel_range_dict'].copy()
+        if dic['focused_annotation'] is not None:
+            self.focusOnAnnotation(self.annotations_list[dic['focused_annotation']])
         self.sigLabelsChanged.emit('')
         self.connect_annotations_to_history()
 

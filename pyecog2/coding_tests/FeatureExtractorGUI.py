@@ -88,13 +88,13 @@ def settings2params(settings):
                     {'name':'Length (s):','type':'float','value': settings['window_length']},
                     {'name': 'Overlap ratio:', 'type': 'float', 'value': settings['overlap']}]},
                 ScalableGroup(name='Features in time domain',children = [
-                    {'name': label, 'renamable': True, 'type': 'str', 'value': func}
+                    {'name': label, 'renamable': True, 'removable': True, 'type': 'str', 'value': func}
                     for label,func in zip(settings['feature_labels'][:ntimefuncs], settings['feature_time_functions'])]),
                 ScalableGroupF(name='Features in frequency domain', children=[
-                    {'name': label, 'renamable': True, 'type': 'str', 'value': func}
+                    {'name': label, 'renamable': True, 'removable': True, 'type': 'str', 'value': func}
                     for label,func in zip(settings['feature_labels'][ntimefuncs:], settings['feature_freq_functions'])]),
                 ScalableGroupM(name='Module dependencies to import', children=[
-                    {'name': module, 'renamable': True, 'type': 'str', 'value': alias}
+                    {'name': module, 'renamable': True,'removable': True, 'type': 'str', 'value': alias}
                     for module, alias in settings['function_module_dependencies']])
                     ]
              }]

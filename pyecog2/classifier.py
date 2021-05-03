@@ -350,7 +350,7 @@ class GaussianClassifier():
                 
     def log_likelyhoods(self, f_vec, bias=True, no_scale = False):
         LL = np.zeros((f_vec.shape[0], self.class_means.shape[0]+1))
-        LL[:,0] = MVGD_LL(f_vec,self.blank_means,reg_invcov(self.blank_cov,self.blank_npoints))
+        LL[:,0] = MVGD_LL(f_vec,self.blank_means,reg_invcov(self.blank_cov,self.blank_npoints),no_scale)
         for i in range(self.class_means.shape[0]):
             LL[:,i+1] = MVGD_LL(f_vec, self.class_means[i], reg_invcov(self.class_cov[i],self.class_npoints[i]),no_scale)
 
@@ -363,8 +363,8 @@ class GaussianClassifier():
     def classify_animal(self, animal,progress_bar=None,max_annotations=-1,labels2annotate=None):
         if labels2annotate is None:
             labels2annotate = self.labels2classify
-        LLv = []
-        R2v = []
+        LLv = []  # log likelihoods over time for each class
+        R2v = []  # R square over time for each class (used to check for outliers)
         timev = []
         eegfiles = animal.eeg_files.copy()
         eegfiles.sort()
@@ -393,12 +393,17 @@ class GaussianClassifier():
                 print('Animal:', animal.id, 'file:', i, 'of', len(eegfiles), fmeta_file, end='\r')
 
         LLv = np.vstack(LLv)
+        _, _, total_npoints = self.all_mu_and_cov()
+        LLv_reg = LLv # np.maximum((np.max(LLv, axis=1) - np.log(total_npoints))[:, np.newaxis], LLv) # trying to regularize LLv for extreme values
         R2v = np.vstack(R2v)
         timev = np.hstack(timev)
         print('\nRunning HMM...')
         hmm = HMM_LL()
         hmm.A = transitions2rates(self.transitions_matrix, self.blank_npoints, self.class_npoints)
-        pf = hmm.forward_backward(LLv.T)
+
+        # pf = hmm.forward_backward(LLv.T)
+        pf = hmm.forward_backward(LLv_reg.T)
+
         if progress_bar is not None:
             progress_bar.setValue(99)   # Almost done...
         print('Combining results and generating annotations...')
@@ -442,8 +447,11 @@ class GaussianClassifier():
             new_color = tuple([ max(int(c*0.65),0) for c in old_color])
             animal.annotations.add_label('(auto)'+label,color = new_color)
 
+            animal.annotations.pause_history_cache(True)
             for c,a in alist[:max_annotations]:
                 animal.annotations.add_annotation(a)
+            animal.annotations.pause_history_cache(False)
+
         if progress_bar is not None:
             progress_bar.setValue(100)   # Done
         return (LLv,R2v,pf,timev)

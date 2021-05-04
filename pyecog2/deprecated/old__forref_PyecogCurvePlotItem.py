@@ -73,7 +73,7 @@ class HDF5PlotCurveItem(pg.PlotCurveItem):
         #print(data.shape, time.shape)
         #try:
         #    assert(self.hdf5.shape == self.time.shape)
-        #except:
+        #except Exception:
         #    throw_error()
         #print ( self.hdf5.shape, self.time.shape)
         self.updateHDF5Plot()
@@ -147,13 +147,13 @@ class HDF5PlotCurveItem(pg.PlotCurveItem):
         # here get fft and plot on the subplot that will exist
         try:
             fft_result, freqs = self.calc_fft(x,start,stop)
-        except:
+        except Exception:
             throw_error()
             return 0
         try:
             # self.fft_plot.curve.setData(t[start:stop],x[start:stop])
             self.main_gui_obj.fft_plot.curve.setData(freqs,np.abs(fft_result))
-        except:
+        except Exception:
             #self.fft_plot.curve = self.fft_plot.plot(t[start:stop],x[start:stop],pen = (255,255,255))
             self.main_gui_obj.fft_plot.curve = self.main_gui_obj.fft_plot.plot(freqs,np.abs(fft_result),pen = (0,0,0))
 
@@ -171,7 +171,7 @@ class HDF5PlotCurveItem(pg.PlotCurveItem):
                         self.hdf5_filtered_data = self.filter(self.hp_cutoff,
                                                               self.hdf5_filtered_data,
                                                               'highpass')
-                    except:
+                    except Exception:
                         throw_error()
 
                 if self.lp_toggle:
@@ -179,7 +179,7 @@ class HDF5PlotCurveItem(pg.PlotCurveItem):
                         self.hdf5_filtered_data = self.filter(self.lp_cutoff,
                                                               self.hdf5_filtered_data,
                                                               'lowpass')
-                    except:
+                    except Exception:
                         throw_error()
 
             hdf5data = self.hdf5_filtered_data
@@ -258,7 +258,7 @@ class HDF5PlotCurveItem(pg.PlotCurveItem):
                 #print('**** now downsampling')
                 #print(visible_y.shape, visible_x.shape)
                 scale = ds * 0.5
-            except:
+            except Exception:
                 throw_error()
                 return 0
             # TODO: setPos, scale, resetTransform methods... scale?

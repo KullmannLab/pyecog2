@@ -1,11 +1,14 @@
 from PyQt5 import QtGui, QtCore, QtWidgets
 from pyecog2.annotations_module import AnnotationPage
+from datetime import datetime
 import numpy as np
 
 basestring = str
 asUnicode = str
 # __all__ = ['TableWidget']
 
+def date_fmt(item):
+    return datetime.utcfromtimestamp(item.value).strftime('%Y-%m-%d %H:%M:%S')
 
 def _defersort(fn):
     def defersort(self, *args, **kwds):
@@ -32,7 +35,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
     information.QtWidgets.QTableWidgetok
     """
 
-    def __init__(self, annotationsPage = AnnotationPage(), *args, **kwds):
+    def __init__(self, annotationsPage = AnnotationPage(),parent=None, *args, **kwds):
         """
         All positional arguments are passed to QTableWidget.__init__().
 
@@ -52,7 +55,6 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
 
         self.setWindowTitle('Annotations Table')
         self.itemClass = AnnotationTableWidgetItem
-
         self.setVerticalScrollMode(self.ScrollPerPixel)
         self.setSelectionMode(QtWidgets.QAbstractItemView.ContiguousSelection)
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
@@ -69,7 +71,12 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         self._sorting = None  # used when temporarily disabling sorting
 
         self._formats = {None: None}  # stores per-column formats and entire table format
+        self._formats = {None: None,
+                         1:date_fmt,
+                         2:date_fmt}  # stores per-column formats and entire table format
+
         self.sortModes = {}  # stores per-column sort mode
+        self.table_paused = False  # to use when doing batch updates e.g. deleting all annotation with a given label
         self.itemChanged.connect(self.handleItemChanged)
 
         self.contextMenu = QtWidgets.QMenu()
@@ -77,12 +84,17 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         self.contextMenu.addAction('Copy All').triggered.connect(self.copyAll)
         self.contextMenu.addAction('Save Selection').triggered.connect(self.saveSel)
         self.contextMenu.addAction('Save All').triggered.connect(self.saveAll)
+        self.parent = parent
         self.annotationsPage = annotationsPage
         self.setData(annotationsPage.annotations_list)
         self.annotationsPage.sigFocusOnAnnotation.connect(self.selectAnnotation) #connect function to select annotation
         self.currentItemChanged.connect(self.my_item_clicekd)
         self.annotationsPage.sigAnnotationAdded.connect(self.appendData)
         self.annotationsPage.sigLabelsChanged.connect(lambda: self.setData(annotationsPage.annotations_list))
+        self.annotationsPage.sigPauseTable.connect(self.pauseTable)
+
+    def pauseTable(self,b=False):
+        self.table_paused = b
 
     def my_item_clicekd(self,item):
         if item is not None:
@@ -94,10 +106,13 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
     def updateTableColor(self):
         for i in range(self.rowCount()):
             # make bkgd color a bit lighter than normal color
-            alpha = 50 / 255
-            color = [value * alpha + 255 * (1 - alpha) for value in self.annotationsPage.label_color_dict[self.item(i, 0).text()]]
+            alpha = 125
+            bgcolor = self.annotationsPage.label_color_dict[self.item(i, 0).text()]
+            # fgcolor = [255-bgcolor[0],255-bgcolor[1],255-bgcolor[2]]
+            # print('TABLE bgcolor',bgcolor)
             for k in range(self.columnCount()):
-                self.item(i, k).setBackground(QtGui.QBrush(QtGui.QColor(*color)))
+                self.item(i, k).setBackground(QtGui.QBrush(QtGui.QColor(*bgcolor,alpha)))
+                # self.item(i, k).setForeground(QtGui.QBrush(QtGui.QColor(*fgcolor)))
 
     def clear(self):
         """Clear all contents from the table."""
@@ -166,6 +181,9 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
     def myremoveRow(self,r):
         # couldn't figure out any other way apart from reseting all the data
         # plus when reseting the table, for some reason the annotations are not fully removed
+        if self.table_paused:
+            print('Table paused: skiping deleting annotation and reseting table data...', r, '(', self.rowCount(), ')')
+            return
         print('Deleting annotation and reseting table data...',r,'(',self.rowCount(),')')
         if len(self.annotationsPage.annotations_list)<self.rowCount():
             self.setData(self.annotationsPage.annotations_list)
@@ -175,18 +193,27 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
 
     def removeSelection(self):
         annotations_to_remove = list(set([item.annotation for item in self.selectedItems()]))
+        self.annotationsPage.history_is_paused = True # Avoid filling history with all the deletion steps - slightly unelegant to do this here
+        self.pauseTable(True)
         for annotation in annotations_to_remove:
             print('Removing annotation:', annotation.getLabel(),annotation.getPos())
             self.annotationsPage.delete_annotation(annotation)
-
+        self.pauseTable(False)
+        self.setData(self.annotationsPage.annotations_list)
+        self.annotationsPage.history_is_paused = False
+        self.annotationsPage.cache_to_history()
 
     def changeSelectionLabel(self,label):
         annotations_to_change = list(set([item.annotation for item in self.selectedItems()]))
+        self.annotationsPage.history_is_paused = True  # Avoid filling history with all the deletion steps - slightly unelegant to do this here
         for annotation in annotations_to_change:
             print('changing annotation label', annotation.getLabel(),annotation.getPos())
             annotation.setLabel(label)
+            # annotation.setConfidence(float('inf'))  # not convenient because of annotation jumps if ordered by confidence
         # a bit of a pity that this signal cannot be emited by the anotationPage
         self.annotationsPage.sigLabelsChanged.emit(label)
+        self.annotationsPage.history_is_paused = False
+        self.annotationsPage.cache_to_history()
 
     def setEditable(self, editable=True):
         self.editable = editable
@@ -415,6 +442,11 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
                     self.changeSelectionLabel(self.annotationsPage.labels[i])
                 return
 
+        if ev.key() == QtCore.Qt.Key_Space: # pass spacebar presses to main window -  implementation is a bit naughty...
+            if self.parent is not None:
+                print('passing to main window')
+                self.parent.keyPressEvent(ev)
+
         QtWidgets.QTableWidget.keyPressEvent(self, ev)
 
 
@@ -430,7 +462,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
                 c = 0
                 try:
                     c = self.selectedRanges()[0].leftColumn() # Keep the same column selected if there is already a selection
-                except:
+                except Exception:
                     pass
                 self.setCurrentCell(r,c)
 

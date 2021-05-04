@@ -73,7 +73,7 @@ class WPTInterface():
                     self.ready_to_acquire_data = True
                 output.append(line)
 
-        except:
+        except Exception:
             print('ERROR printing output')
         finally:
             return output
@@ -86,7 +86,7 @@ class WPTInterface():
             self.proc.stdin.write(b'0xff\n') # send exit command 0xff
             self.proc.stdin.flush()
             self.proc.terminate()
-        except:
+        except Exception:
             print('error terminating subprocess')
         # This should terminate the output_reader_t as well
         print('Almost done...')

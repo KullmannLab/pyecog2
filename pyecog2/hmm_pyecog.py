@@ -1,11 +1,10 @@
 
-from sklearn.preprocessing import normalize
 import numpy as np
 
 from numba import jit
-from numba import jitclass
+from numba.experimental import jitclass
 import numba
-from sklearn.preprocessing import normalize
+# from sklearn.preprocessing import normalize
 
 
 class HMMBayes():
@@ -38,7 +37,7 @@ class HMMBayes():
             label = int(label)
             tp[label, next_label] += 1
 
-        tp = normalize(tp, axis=1, norm='l1')
+        tp = tp/np.sum(np.abs(tp),axis=1) # normalize(tp, axis=1, norm='l1') avoid using sklearn just for this
         return tp
 
     @property
@@ -218,7 +217,7 @@ class HMM_LL():
             label = int(label)
             tp[label, next_label] += 1
 
-        tp = normalize(tp, axis=1, norm='l1')
+        tp = tp/np.sum(np.abs(tp),axis=1) # normalize(tp, axis=1, norm='l1') void using sklearn just for this
         return tp
 
     @property
@@ -226,7 +225,7 @@ class HMM_LL():
         return self._A
     @A.setter
     def A(self, A):
-        assert all(np.sum(A, axis=1) == 1)
+        # assert all(np.sum(A, axis=1) == 1), 'collumns shouls sum to 1:' + A.__repr__()
         # transpose to get left eigen vector
         eigen_vals, eigen_vecs = np.linalg.eig(A.T)
         ind = np.where(eigen_vals == np.max(eigen_vals))[0]
@@ -239,7 +238,7 @@ class HMM_LL():
                 and uses Bayes rule to relate to p(Xt|Zt) = p(Zt|Xt)p(Xt)/p(Zt).'
 
     @staticmethod
-    # @numba.jit(nopython=True)
+    @numba.jit(nopython=True)
     def forward(x, k, N, A, log_phi, stationary_dist):
         alpha = np.zeros((k, N))  # init alpha vect to store alpha vals for each z_k (rows)
         alpha[:, 0] = log_phi[:, 0] + np.log(stationary_dist)
@@ -252,7 +251,7 @@ class HMM_LL():
         return alpha
 
     @staticmethod
-    # @numba.jit(nopython=True)
+    @numba.jit(nopython=True)
     def calc_phi(x, stationary_dist):
         # print(stationary_dist, stationary_dist.shape)
         phi = np.zeros(x.shape)
@@ -261,7 +260,7 @@ class HMM_LL():
         return phi
 
     @staticmethod
-    # @numba.jit(nopython=True)
+    @numba.jit(nopython=True)
     def backward(x, k, N, A, log_phi, stationary_dist, alpha):
         beta = np.zeros((k, N))
         posterior = np.zeros((k, N))
@@ -300,7 +299,8 @@ class HMM_LL():
         self.phi = x  # self.calc_phi(x, self.stationary_dist)
         k = x.shape[0]
         N = x.shape[1]
-
+        print('HMM:forward')
         self.alpha = self.forward(x, k, N, self.A, self.phi, self.stationary_dist)
+        print('HMM:backward')
         self.beta, self.posterior = self.backward(x, k, N, self.A, self.phi, self.stationary_dist, self.alpha)
         return self.posterior

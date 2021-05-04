@@ -39,15 +39,15 @@ def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), drawplot=1, eps=.0
     Ns = len(input_signal)
     try:
         minf = max(freq_interval[0], R / (Ns * dt))  # avoid wavelets with COI longer than the signal
-    except:
+    except Exception:
         minf = R / (Ns * dt)
     try:
         maxf = min(freq_interval[1], .5 / dt)  # avoid wavelets above the Nyquist frequency
-    except:
+    except Exception:
         maxf = .5 / dt
     try:
         Nf = freq_interval[2]
-    except:
+    except Exception:
         Nf = int(np.ceil(np.log(maxf / minf) / np.log(1 / R + 1)))  # make spacing aproximately equal to sigma f
     
     alfa = (maxf / minf) ** (1 / Nf) - 1;  # According to the expression achived by fn = ((1+1/R)^n)*f0 where 1/R = alfa
@@ -74,15 +74,15 @@ def plot_wavelet(result, dt=1, R=7, freq_interval=(), eps=.0001,COI = True,norm_
     Ns = result.shape[1]
     try:
         minf = max(freq_interval[0], R / (Ns * dt))  # avoid wavelets with COI longer than the signal
-    except:
+    except Exception:
         minf = R / (Ns * dt)
     try:
         maxf = min(freq_interval[1], .5 / dt)  # avoid wavelets above the Nyquist frequency
-    except:
+    except Exception:
         maxf = .5 / dt
     try:
         Nf = freq_interval[2]
-    except:
+    except Exception:
         Nf = int(np.ceil(np.log(maxf / minf) / np.log(1 / R + 1)))  # make spacing aproximately equal to sigma f
 
     alfa = (maxf / minf) ** (1 / Nf) - 1;  # According to the expression achived by fn = ((1+1/R)^n)*f0 where 1/R = alfa
@@ -139,15 +139,15 @@ def plot_crosswavelet(result, dt=1, R=7, freq_interval=(), eps=.0001, COI = True
     Ns = result.shape[1]
     try:
         minf = max(freq_interval[0], R / (Ns * dt))  # avoid wavelets with COI longer than the signal
-    except:
+    except Exception:
         minf = R / (Ns * dt)
     try:
         maxf = min(freq_interval[1], .5 / dt)  # avoid wavelets above the Nyquist frequency
-    except:
+    except Exception:
         maxf = .5 / dt
     try:
         Nf = freq_interval[2]
-    except:
+    except Exception:
         Nf = int(np.ceil(np.log(maxf / minf) / np.log(1 / R + 1)))  # make spacing aproximately equal to sigma f
 
     alfa = (maxf / minf) ** (1 / Nf) - 1;  # According to the expression achived by fn = ((1+1/R)^n)*f0 where 1/R = alfa
@@ -212,7 +212,7 @@ def plot_cis(data, x=[0], percent=False,standard = True,ax=[],axis=(0),**kwargs)
     try:
         len(ax)
         ax=plt.subplot(111)
-    except:
+    except Exception:
         pass
     
     N = np.delete(data.shape,axis)[0]

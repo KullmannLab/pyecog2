@@ -3,6 +3,7 @@ from PyQt5 import QtGui, QtCore, QtWidgets
 import numpy as np
 import json
 from pyecog2.ProjectClass import create_metafile_from_h5, load_metadata_file
+import pkg_resources
 
 
 # rename module to be filetree model?
@@ -19,6 +20,7 @@ class TreeModel(QtCore.QAbstractItemModel):
     lowerUpper is overidded modules
     lower_upper is custom methods
     '''
+    print('Building File Tree...')
     sortRole = QtCore.Qt.UserRole
     filterRole = QtCore.Qt.UserRole + 1 # not sure if this is best for cols?
     prepare_for_plot_role = QtCore.Qt.UserRole + 2
@@ -121,22 +123,23 @@ class TreeModel(QtCore.QAbstractItemModel):
 
         if role == QtCore.Qt.DisplayRole or role == QtCore.Qt.EditRole:
             if index.column() == 0:
-                return node.name.split('/')[-1]
+                return node.name.split(os.path.sep)[-1]
             else:
                 return node.type_info()
 
         if role == QtCore.Qt.DecorationRole:
             if index.column() == 0:
+                icon_file_prefix = pkg_resources.resource_filename('pyecog2', 'icons/')
                 if isinstance(node, DirectoryNode):
-                    return QtGui.QIcon('icons/folder.png')
+                    return QtGui.QIcon(icon_file_prefix+'folder.png')
                 if isinstance(node, HDF5FileNode):
-                    return QtGui.QIcon('icons/wave.png')
+                    return QtGui.QIcon(icon_file_prefix+'wave.png')
                 if isinstance(node, LieteNode):
-                    return QtGui.QIcon('icons/wave.png')
+                    return QtGui.QIcon(icon_file_prefix+'wave.png')
                 if isinstance(node, AnimalNode):
-                    return QtGui.QIcon('icons/laboratory-mouse.png')
+                    return QtGui.QIcon(icon_file_prefix+'laboratory-mouse.png')
                 if isinstance(node, ProjectNode):
-                    return QtGui.QIcon('icons/research.png')
+                    return QtGui.QIcon(icon_file_prefix+'research.png')
                 pass #return pass
 
         if role == QtCore.Qt.ToolTipRole:
@@ -312,10 +315,9 @@ class HDF5FileNode(Node):
     def __init__(self, name, parent=None,path=None):
         super(HDF5FileNode, self).__init__(name,parent,path)
         self.name = name
-        meta_filepath = self.get_full_path()[:-3] + '.meta'
-        if not os.path.isfile(meta_filepath):
-            create_metafile_from_h5(self.get_full_path())
-
+        # meta_filepath = self.get_full_path()[:-3] + '.meta' # no longer necessary as we are now checking this at file load time
+        # if not os.path.isfile(meta_filepath):
+        #     create_metafile_from_h5(self.get_full_path())
 
     def prepare_for_plot(self):
         '''maybe change name?'''
@@ -358,10 +360,20 @@ class AnimalNode(Node):
     def __init__(self, animal, parent=None,path=''):
         super(AnimalNode, self).__init__(str(animal.id),parent=parent,path=path)
         self.animal = animal
+        print('Adding animal:',animal.id)
         self.setFlags(QtCore.Qt.ItemIsEnabled| QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable)
+        if animal.eeg_files: # Assuming all files for a given animal are of a given type to speed-up start-up process
+            file = animal.eeg_files[0]
+        else:
+            file=''
+        if os.path.isfile(os.path.join(self.get_full_path(), file)[:-4] + 'h5'):
+            data_format = 'h5'
+        else:
+            data_format = 'bin'
         for file in sorted(animal.eeg_files):
-            metadata = load_metadata_file(os.path.join(self.get_full_path(),file))
-            if metadata['data_format'] == 'h5':
+            # metadata = load_metadata_file(os.path.join(self.get_full_path(),file))
+            # data_format = metadata['data_format']
+            if data_format == 'h5':
                 HDF5FileNode(file[:-4]+'h5',parent=self) # replace .meta for .h5 to get the h5 file name
             else:
                 LieteNode(file[:-4]+'bin',parent=self) # replace .meta for .bin to get the binary file name
@@ -392,13 +404,13 @@ class ProjectNode(Node):
         for animal in self.project.animal_list:
             AnimalNode(animal, parent=self)
 
-
     def set_name(self, value):
         self.name = str(value)
         self.project.title = value
 
     def type_info(self):
         return 'Project: ' + self.name
+
 
 class FileTreeProxyModel(QtCore.QAbstractProxyModel):
     '''Reimplement some of the virtual methods? '''

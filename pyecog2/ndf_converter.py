@@ -14,7 +14,7 @@ from scipy import signal, stats
 try:
     import numba
     from numba import jit
-except:
+except Exception:
     pass
 
 import multiprocessing
@@ -355,7 +355,7 @@ class NdfFile:
             for tid in self.read_ids:
                 try:
                     transmitter_group = file_group.create_group(str(tid))
-                except:
+                except Exception:
                     print('WARNING! Error creating group! Have you entered twice?!', tid)
                     continue
                 transmitter_group.attrs['fs'] = self.tid_to_fs_dict[tid]
@@ -442,7 +442,8 @@ class NdfFile:
         # todo seperate this block into method to handle transmitter ids
         self.read_ids = read_ids
         logging.info('Loading '+ self.filepath +'read ids are: '+str(self.read_ids))
-        if read_ids == [] or str(read_ids).lower() == 'all':
+        if read_ids == [] or str(read_ids).lower() == 'all': # I don't know why jonny had this like this, but if tids are not found this screws up stuff
+        # if str(read_ids).lower() == 'all':
             self.read_ids = sorted(list(self.tid_set))
         if not hasattr(self.read_ids, '__iter__'):
             self.read_ids = [read_ids]
@@ -536,7 +537,7 @@ class NdfFile:
                        + ' Remaining : '+str(self.tid_data_time_dict[tid]['data'].shape[0]))
 
             if len(bad_message_locs) > 0.5*self.tid_raw_data_time_dict[tid]['data'].shape[0]:
-                logging.error(' >half messages detected as bad messages. Probably change fs from auto to the correct frequency')
+                logging.warning(' >half messages detected as bad messages. Probably change fs from auto to the correct frequency')
 
             if self.verbose:
                 print ('Tid ' +str(tid)+ ': Detected '+ str(len(bad_message_locs)) + ' bad messages out of '+ str(self.tid_raw_data_time_dict[tid]['data'].shape[0])
@@ -548,7 +549,7 @@ class DataHandler:
     def convert_ndf_directory_to_h5(self, ndf_dir,
                                     tids='all',
                                     save_dir='same_level',
-                                    n_cores=4,
+                                    n_cores=-1,
                                     fs='auto',
                                     glitch_detection=True,
                                     high_pass_filter=True,
@@ -633,6 +634,7 @@ class DataHandler:
     def convert_ndf(self, filename):
         savedir = self.savedir_for_parallel_conversion
         tids = self.tids_for_parallel_conversion
+        print('\nconvert_ndf tids:',tids,'\n')
         fs = self.fs_for_parallel_conversion
         glitch_detection_flag = self.glitch_detection_flag_for_parallel_conversion
         high_pass_filter_flag = self.high_pass_filter_flag_for_parallel_conversion
@@ -643,7 +645,10 @@ class DataHandler:
             ndf = NdfFile(filename, fs = fs, verbose = False)
             if tids != 'all':
                 tids = [tid for tid in tids if tid in ndf.tid_set]
-
+            print('\nconvert_ndf tids:', tids, '\n')
+            if tids == []: # tid not in current file
+                print(self.tids_for_parallel_conversion,'not found in',filename)
+                return
             ndf.load(tids,
                      auto_glitch_removal=glitch_detection_flag,
                      auto_filter=high_pass_filter_flag)

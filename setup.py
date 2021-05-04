@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
   name = 'pyecog2',
-  version = '0.0.1a',
+  version = '0.0.1b',
   description = 'For visualizing and classifying video-ECoG recordings (iEEG)',
   long_description=long_description,
   long_description_content_type="text/markdown",
@@ -16,7 +16,7 @@ setuptools.setup(
   packages = setuptools.find_packages(),
   classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
         "Operating System :: OS Independent",
     ],
   python_requires='>=3.8',
@@ -26,5 +26,9 @@ setuptools.setup(
                     'matplotlib==3.3.3',
                     'h5py==3.1.0',
                     'pyqtgraph==0.11.0',
-                    'numba==0.52.0'],
+                    'numba==0.52.0',
+                    'pyopengl==3.1.1a1',
+                    'pyopengl-accelerate==3.1.3b1'
+                    ],
+   include_package_data = True
   )

@@ -3,11 +3,10 @@ from datetime import datetime
 from PyQt5 import QtGui, QtCore
 from PyQt5.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog
 
-
-import pyqtgraph.parametertree.parameterTypes as pTypes
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from pyecog2.ndf_converter import NdfFile, DataHandler
 from pyecog2.coding_tests.WaveletWidget import Worker
+from pyecog2.coding_tests.pyecogParameterTree import PyecogParameterTree,PyecogGroupParameter
 
 
 class OutputWrapper(QtCore.QObject):
@@ -39,12 +38,12 @@ class OutputWrapper(QtCore.QObject):
         except AttributeError:
             pass
 
-class ScalableGroup(pTypes.GroupParameter):
+class ScalableGroup(PyecogGroupParameter):
     def __init__(self, **opts):
         opts['type'] = 'group'
         opts['addText'] = "Add"
         opts['addList'] = ['New Animal']  # ,'yellow','magenta','cyan']
-        pTypes.GroupParameter.__init__(self, **opts)
+        PyecogGroupParameter.__init__(self, **opts)
 
     def addNew(self, typ):
         n = (len(self.childs) + 1)
@@ -54,10 +53,12 @@ class ScalableGroup(pTypes.GroupParameter):
 
 
 class NDFConverterWindow(QMainWindow):
-    def __init__(self):
-        QMainWindow.__init__(self)
+    def __init__(self,parent = None):
+        QMainWindow.__init__(self,parent = parent)
         widget = QWidget(self)
         layout = QGridLayout(widget)
+        self.title = "NDF converter"
+        self.setWindowTitle(self.title)
         self.setCentralWidget(widget)
         self.terminal = QTextBrowser(self)
         self._err_color = QtCore.Qt.red
@@ -65,18 +66,20 @@ class NDFConverterWindow(QMainWindow):
         self.button3 = QPushButton('Convert Files!', self)
         self.button3.clicked.connect(self.runConvertFiles)
 
-        self.animal_dict = [{'name': 'Animal 0',
+        self.animal_dict = [{'name': 'Animal 1',
                                 'type': 'str',
                                 'value': '[0]',
                                 'renamable': True,
                                 'removable': True}]
+        self.defaultdir = os.getcwd()
+        self.defaultdir = '/media/mfpleite/LaCie_1/ML_pyecog_2/data_from_Mikail_2'
         self.params = [
             {'name': 'Directories','type':'group','children':[
                 {'name': 'Select NDF directory','type':'action','children':[
-                    {'name':'NDF directory:','type':'str','value': os.getcwd()}
+                    {'name':'NDF directory:','type':'str','value': self.defaultdir}
                 ]},
                 {'name': 'Select Destination directory', 'type': 'action', 'children': [
-                    {'name': 'Destination directory:', 'type': 'str', 'value': os.getcwd()+'h5'}
+                    {'name': 'Destination directory:', 'type': 'str', 'value': self.defaultdir}
                 ]}
             ]},
             {'name': 'Date Range', 'type': 'group', 'children': [
@@ -93,7 +96,7 @@ class NDFConverterWindow(QMainWindow):
         self.p.param('Directories', 'Select Destination directory', 'Destination directory:').sigValueChanged.connect(
             self.setDestinationFolder)
 
-        self.t = ParameterTree()
+        self.t = PyecogParameterTree()
         self.t.setParameters(self.p, showTop=False)
         self.t.headerItem().setHidden(True)
 
@@ -123,10 +126,11 @@ class NDFConverterWindow(QMainWindow):
         self.terminal.setTextColor(color)
 
     def selectNDFFolder(self):
-        dialog = QFileDialog()
+        dialog = QFileDialog(self)
+        dialog.setDirectory(self.defaultdir)
         dialog.setWindowTitle('Select NDF directory')
         dialog.setFileMode(QFileDialog.DirectoryOnly)
-        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         if dialog.exec():
             self.p.param('Directories','Select NDF directory','NDF directory:').setValue(dialog.selectedFiles()[0])
@@ -154,7 +158,7 @@ class NDFConverterWindow(QMainWindow):
         print('Found TIDs', test_file.tid_set, ' valid in first file (there might be more in other files)')
         self.animal_dict.clear()
         for i, id in enumerate(test_file.tid_set):
-            self.animal_dict.append({'name': 'Animal ' + str(i),
+            self.animal_dict.append({'name': 'Animal ' + str(i+1),
                                      'type': 'str',
                                      'value': '[' + str(id) + ']',
                                      'renamable': True,
@@ -165,10 +169,11 @@ class NDFConverterWindow(QMainWindow):
 
 
     def selectDestinationFolder(self):
-        dialog = QFileDialog()
+        dialog = QFileDialog(self)
+        dialog.setDirectory(self.defaultdir)
         dialog.setWindowTitle('Select Destination directory')
         dialog.setFileMode(QFileDialog.DirectoryOnly)
-        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         if dialog.exec():
             self.p.param('Directories',
@@ -185,7 +190,6 @@ class NDFConverterWindow(QMainWindow):
         self.threadpool.start(worker)
 
     def convertFiles(self):
-        dh = DataHandler()
         start_string = self.p.param('Date Range','Start').value()
         start_file_name = 'M' + str(int(datetime.strptime(start_string,self.dfrmt).timestamp())) + '.ndf'
         end_string = self.p.param('Date Range','End').value()
@@ -193,11 +197,16 @@ class NDFConverterWindow(QMainWindow):
         self.files2convert = [os.path.join(self.folder2convert, f) for f in os.listdir(self.folder2convert)
                               if (start_file_name <= f <= end_file_name)]
         print(len(self.files2convert), 'files between:', start_file_name, 'and', end_file_name)
-
         for a in self.p.param('Animal id: [TID1,TID2,...]').children():
+            dh = DataHandler()
             print('***\n Starting to convert', a.name(), a.value(),'\n***')
             tids = a.value()
-            dh.convert_ndf_directory_to_h5(self.files2convert,tids=tids,save_dir=self.destination_folder)
+            animal_destination_folder = self.destination_folder + os.sep + a.name()
+            if not os.path.isdir(self.destination_folder):
+                os.mkdir(self.destination_folder)
+            if not os.path.isdir(animal_destination_folder):
+                os.mkdir(animal_destination_folder)
+            dh.convert_ndf_directory_to_h5(self.files2convert,tids=tids,save_dir=animal_destination_folder)
         return (1,1) # wavelet worker expects to emit tuple when done...
 
 

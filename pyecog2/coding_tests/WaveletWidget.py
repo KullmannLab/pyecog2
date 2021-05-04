@@ -11,11 +11,17 @@ import numpy as np
 import scipy.signal as sg
 from timeit import default_timer as timer
 import traceback, inspect, sys
-
+from pyecog2.pyecog_plot_item import PyecogCursorItem
+import colorsys
 
 
 # Interpret image data as row-major instead of col-major
 pg.setConfigOptions(imageAxisOrder='row-major')
+hues = np.linspace(0,1,256)
+
+hues = np.linspace(0,1,7)
+colors = [tuple([*colorsys.hsv_to_rgb(h,1,255),255]) for h in hues]
+hsvcolormap = pg.ColorMap(hues,colors)
 
 # @jit(parallel=True)
 def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), progress_signal = None, kill_switch = None):
@@ -61,10 +67,11 @@ def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), progress_signal = 
     return (result, mask, vf, kill_switch)
 
 
-def morlet_wavelet_fft(input_signal, dt=1, R=7, freq_interval=(), progress_signal=None, kill_switch=None):
+def morlet_wavelet_fft(input_signal, dt=1, R=7, freq_interval=(), progress_signal=None, cross_data=None,
+                       kill_switch=None):
     if kill_switch is None:
         kill_switch = [False]
-    print('morlet_wavelet called')
+    # print('morlet_wavelet called')
     Ns = len(input_signal)
     if len(freq_interval) > 0:
         minf = max(freq_interval[0], R / (Ns * dt))  # avoid wavelets with COI longer than the signal
@@ -81,26 +88,33 @@ def morlet_wavelet_fft(input_signal, dt=1, R=7, freq_interval=(), progress_signa
 
     alfa = (maxf / minf) ** (1 / Nf) - 1  # According to the expression achived by fn = ((1+1/R)^n)*f0 where 1/R = alfa
     vf = ((1 + alfa) ** np.arange(0, Nf)) * minf
-    print(Nf, Ns)
+    # print(Nf, Ns)
     result = np.zeros((Nf, Ns), dtype='complex')
     input_signalf = np.fft.fft(input_signal)
+    if cross_data is not None:
+        result_cross = np.zeros((Nf, Ns), dtype='complex')
+        cross_dataf = np.fft.fft(cross_data)
+    else:
+        result_cross = None
+
     Ni = len(input_signal)
     for k in range(Nf):
         if kill_switch[0]:
             break
         env = 2 * np.exp(-(np.arange(Ni)/Ni/dt - vf[k]) ** 2 / (2 * (vf[k] / R) ** 2)) / np.pi
         result[k, :] = np.fft.ifft(input_signalf * env)
+        if cross_data is not None:
+            result_cross[k, :] = np.fft.ifft(cross_dataf * env)
         if progress_signal is not None:
             progress_signal.emit(int(100 * k / Nf))
 
     mask = np.zeros(result.shape)
-
-    Nlist = (.5 * R / vf / dt).astype('int')  # 3 sigma COI
+    Nlist = (.5 * R / vf / dt).astype('int')  # 2 sigma COI
     for k in range(len(Nlist)):
         mask[k, :Nlist[k]] = np.nan
         mask[k, -Nlist[k]:] = np.nan
 
-    return (result, mask, vf, kill_switch)
+    return (result, mask, vf, kill_switch, result_cross)
 
 class WorkerSignals(QtCore.QObject):
     finished = QtCore.Signal()
@@ -127,20 +141,22 @@ class Worker(QRunnable):
         '''
         import sys
         # Retrieve args/kwargs here; and fire processing using them
-        print('worker run called')
+        # print('worker run called')
         try:
-            print('calling worker function')
+            # print('calling worker function')
             result = self.fn(*self.args, **self.kwargs)
-        except:
-            print('worker Error')
+        except Exception:
+            # print('worker Error')
             traceback.print_exc()
             exctype, value = sys.exc_info()[:2]
             self.signals.error.emit((exctype, value, traceback.format_exc()))
         else:
-            print('worker emiting result')
+            # print('worker emiting result')
+            if type(result) is not tuple:
+                result = (1,1)
             self.signals.result.emit(result)  # Return the result of the processing
         finally:
-            print('worker emiting finished')
+            # print('worker emiting finished')
             self.signals.finished.emit()  # Done
 
 
@@ -160,8 +176,15 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         self.p1.getAxis('right').setZValue(1)
         self.p1.showGrid(x=False, y=True, alpha=1) # Haven't been able to make this work
         self.p1.setLogMode(y=True)
+        self.cursor = PyecogCursorItem(pos=0)
+        self.main_model.sigTimeChanged.connect(lambda: self.cursor.setPos(self.main_model.time_position - self.main_model.window[0]))
+        self.cursor.sigPositionChanged.connect(lambda: self.main_model.set_time_position(self.cursor.getXPos()+ self.main_model.window[0]))
+        self.p1.addItem(self.cursor)
+
         self.channel = 0
         self.R = 14
+        self.cross_channel = -1
+        self.setBackground(self.main_model.color_settings['brush'])
 
         # Contrast/color control
         self.hist = pg.HistogramLUTItem()
@@ -170,18 +193,6 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         self.hist.axis.setLabel( text = 'Amplitude', units = 'Log<sub>10</sub> a.u.')
         self.hist.gradient.loadPreset('viridis')
         self.hist_levels = None
-        #
-        # self.addItem(QtGui.QLabel("Wavelet factor R"))
-        # spin = pg.SpinBox(value=self.R, bounds=[0, None])
-        # self.addItem(spin)
-        # spin.sigValueChanged.connect(lambda s: self.setR(s.value()))
-        #
-        # self.addWidget(QtGui.QLabel("Wavelet channel"))
-        # spin = pg.SpinBox(value=self.channel, int=True, dec=True, minStep=1, step=1)
-        # self.addItem(spin)
-        # spin.sigValueChanged.connect(lambda s: self.setChannel(s.value()))
-
-
 
         # Multithread controls
         self.threadpool = QThreadPool()
@@ -206,41 +217,56 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         print('Wavlet channel set to ',c)
         self.update_data()
 
+    def setCrossChannel(self,c):
+        self.cross_channel = int(c)
+        print('Wavlet cross channel set to ',c)
+        self.update_data()
+
     def update_data(self):
         for s in self.thread_killswitch_list:  # Stop all previous wavelet computations
             s[0] = True
-            print('Killswitch list:',self.thread_killswitch_list)
+            # print('Killswitch list:',self.thread_killswitch_list)
         self.data = np.array([[1, 0], [0, 1]])
         self.start_t = timer()
         if self.hist_levels is not None:
             self.hist_levels = self.hist.getLevels()
         if self.isVisible():
+            self.setBackground(self.main_model.color_settings['brush'])
             if self.main_model is None:
                 data = np.random.randn(300*250)
                 data[200:800] += np.sin(np.arange(600)*10)
                 time = np.arange(300*250)/250
                 print('random data')
             else:
-                print('window' , self.main_model.window)
+                if self.main_model.window[1] - self.main_model.window[0] > 3600:
+                    print('Window too large to compute Wavelet (>3600s)')
+                    self.p1.setLabel('bottom', 'Window too large to compute Wavelet (>3600s)')
+                    return
+                # print('window' , self.main_model.window)
                 data, time = self.main_model.project.get_data_from_range(self.main_model.window,channel = self.channel)
+                if self.cross_channel!=-1 and self.cross_channel != self.channel:
+                    cross_data,_ = self.main_model.project.get_data_from_range(self.main_model.window,channel = self.cross_channel)
+                    cross_data = cross_data.ravel()
+                else:
+                    cross_data = None
             if len(data) <= 10 :
                 return
-            print('Wavelet data shape:',data.shape)
+            # print('Wavelet data shape:',data.shape)
             self.img.setImage(self.data*0)
             if self.hist_levels is not None: # Mantain levels from previous view if they exist
                 self.hist.setLevels(*self.hist_levels)
             self.p1.setLabel('bottom', 'Computing Wavelet tranform...', units='')
             self.show()
-            print('Computing Wavelet...')
+            # print('Computing Wavelet...')
             if len(time.shape)==1:
                 self.dt = (time[10]-time[9])  # avoid time edge values
             else:
                 self.dt = (time[10] - time[9])[0]
             s = [False]
             self.thread_killswitch_list.append(s)
-            print('Killswitch list:',self.thread_killswitch_list)
+            # print('Killswitch list:',self.thread_killswitch_list)
             worker = Worker(morlet_wavelet_fft, data.ravel(),dt = self.dt ,R=self.R,freq_interval = (1,2/self.dt),
-                            kill_switch=s)
+                            cross_data = cross_data, kill_switch=s)
             worker.signals.result.connect(self.update_image)
             worker.signals.progress.connect(self.update_progress)
             # Execute: restart threadpool and run worker
@@ -254,18 +280,46 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             self.p1.setLabel('bottom', 'Time', units='s')
 
     def update_image(self,tuple):
-        print('updating wavelet result...')
-        self.wav, self.coi, vf, ks = tuple
+        # print('updating wavelet result...')
+        self.wav, self.coi, vf, ks, self.cross_wav = tuple
         for i, s in enumerate(self.thread_killswitch_list): # clean up killswitch list
             if s is ks:
                 del self.thread_killswitch_list[i]
                 print(self.thread_killswitch_list)
         if ks[0]:  # If the task was killed do not update the plot
-            print('Wavelet process killed: not ploting data')
-            print('Killswitch list:', self.thread_killswitch_list)
+            # print('Wavelet process killed: not ploting data')
+            # print('Killswitch list:', self.thread_killswitch_list)
             return
-        self.data = np.log(np.abs(self.wav)+.001)
-        self.img.setImage(self.data*(1-self.coi))
+        if self.cross_wav is not None: # plotting cross wavelet
+            cross_wav = self.wav*np.conj(self.cross_wav)
+            # self.value = np.log(np.abs(cross_wav)+1)/2
+            self.value = np.sqrt(np.abs(cross_wav))
+            maxvalue = np.max(self.value)
+            self.data = hsvcolormap.map((np.angle(cross_wav)/(2*np.pi))%1)/256
+            # self.data = np.apply_along_axis(lambda x:colorsys.hsv_to_rgb(*x), 0,  #apply function over 0th axis
+            #     np.array([np.angle(cross_wav)/(2*np.pi)%1, # hue
+            #               np.ones(self.wav.shape), # saturation
+            #               value-minvalue]))  # temporary value
+            # self.data = np.moveaxis(self.data,0,-1) +minvalue
+            print('data shape',self.data.shape)
+            self.img.setImage(self.data*((self.value - self.coi)[:,:,np.newaxis]), # *(value[:,:,np.newaxis]),
+                              autoLevels=False)
+            # hsvim = plt.cm.hsv(np.angle(result) / 2 / np.pi + .5)
+            # intensity = np.abs(result)[:, :, np.newaxis]
+
+            self.hist.gradient.loadPreset('spectrum')
+            # self.hist_levels = None
+            self.hist.axis.setLabel( text = 'Phase (0 - 360<sup>o</sup>)', units = '')
+            if self.hist_levels is None:
+                self.hist.setLevels(0,maxvalue)
+
+        else:  # plotting normal wavelet
+            self.data = np.log(np.abs(self.wav)+1e-6)  # +1e-3
+            self.img.setImage(self.data*(1-self.coi))
+            self.hist.gradient.loadPreset('viridis')
+            # self.hist_levels = None
+            self.hist.axis.setLabel(text='Amplitude', units='Log<sub>10</sub> a.u.')
+
         self.img.resetTransform()
         ymin = np.log10(vf[0])
         ymax = np.log10(vf[-1])
@@ -278,6 +332,7 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             self.hist.setLevels(*self.hist_levels)
         else:
             self.hist_levels = self.hist.getLevels()
+        self.cursor.setPos(self.main_model.time_position - self.main_model.window[0])
         self.show()
         end_t = timer()
         print('Updated Wavelet in ',end_t-self.start_t, 'seconds')
@@ -293,14 +348,18 @@ class WaveletWindow(QWidget):
         self.controls_widget = QWidget()
         self.controls_layout = QtGui.QGridLayout()
         self.controls_widget.setLayout(self.controls_layout)
-        self.channel_spin = pg.SpinBox(value=0,bounds=[0,None], int=True, minStep=1, step=1)
+        self.channel_spin = pg.SpinBox(value=0,bounds=[0,None], int=True, minStep=1, step=1,compactHeight=False)
         self.channel_spin.valueChanged.connect(self.wavelet_item.setChannel)
-        self.R_spin = pg.SpinBox(value=14.0, bounds=[5, None],step=1)
+        self.cross_channel_spin = pg.SpinBox(value=-1,bounds=[-1,None], int=True, minStep=1, step=1,compactHeight=False)
+        self.cross_channel_spin.valueChanged.connect(self.wavelet_item.setCrossChannel)
+        self.R_spin = pg.SpinBox(value=14.0, bounds=[5, None],step=1,compactHeight=False)
         self.R_spin.valueChanged.connect(self.wavelet_item.setR)
         self.controls_layout.addWidget(QtGui.QLabel('Channel'),0,0)
-        self.controls_layout.addWidget(self.channel_spin,0,1)
+        self.controls_layout.addWidget(self.channel_spin,0,1,)
         self.controls_layout.addWidget(QtGui.QLabel('Wavelet factor R'),0,2)
         self.controls_layout.addWidget(self.R_spin,0,3)
+        self.controls_layout.addWidget(QtGui.QLabel('Cross wavelet Channel'),0,4)
+        self.controls_layout.addWidget(self.cross_channel_spin,0,5)
 
         self.layout.addWidget(self.controls_widget,1,0)
         self.layout.addWidget(self.wavelet_item,0,0)

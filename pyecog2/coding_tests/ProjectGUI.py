@@ -4,8 +4,8 @@ from PyQt5.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTe
 from pyecog2.ProjectClass import Animal
 # from main import MainModel
 
-import pyqtgraph.parametertree.parameterTypes as pTypes
-from pyqtgraph.parametertree import Parameter, ParameterTree
+from pyqtgraph.parametertree import Parameter
+from pyecog2.coding_tests.pyecogParameterTree import PyecogParameterTree,PyecogGroupParameter
 
 
 class OutputWrapper(QtCore.QObject):
@@ -37,19 +37,19 @@ class OutputWrapper(QtCore.QObject):
         except AttributeError:
             pass
 
-class ScalableGroup(pTypes.GroupParameter):
+class ScalableGroup(PyecogGroupParameter):
     def __init__(self, **opts):
         opts['type'] = 'group'
         opts['addText'] = "Add"
-        opts['addList'] = ['New Animal']  # ,'yellow','magenta','cyan']
-        pTypes.GroupParameter.__init__(self, **opts)
+        opts['addList'] = ['New Animal']
+        PyecogGroupParameter.__init__(self, **opts)
 
     def addNew(self, typ, n=None):
         if n is None:
             n = (len(self.childs) + 1)
         try:
             self.addChild(Animal2Parameter(Animal(id='Animal '+str(n))))
-        except:
+        except Exception:
             print('Animal with name','Animal '+str(n+1),'already exists. Trying to add animal with name:','Animal '+str(n+1))
             self.addNew(typ,n+1)
 
@@ -74,12 +74,13 @@ def Animal2Parameter(animal):
 def Parameter2Animal(parameter):
     pass
 
-class ProjecEditWindow(QMainWindow):
-    def __init__(self,project = None):
-        QMainWindow.__init__(self)
+class ProjectEditWindow(QMainWindow):
+    def __init__(self,project = None,parent = None):
+        QMainWindow.__init__(self,parent = parent)
         widget = QWidget(self)
         layout = QGridLayout(widget)
         self.title ='Project Editor'
+        self.setWindowTitle(self.title)
         self.project = project
         # if self.project is None:
         #     self.project = Project(main_model=MainModel())
@@ -97,9 +98,9 @@ class ProjecEditWindow(QMainWindow):
         self.params = [
             {'name': 'Global Settings','type':'group','children':[
                 {'name': 'Project Title', 'type': 'str', 'value': self.project.title},
-                {'name': 'Project file','type':'action','children':[
-                    {'name':'Project file:','type':'str','value': self.project.project_file}
-                ]},
+                # {'name': 'Project file','type':'action','children':[
+                    {'name':'Project file:','type':'str','value': self.project.project_file},
+                # ]},
                 {'name': 'Select EEG root directory','type':'action','children':[
                     {'name':'EEG root directory:','type':'str','value': self.project.eeg_root_folder}
                 ]},
@@ -114,6 +115,7 @@ class ProjecEditWindow(QMainWindow):
 
         ## Create tree of Parameter objects
         self.p = Parameter.create(name='params', type='group', children=self.params)
+        self.p.param('Global Settings','Project Title').sigValueChanged.connect(self.setProjectTitle)
         self.p.param('Global Settings', 'Update project from root folders').sigActivated.connect(self.update_project_from_roots)
         self.p.param('Global Settings', 'Select EEG root directory','EEG root directory:').sigValueChanged.connect(
             self.setEEGFolder)
@@ -124,7 +126,7 @@ class ProjecEditWindow(QMainWindow):
         self.p.param('Global Settings', 'Select Video root directory').sigActivated.connect(
             self.selectVideoFolder)
 
-        self.t = ParameterTree()
+        self.t = PyecogParameterTree()
         self.t.setParameters(self.p, showTop=False)
         self.t.headerItem().setHidden(True)
 
@@ -152,10 +154,10 @@ class ProjecEditWindow(QMainWindow):
         self.terminal.setTextColor(color)
 
     def selectEEGFolder(self):
-        dialog = QFileDialog()
+        dialog = QFileDialog(self)
         dialog.setWindowTitle('Select EEG directory')
         dialog.setFileMode(QFileDialog.DirectoryOnly)
-        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         if dialog.exec():
             self.p.param('Global Settings', 'Select EEG root directory','EEG root directory:').setValue(dialog.selectedFiles()[0])
@@ -167,15 +169,21 @@ class ProjecEditWindow(QMainWindow):
         # self.project.eeg_root_folder = eeg_root_folder.value(0)
 
     def selectVideoFolder(self):
-        dialog = QFileDialog()
+        dialog = QFileDialog(self)
         dialog.setWindowTitle('Select EEG directory')
         dialog.setFileMode(QFileDialog.DirectoryOnly)
-        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         if dialog.exec():
             self.p.param('Global Settings', 'Select Video root directory','Video root directory:').setValue(dialog.selectedFiles()[0])
         else:
             sys.stderr.write('No folder selected\n')
+
+
+    def setProjectTitle(self, eeg_root_folder_param):
+        print('Changing project title to:',eeg_root_folder_param.value())
+        self.project.setTitle(eeg_root_folder_param.value())
+
 
     def setVideoFolder(self, eeg_root_folder_param):
         pass  # Currently we are only accepting changes when clicking the Update button
@@ -203,9 +211,7 @@ class ProjecEditWindow(QMainWindow):
                 print('Updating animal with id', id)
                 animal.update_eeg_folder(eeg_dir)
                 animal.update_video_folder(video_dir)
-
-
-
+        print('Project update finished')
 
 
     def update_project_from_roots(self):
@@ -220,14 +226,10 @@ class ProjecEditWindow(QMainWindow):
         self.p.param('Animal list:').clearChildren()
         self.p.param('Animal list:').addChildren(self.animal_dict)
 
-        pass
-
-
-
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    window = ProjecEditWindow()
+    window = ProjectEditWindow()
     window.setGeometry(500, 300, 300, 200)
     window.show()
     sys.exit(app.exec_())

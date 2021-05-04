@@ -1,5 +1,5 @@
 
-![PyEcog](https://raw.githubusercontent.com/KullmannLab/pyecog2/Development_ML/pyecog2/icons/banner_small.png)
+![PyEcog](https://raw.githubusercontent.com/KullmannLab/pyecog2/master/pyecog2/icons/banner_small.png)
 # Pyecog2
 Under construction.
 

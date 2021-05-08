@@ -1,0 +1,85 @@
+{
+  "feature_freq_functions": [
+    "lambda f,fs : fe.powerf(1, 4)(f[:,0],fs)",
+    "lambda f,fs: fe.powerf(4, 8)(f[:,0],fs)",
+    "lambda f,fs: fe.powerf(8, 12)(f[:,0],fs)",
+    "lambda f,fs: fe.powerf(12, 30)(f[:,0],fs)",
+    "lambda f,fs: fe.powerf(30, 50)(f[:,0],fs)",
+    "lambda f,fs: fe.powerf(50, 70)(f[:,0],fs)",
+    "lambda f,fs: fe.powerf(70, 120)(f[:,0],fs)",
+    "lambda f,fs: fe.reg_entropy(f[:,0],fs)",
+    "lambda f,fs: fe.powerf(1, 4)(f[:,1],fs)",
+    "lambda f,fs: fe.powerf(4, 8)(f[:,1],fs)",
+    "lambda f,fs: fe.powerf(8, 12)(f[:,1],fs)",
+    "lambda f,fs: fe.powerf(12, 30)(f[:,1],fs)",
+    "lambda f,fs: fe.powerf(30, 50)(f[:,1],fs)",
+    "lambda f,fs: fe.powerf(50, 70)(f[:,1],fs)",
+    "lambda f,fs: fe.powerf(70, 120)(f[:,1],fs)",
+    "lambda f,fs: fe.reg_entropy(f[:,1],fs)"
+  ],
+  "feature_labels": [
+    "ch0 min",
+    "ch0 max",
+    "ch0 mean",
+    "ch0 log std",
+    "ch0 kurtosis",
+    "ch0 skewness",
+    "ch0 log coastline (log sum of abs diff)",
+    "ch1 min",
+    "ch1 max",
+    "ch1 mean",
+    "ch1 log std",
+    "ch1 kurtosis",
+    "ch1 skewness",
+    "ch1 log coastline (log sum of abs diff)",
+    "ch0 log power in band (1, 4) Hz",
+    "ch0 log power in band (4, 8) Hz",
+    "ch0 log power in band (8, 12) Hz",
+    "ch0 log power in band (12, 30) Hz",
+    "ch0 log power in band (30, 50) Hz",
+    "ch0 log power in band (50, 70) Hz",
+    "ch0 log power in band (70, 120) Hz",
+    "ch0 Spectrum entropy",
+    "ch1 log power in band (1, 4) Hz",
+    "ch1 log power in band (4, 8) Hz",
+    "ch1 log power in band (8, 12) Hz",
+    "ch1 log power in band (12, 30) Hz",
+    "ch1 log power in band (30, 50) Hz",
+    "ch1 log power in band (50, 70) Hz",
+    "ch1 log power in band (70, 120) Hz",
+    "ch1 Spectrum entropy"
+  ],
+  "feature_time_functions": [
+    "lambda x: np.min(x[:,0])",
+    "lambda x: np.max(x[:,0])",
+    "lambda x: np.mean(x[:,0])",
+    "lambda x: np.log(np.std(x[:,0]))",
+    "lambda x: stats.kurtosis(x[:,0])",
+    "lambda x: stats.skew(x[:,0])",
+    "lambda x: np.log(np.mean(np.abs(np.diff(x[:,0],axis=0))))",
+    "lambda x: np.min(x[:,1])",
+    "lambda x: np.max(x[:,1])",
+    "lambda x: np.mean(x[:,1])",
+    "lambda x: np.log(np.std(x[:,1]))",
+    "lambda x: stats.kurtosis(x[:,1])",
+    "lambda x: stats.skew(x[:,1])",
+    "lambda x: np.log(np.mean(np.abs(np.diff(x[:,1],axis=0))))"
+  ],
+  "function_module_dependencies": [
+    [
+      "numpy",
+      "np"
+    ],
+    [
+      "pyecog2.feature_extractor",
+      "fe"
+    ],
+    [
+      "scipy.stats",
+      "stats"
+    ]
+  ],
+  "overlap": 0.5,
+  "window": "rectangular",
+  "window_length": 5
+}

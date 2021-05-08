@@ -129,32 +129,31 @@ class FeatureExtractorWindow(QMainWindow):
         self.setCentralWidget(widget)
         self.terminal = QTextBrowser(self)
         self._err_color = QtCore.Qt.red
+        self.button0 = QPushButton('Import Settings File', self)
+        self.button0.clicked.connect(self.loadSettingsFile)
         self.button1 = QPushButton('Set Project feature Extractor', self)
         self.button1.clicked.connect(self.setProjectFeatureExtraction)
         self.button2 = QPushButton('Extract!', self)
         self.button2.clicked.connect(self.runFeatureExtraction)
+        self.button3 = QPushButton('Export Settings File', self)
+        self.button3.clicked.connect(self.exportSettingsFile)
         self.progressBar0 = QProgressBar()
         self.progressBar1 = QProgressBar()
-
-        self.params = settings2params(self.feature_extractor.settings)
-
-        ## Create tree of Parameter objects
-        self.p = Parameter.create(name='params', type='group', children=self.params)
-
         self.t = PyecogParameterTree()
-        self.t.setParameters(self.p, showTop=False)
-        self.t.headerItem().setHidden(True)
+        self.updateTreeFromSettings()
 
+        layout.addWidget(self.button0)
         layout.addWidget(self.t)
-        layout.setRowStretch(0,10)
-        layout.setRowMinimumHeight(0,400)
+        layout.setRowStretch(1,10)
+        layout.setRowMinimumHeight(1,400)
         layout.setColumnMinimumWidth(0,600)
         layout.addWidget(self.button1)
         layout.addWidget(self.button2)
+        layout.addWidget(self.button3)
         layout.addWidget(self.progressBar0)
         layout.addWidget(self.progressBar1)
         layout.addWidget(self.terminal)
-        layout.setRowMinimumHeight(5,300)
+        layout.setRowMinimumHeight(7,300)
         stdout = OutputWrapper(self, True)
         stdout.outputWritten.connect(self.handleOutput)
         stderr = OutputWrapper(self, False)
@@ -164,6 +163,39 @@ class FeatureExtractorWindow(QMainWindow):
 
         self.dfrmt = '%Y-%m-%d %H:%M:%S'  # Format to use in date elements
 
+    def updateTreeFromSettings(self):
+        self.params = settings2params(self.feature_extractor.settings)
+        ## Create tree of Parameter objects
+        self.p = Parameter.create(name='params', type='group', children=self.params)
+        self.t.setParameters(self.p, showTop=False)
+        self.t.headerItem().setHidden(True)
+
+    def loadSettingsFile(self):
+        dialog = QFileDialog(self)
+        dialog.setWindowTitle('Select Feature Etractor Settings file ...')
+        dialog.setFileMode(QFileDialog.ExistingFile)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setAcceptMode(QFileDialog.AcceptOpen)
+        dialog.setNameFilter('*.json')
+        if dialog.exec():
+            fname = dialog.selectedFiles()[0]
+            self.feature_extractor.load_settings(fname)
+            self.updateTreeFromSettings()
+            print('loaded', fname)
+
+    def exportSettingsFile(self):
+        dialog = QFileDialog(self)
+        dialog.setWindowTitle('Select Feature Etractor Settings file ...')
+        dialog.setFileMode(QFileDialog.AnyFile)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setAcceptMode(QFileDialog.AcceptSave)
+        dialog.setNameFilter('*.json')
+        if dialog.exec():
+            fname = dialog.selectedFiles()[0]
+            if not fname.endswith(('.json')):
+                fname = fname + '.json'
+            self.feature_extractor.save_settings(fname)
+            print('saved settings as', fname)
 
 
     def handleOutput(self, text, stdout):
@@ -179,7 +211,7 @@ class FeatureExtractorWindow(QMainWindow):
 
     def runFeatureExtraction(self):
         print('Starting feature extraction...')
-        classifier_dir = self.project.filename + '_classifier'
+        classifier_dir = self.project.project_file + '_classifier'
         if not os.path.isdir(classifier_dir):
             os.mkdir(classifier_dir)
         self.feature_extractor.save_settings(os.path.join(classifier_dir, '_feature_extractor.json'))
@@ -193,6 +225,7 @@ class FeatureExtractorWindow(QMainWindow):
             self.progressBar0.setValue((100*(i+1))//len(self.project.animal_list))
         print('Finnished')
         return (1, 1)
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

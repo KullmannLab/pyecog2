@@ -1,8 +1,6 @@
 
 import numpy as np
 
-from numba import jit
-from numba.experimental import jitclass
 import numba
 # from sklearn.preprocessing import normalize
 

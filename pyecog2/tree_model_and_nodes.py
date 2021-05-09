@@ -325,14 +325,6 @@ class HDF5FileNode(Node):
         t0 = self.metadata['start_timestamp_unix']
         duration = self.metadata['duration']
         self.parent.parent.project.set_current_animal(self.parent.animal)
-        # self.h5_file = H5File(self.get_full_path())
-        # fs_dict = eval(self.h5_file.attributes['fs_dict'])
-        # fs = fs_dict[int(self.h5_file.attributes['t_ids'][0])]
-        # channels = []
-        # for tid in self.h5_file.attributes['t_ids']:
-        #     assert fs == int(fs_dict[tid])
-        #     channels.append(self.h5_file[tid]['data'])
-        # arr = np.vstack(channels).T
         return np.array([t0, t0+duration])
 
     def load_metadata(self):

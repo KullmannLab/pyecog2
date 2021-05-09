@@ -120,7 +120,6 @@ class MainWindow(QMainWindow):
         self.dock_list['Video'].setObjectName("Video")
         # self.dock_list['Video'].setFloating(True)
         # self.dock_list['Video'].hide()
-        self.video_element.mediaPlayer.setNotifyInterval(40) # 25 fps
         # Video units are in miliseconds, pyecog units are in seconds
         self.video_element.sigTimeChanged.connect(self.main_model.set_time_position)
         self.main_model.sigTimeChanged.connect(self.video_element.setGlobalPosition)
@@ -162,6 +161,9 @@ class MainWindow(QMainWindow):
         self.resizeDocks([self.dock_list['Video']],[400],Qt.Horizontal)
         self.resizeDocks([self.dock_list['FFT']],[400],Qt.Vertical)
         self.resizeDocks([self.dock_list['FFT']],[400],Qt.Horizontal)
+
+        self.build_menubar()
+
 
         settings = QSettings("PyEcog","PyEcog")
         settings.beginGroup("StandardMainWindow")
@@ -473,6 +475,11 @@ class MainWindow(QMainWindow):
             print('Exporting annotations to:', fname)
             self.main_model.project.export_annotations(fname)
 
+    # def reset_video(self):
+    #     self.video_element.reset()
+    #     self.video_element.sigTimeChanged.connect(self.main_model.set_time_position)
+    #     self.main_model.sigTimeChanged.connect(self.video_element.setGlobalPosition)
+
     def build_menubar(self):
         self.menu_bar = self.menuBar()
 
@@ -568,6 +575,9 @@ class MainWindow(QMainWindow):
         self.action_fullscreen.setCheckable(True)
         self.action_fullscreen.toggled.connect(self.toggle_fullscreen)
         self.action_fullscreen.setChecked(False)
+
+        # self.action_reset_video    = self.menu_help.addAction("Reset Video Widget")
+        # self.action_reset_video.triggered.connect(self.reset_video)
 
         self.action_darkmode = self.menu_help.addAction("Dark mode")
         self.action_darkmode.setCheckable(True)

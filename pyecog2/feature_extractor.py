@@ -34,8 +34,8 @@ def reg_entropy(fdata,fs):
 # The use of global variables means that only one feature extractor can be active at a time
 def my_worker_flist_init(time_flist,freq_flist):
     global _time_flist, _freq_flist
-    _freq_flist = freq_flist
-    _time_flist = time_flist
+    _freq_flist = [eval(f,module_dict) for f,module_dict in freq_flist]
+    _time_flist = [eval(f,module_dict) for f,module_dict in time_flist]
 
 # def my_worker_flist(x):
 #     return [f(x) for f in _flist]
@@ -99,8 +99,8 @@ class FeatureExtractor():
             module_dict[alias] = import_module(module)
         # self.feature_time_functions = [eval(f,module_dict) for f in self.settings['feature_time_functions']]
         # self.feature_freq_functions = [eval(f,module_dict) for f in self.settings['feature_freq_functions']]
-        feature_time_functions = [eval(f,module_dict) for f in self.settings['feature_time_functions']]
-        feature_freq_functions = [eval(f,module_dict) for f in self.settings['feature_freq_functions']]
+        feature_time_functions = [(f,module_dict) for f in self.settings['feature_time_functions']]
+        feature_freq_functions = [(f,module_dict) for f in self.settings['feature_freq_functions']]
         my_worker_flist_init(feature_time_functions, feature_freq_functions) # Workaround for multiprocessing
 
     def load_settings(self,fname):
@@ -127,8 +127,9 @@ class FeatureExtractor():
         animal_id = animal.id
         tuples = [(eeg_files,eeg_init_time,eeg_duration, animal_id, i,re_write) for i in range(Nfiles)]
         # The following is not working yet...
-        with multiprocessing.Pool(processes=n_cores,initializer=my_worker_flist_init,
-                                  initargs = (_time_flist,_freq_flist)) as pool:
+        # with multiprocessing.Pool(processes=n_cores,initializer=my_worker_flist_init,
+        #                           initargs = (_time_flist,_freq_flist)) as pool:
+        with multiprocessing.Pool(processes=n_cores) as pool:
             for i, _ in enumerate(pool.imap(self.extract_features_from_file, tuples)):
                 if progress_bar is not None:
                     progress_bar.setValue(i//Nfiles)
@@ -139,6 +140,8 @@ class FeatureExtractor():
         #         progress_bar.setValue((100*(i+1))//Nfiles)
 
     def extract_features_from_file(self,animal_fileIndex_rewrite_tuple):
+        if '_freq_flist' not in locals(): # initialize lambda functions in sub process
+            self.update_from_settings()
         eeg_files, eeg_init_time, eeg_duration, animal_id, i, re_write = animal_fileIndex_rewrite_tuple
         eeg_fname = eeg_files[i]
         feature_fname = '.'.join(eeg_fname.split('.')[:-1] + ['features'])

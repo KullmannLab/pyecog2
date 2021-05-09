@@ -8,6 +8,9 @@
     "lambda f,fs: fe.powerf(50, 70)(f[:,0],fs)",
     "lambda f,fs: fe.powerf(70, 120)(f[:,0],fs)",
     "lambda f,fs: fe.reg_entropy(f[:,0],fs)",
+    "lambda f,fs: fe.powerf(120, 180)(f[:,0],fs)",
+    "lambda f,fs: fe.powerf(180, 240)(f[:,0],fs)",
+    "lambda f,fs: fe.powerf(240, 320)(f[:,0],fs)",
     "lambda f,fs: fe.powerf(1, 4)(f[:,1],fs)",
     "lambda f,fs: fe.powerf(4, 8)(f[:,1],fs)",
     "lambda f,fs: fe.powerf(8, 12)(f[:,1],fs)",
@@ -15,7 +18,10 @@
     "lambda f,fs: fe.powerf(30, 50)(f[:,1],fs)",
     "lambda f,fs: fe.powerf(50, 70)(f[:,1],fs)",
     "lambda f,fs: fe.powerf(70, 120)(f[:,1],fs)",
-    "lambda f,fs: fe.reg_entropy(f[:,1],fs)"
+    "lambda f,fs: fe.reg_entropy(f[:,1],fs)",
+    "lambda f,fs: fe.powerf(120, 180)(f[:,1],fs)",
+    "lambda f,fs: fe.powerf(180, 240)(f[:,1],fs)",
+    "lambda f,fs: fe.powerf(240, 320)(f[:,1],fs)"
   ],
   "feature_labels": [
     "ch0 min",
@@ -40,6 +46,9 @@
     "ch0 log power in band (50, 70) Hz",
     "ch0 log power in band (70, 120) Hz",
     "ch0 Spectrum entropy",
+    "ch0 log power in band (120, 180) Hz",
+    "ch0 log power in band (180, 240) Hz",
+    "ch0 log power in band (240, 320) Hz",
     "ch1 log power in band (1, 4) Hz",
     "ch1 log power in band (4, 8) Hz",
     "ch1 log power in band (8, 12) Hz",
@@ -47,7 +56,10 @@
     "ch1 log power in band (30, 50) Hz",
     "ch1 log power in band (50, 70) Hz",
     "ch1 log power in band (70, 120) Hz",
-    "ch1 Spectrum entropy"
+    "ch1 Spectrum entropy",
+    "ch1 log power in band (120, 180) Hz",
+    "ch1 log power in band (180, 240) Hz",
+    "ch1 log power in band (240, 320) Hz"
   ],
   "feature_time_functions": [
     "lambda x: np.min(x[:,0])",

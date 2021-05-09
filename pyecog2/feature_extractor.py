@@ -132,7 +132,7 @@ class FeatureExtractor():
         with multiprocessing.Pool(processes=n_cores) as pool:
             for i, _ in enumerate(pool.imap(self.extract_features_from_file, tuples)):
                 if progress_bar is not None:
-                    progress_bar.setValue(i//Nfiles)
+                    progress_bar.setValue(100*(i+1)//Nfiles)
 
         # # Single core version
         # for i, _ in enumerate(map(self.extract_features_from_file, tuples)):

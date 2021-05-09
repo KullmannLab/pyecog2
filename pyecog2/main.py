@@ -162,9 +162,6 @@ class MainWindow(QMainWindow):
         self.resizeDocks([self.dock_list['FFT']],[400],Qt.Vertical)
         self.resizeDocks([self.dock_list['FFT']],[400],Qt.Horizontal)
 
-        self.build_menubar()
-
-
         settings = QSettings("PyEcog","PyEcog")
         settings.beginGroup("StandardMainWindow")
         settings.setValue("windowGeometry", self.saveGeometry())

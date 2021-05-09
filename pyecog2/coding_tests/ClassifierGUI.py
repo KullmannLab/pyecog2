@@ -1,7 +1,8 @@
 import sys, os, glob
 from datetime import datetime
 from PyQt5 import QtGui, QtCore
-from PyQt5.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog, QProgressBar
+from PyQt5.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog, \
+    QProgressBar
 
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from pyecog2.ndf_converter import NdfFile, DataHandler

@@ -1,7 +1,8 @@
 import sys, os, glob
 from datetime import datetime
 from PyQt5 import QtGui, QtCore
-from PyQt5.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog, QProgressBar
+from PyQt5.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog, \
+    QProgressBar, QCheckBox
 
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from pyecog2.ndf_converter import NdfFile, DataHandler
@@ -135,6 +136,7 @@ class FeatureExtractorWindow(QMainWindow):
         self.button1.clicked.connect(self.setProjectFeatureExtraction)
         self.button2 = QPushButton('Extract!', self)
         self.button2.clicked.connect(self.runFeatureExtraction)
+        self.re_write = QCheckBox('Force file re-write')
         self.button3 = QPushButton('Export Settings File', self)
         self.button3.clicked.connect(self.exportSettingsFile)
         self.progressBar0 = QProgressBar()
@@ -148,7 +150,11 @@ class FeatureExtractorWindow(QMainWindow):
         layout.setRowMinimumHeight(1,400)
         layout.setColumnMinimumWidth(0,600)
         layout.addWidget(self.button1)
-        layout.addWidget(self.button2)
+        extract_widget = QWidget()
+        extract_layout = QGridLayout(extract_widget)
+        extract_layout.addWidget(self.button2,0,0)
+        extract_layout.addWidget(self.re_write,0,1)
+        layout.addWidget(extract_widget)
         layout.addWidget(self.button3)
         layout.addWidget(self.progressBar0)
         layout.addWidget(self.progressBar1)
@@ -210,6 +216,7 @@ class FeatureExtractorWindow(QMainWindow):
         print(self.feature_extractor.settings)
 
     def runFeatureExtraction(self):
+        self.setProjectFeatureExtraction()
         print('Starting feature extraction...')
         classifier_dir = self.project.project_file + '_classifier'
         if not os.path.isdir(classifier_dir):
@@ -220,7 +227,7 @@ class FeatureExtractorWindow(QMainWindow):
 
     def extractFeatures(self):
         for i,animal in enumerate(self.project.animal_list):
-            self.feature_extractor.extract_features_from_animal(animal, re_write = True, n_cores = -1,
+            self.feature_extractor.extract_features_from_animal(animal, re_write = self.re_write.isChecked(), n_cores = -1,
                                                                 progress_bar = self.progressBar1)
             self.progressBar0.setValue((100*(i+1))//len(self.project.animal_list))
         print('Finnished')

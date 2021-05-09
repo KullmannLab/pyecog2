@@ -153,14 +153,21 @@ class Animal():
 
 
 class FileBuffer():  # Consider translating this to cython
-    def __init__(self, animal=None, verbose=True):
+    def __init__(self, animal=None, verbose=True, eeg_files=None, eeg_init_time=None, eeg_duration=None):
         self.files = []
         self.range = [np.Inf, -np.Inf]
         self.data = []
         self.data_ranges = []
         self.metadata = []
-        self.animal = animal
-        self.verbose =verbose
+        if animal is not None:  # avoid saving animal for uses in multiprocessing
+            eeg_files = animal.eeg_files
+            eeg_init_time = animal.eeg_init_time
+            eeg_duration = animal.eeg_duration
+
+        self.eeg_files = eeg_files
+        self.eeg_init_time = eeg_init_time
+        self.eeg_duration = eeg_duration
+        self.verbose = verbose
 
     def add_file_to_buffer(self, fname):
         if fname in self.files:  # skip if file is already buffered
@@ -243,8 +250,8 @@ class FileBuffer():  # Consider translating this to cython
                 if self.verbose: print('Non-contiguous data: restarting buffer...')
                 self.clear_buffer()
             # fill buffer with the necessary files:
-            for i, file in enumerate(self.animal.eeg_files):
-                frange = [self.animal.eeg_init_time[i], self.animal.eeg_init_time[i] + self.animal.eeg_duration[i]]
+            for i, file in enumerate(self.eeg_files):
+                frange = [self.eeg_init_time[i], self.eeg_init_time[i] + self.eeg_duration[i]]
                 # if (frange[0] <= trange[0] < frange[1]) or (frange[0] <= trange[1] < frange[1]) or \
                 #         (trange[0] <= frange[0] < trange[1]) or (trange[0] <= frange[1] < trange[1]):
                 if intervals_overlap(frange,trange):

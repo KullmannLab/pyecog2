@@ -156,6 +156,7 @@ class ProjectClassifier():
         for k, gc in self.animal_classifier_dict.items():
             print('assimilating',k)
             self.global_classifier.assimilate_classifier(gc)
+        self.global_classifier.save(os.path.join(self.project.project_file + '_classifier','_global.npz'))
 
     def train_animal(self,animal_id,pbar=None,labels2train=None):
         a = self.project.get_animal(animal_id)
@@ -363,6 +364,10 @@ class GaussianClassifier():
         return LL
 
     def classify_animal(self, animal,progress_bar=None,max_annotations=-1,labels2annotate=None):
+        if self.blank_npoints == 0:
+            print('Classifier needs to be trained first')
+            return None,None,None,None
+
         if labels2annotate is None:
             labels2annotate = self.labels2classify
         LLv = []  # log likelihoods over time for each class

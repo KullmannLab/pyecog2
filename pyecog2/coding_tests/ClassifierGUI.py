@@ -201,8 +201,8 @@ class ClassifierWindow(QMainWindow):
         return lambda: self.runAnimalClassifier(animal_id,pbar)
 
     def runAnimalClassifier(self,animal_id,pbar=None):
-        print('Training', animal_id)
         animal = self.project.get_animal(animal_id)
+        print('Classifying', animal_id)
         worker = Worker(self.classifier.animal_classifier_dict[animal_id].classify_animal,
                         animal,pbar,max_annotations=100, labels2annotate = self.getLables2Annotate())
         self.threadpool.start(worker)

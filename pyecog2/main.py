@@ -615,7 +615,8 @@ class MainWindow(QMainWindow):
         #     # settings.setValue("windowState", self.dock_list[dock_name].saveState())
         #     settings.endGroup()
         self.saveState()
-        print('Finished closeEvent')
+        print(self.title)
+        print('all finished - all data saved successfully - farewell!')
 
     def keyPressEvent(self, evt):
         print('Key press captured by Main', evt.key())

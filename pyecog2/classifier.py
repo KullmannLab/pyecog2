@@ -152,7 +152,7 @@ class ProjectClassifier():
         self.imported_classifier.load(fname)
 
     def assimilate_global_classifier(self):
-        self.global_classifier = self.imported_classifier # start with either blank classifier or something imported
+        self.global_classifier.copy_from(self.imported_classifier) # start with either blank classifier or something imported
         for k, gc in self.animal_classifier_dict.items():
             print('assimilating',k)
             self.global_classifier.assimilate_classifier(gc)
@@ -189,20 +189,20 @@ class GaussianClassifier():
         if labels is None:
             labels = self.project.get_all_labels()
         self.labels2classify = np.array(list(labels)) # Populate this with the annotation labels to classify
-        self.Ndim = feature_extractor.number_of_features
+        self.Ndim = np.array(feature_extractor.number_of_features)
         self.class_means   = np.zeros((len(self.labels2classify),self.Ndim))
         self.class_cov     = np.tile(np.eye(self.Ndim),(len(self.labels2classify),1,1))
         self.class_npoints = np.zeros(len(self.labels2classify),dtype=int)
         self.blank_means   = np.zeros(self.Ndim)
         self.blank_cov     = np.eye(self.Ndim)
-        self.blank_npoints = 0
+        self.blank_npoints = np.array(0)
         self.transitions_matrix = np.zeros((len(self.labels2classify)+1, len(self.labels2classify)+1))
         # self.hmm           = HMM_LL()
 
     def all_mu_and_cov(self):
-        mu = self.blank_means[:, np.newaxis]
-        cov = self.blank_cov
-        npoints = self.blank_npoints
+        mu = self.blank_means[:, np.newaxis].copy()
+        cov = self.blank_cov.copy()
+        npoints = self.blank_npoints.copy()
         for i in range(len(self.labels2classify)):
             muc = self.class_means[i][:, np.newaxis]
             covc = self.class_cov[i]
@@ -239,28 +239,30 @@ class GaussianClassifier():
         # weighted average of re-normalized means and covariances for all classes
         mua, Wa, iWa = gc.whitening_mu_W_iW()
         mub, Wb, iWb = self.whitening_mu_W_iW()
-        common_label_indices = [] # save common labels to assimilate transition matrix
+        common_label_indices = [(0,0)] # save common labels to assimilate transition matrix, blanks are always 0 in transition matrix
         for i in range(len(self.labels2classify)):
             j, = np.where(gc.labels2classify == self.labels2classify[i])
-            if not j:
+            if not j.size:
                 continue
             j = j[0]  # if the label exists in gc, grab its index
-            common_label_indices.append((i,j))
+            common_label_indices.append((i+1,j+1))
             normalized_gc_mu = iWb@Wa@(gc.class_means[j][:, np.newaxis] - mua) + mub
             normalized_gc_cov = iWb@Wa@gc.class_cov[j]@Wa.T@iWb.T
-            mu, cov = average_mu_and_cov(self.class_means[i][:, np.newaxis], self.class_cov[i],
-                                         self.class_npoints[i], normalized_gc_mu, normalized_gc_cov, gc.class_npoints[j])
+            mu, cov = average_mu_and_cov(self.class_means[i][:, np.newaxis], self.class_cov[i], self.class_npoints[i],
+                                         normalized_gc_mu, normalized_gc_cov, gc.class_npoints[j])
             self.class_means[i][:, np.newaxis] = mu
             self.class_cov[i] = cov
             self.class_npoints[i] += gc.class_npoints[j]
 
-        normalized_gc_mu =  iWb@Wa@(gc.blank_means[:, np.newaxis] - mua) + mub
-        normalized_gc_cov =  iWb@Wa@gc.blank_cov@Wa.T@iWb.T
-        mu, cov = average_mu_and_cov(self.blank_means[:, np.newaxis], self.blank_cov,
-                                     self.blank_npoints, normalized_gc_mu, normalized_gc_cov, gc.blank_npoints)
+        normalized_gc_mu = iWb@Wa@(gc.blank_means[:, np.newaxis] - mua) + mub
+        normalized_gc_cov = iWb@Wa@gc.blank_cov@Wa.T@iWb.T
+        mu, cov = average_mu_and_cov(self.blank_means[:, np.newaxis], self.blank_cov, self.blank_npoints,
+                                     normalized_gc_mu, normalized_gc_cov, gc.blank_npoints)
         self.blank_means[:, np.newaxis] = mu
         self.blank_cov = cov
+        print('adding points to blanks:', gc.blank_npoints)
         self.blank_npoints += gc.blank_npoints
+        print('blanks have now :', self.blank_npoints)
         i,j = tuple(zip(*common_label_indices))  # self labels i correspond to gc labels j
         self.transitions_matrix[np.ix_(i,i)] += gc.transitions_matrix[np.ix_(j,j)]
 
@@ -394,7 +396,9 @@ class GaussianClassifier():
 
         LLv = np.vstack(LLv)
         _, _, total_npoints = self.all_mu_and_cov()
-        LLv_reg = LLv # np.maximum((np.max(LLv, axis=1) - np.log(total_npoints))[:, np.newaxis], LLv) # trying to regularize LLv for extreme values
+        th = chi2.isf(1/total_npoints,self.Ndim,scale=0.5)
+        LLth = np.diag(self.log_likelyhoods(np.vstack((self.blank_means, self.class_means)), bias=False)) - th
+        LLv_reg = np.maximum(LLth, LLv) # trying to regularize LLv for extreme values
         R2v = np.vstack(R2v)
         timev = np.hstack(timev)
         print('\nRunning HMM...')
@@ -409,6 +413,8 @@ class GaussianClassifier():
         print('Combining results and generating annotations...')
         # threshold to reject classifications outside .999 confidence interval of the class distribution
         th = chi2.isf(1e-3,self.Ndim,scale=0.5)
+        th = chi2.isf(1/total_npoints,self.Ndim,scale=0.5)
+
         for i2,label in enumerate(self.labels2classify):
             if label not in labels2annotate: # ignore labels that are not in labels2annotate
                 continue
@@ -428,7 +434,8 @@ class GaussianClassifier():
                     # c = np.sum(LLv[starts[j]:ends[j],i])-np.sum(LLv[starts[j]:ends[j],0])
                     # c = np.sum(np.log(pf[i,starts[j]:ends[j]])-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
                     # c = np.sum(-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
-                    c = np.max(-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],2**-50)))
+                    # c = np.max(-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],2**-50)))
+                    c = np.max(LLv[starts[j]:ends[j], i])
                     # print('start,end,confidence', starts[j], ends[j],c)
                     a = AnnotationElement(label='(auto)'+label,start=timev[starts[j]],end=timev[ends[j]],confidence=c)
                     alist.append((c,a))
@@ -471,6 +478,6 @@ class GaussianClassifier():
     def copy_from(self,gaussian_classifier):
         for key in self.__dict__.keys():
             if key != 'project':
-                self.__dict__[key] = gaussian_classifier.__dict__[key]
+                self.__dict__[key] = gaussian_classifier.__dict__[key].copy()
                 
 

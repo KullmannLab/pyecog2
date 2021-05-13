@@ -13,7 +13,7 @@ from PyQt5.QtCore import QThread, pyqtSignal, Qt, QRect, QTimer
 import pyqtgraph as pg
 
 from pyecog2.tree_model_and_nodes import FileTreeProxyModel, TreeModel
-from pyecog2.tree_model_and_nodes import FileNode, DirectoryNode, ChannelNode, HDF5FileNode, LieteNode, ProjectNode
+from pyecog2.tree_model_and_nodes import FileNode, DirectoryNode, ChannelNode, HDF5FileNode, LieteNode, ProjectNode,BuildingNode
 
 class FileTreeView(QtWidgets.QTreeView):
 
@@ -169,9 +169,11 @@ class FileTreeElement():
     def set_rootnode_from_project(self, project):
         '''resets the tree self.model'''
         self.root_node = DirectoryNode('')
-        ProjectNode(project,parent=self.root_node)
         self.model = TreeModel(self.root_node, parent=None)
         self.tree_view.setModel(self.model)
+        # BuildingNode(parent = self.root_node)
+        # self.widget.show()
+        ProjectNode(project,parent=self.root_node)
         self.connect_model_to_parent_paired_graph()
 
     def get_default_folder(self):

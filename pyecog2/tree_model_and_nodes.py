@@ -404,6 +404,18 @@ class ProjectNode(Node):
         return 'Project: ' + self.name
 
 
+class BuildingNode(Node):
+    '''
+    A temporary note to use while building large trees
+    '''
+    def __init__(self, parent=None):
+        super(BuildingNode, self).__init__('Building Tree...', parent=parent, path='')
+
+    def type_info(self):
+        return 'please be patient for large projects'
+
+
+
 class FileTreeProxyModel(QtCore.QAbstractProxyModel):
     '''Reimplement some of the virtual methods? '''
     def __init__(self):

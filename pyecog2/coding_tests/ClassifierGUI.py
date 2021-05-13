@@ -76,7 +76,7 @@ class ClassifierWindow(QMainWindow):
         self.terminal = QTextBrowser(self)
         self._err_color = QtCore.Qt.red
         self.button = QPushButton('Update', self)
-        # self.button.clicked.connect(self.update_project_settings)
+        self.button.clicked.connect(self.update_settings)
         self.threadpool = QtCore.QThreadPool()
 
         all_labels = self.project.get_all_labels()
@@ -92,7 +92,7 @@ class ClassifierWindow(QMainWindow):
                  'type': 'group',
                  'children': [{'name': l, 'type': 'bool', 'value': True} for l in all_labels]
                  },
-                {'name': 'Assimilate global classifier from individual animals', 'type': 'action'},
+                # {'name': 'Assimilate global classifier from individual animals', 'type': 'action'},
                 # {'name': 'Train global classifier','type': 'action', 'children':[
                 #     {'name': 'Training Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}
                 # ]},
@@ -117,9 +117,9 @@ class ClassifierWindow(QMainWindow):
 
         ## Create tree of Parameter objects
         self.p = Parameter.create(name='params', type='group', children=self.params)
-        self.p.param(
-            'Global Settings', 'Assimilate global classifier from individual animals'
-            ).sigActivated.connect(self.classifier.assimilate_global_classifier)
+        # self.p.param(
+        #     'Global Settings', 'Assimilate global classifier from individual animals'
+        #     ).sigActivated.connect(self.classifier.assimilate_global_classifier)
         self.p.param(
             'Global Settings', 'Homogenize ticked labels across project'
             ).sigActivated.connect(self.homogenize_labels)
@@ -139,7 +139,6 @@ class ClassifierWindow(QMainWindow):
             self.p.param(
                 'Animal Settings',animal_id,'Auto-generate Annotations with global classifier'
                         ).sigActivated.connect(self.runGlobalClassifierGenerator(animal_id,pbar))
-
 
         self.t = PyecogParameterTree()
         self.t.setParameters(self.p, showTop=False)
@@ -179,10 +178,8 @@ class ClassifierWindow(QMainWindow):
                 for animal2 in self.project.animal_list:
                     if label not in animal2.annotations.labels:
                         animal2.annotations.add_label(label,annotation_page.label_color_dict[label])
-
-
-
-
+                    else:
+                        animal2.annotations.label_color_dict[label] = annotation_page.label_color_dict[label] # if annotation exists copy color
 
     def handleOutput(self, text, stdout):
         color = self.terminal.textColor()
@@ -198,7 +195,7 @@ class ClassifierWindow(QMainWindow):
         print('Training', animal_id)
         worker = Worker(self.classifier.train_animal,animal_id,pbar,self.getLables2train())
         self.threadpool.start(worker)
-        return (1,1)
+        return 1, 1
 
     def runAnimalClassifierGenerator(self,animal_id,pbar=None):
         return lambda: self.runAnimalClassifier(animal_id,pbar)
@@ -209,19 +206,22 @@ class ClassifierWindow(QMainWindow):
         worker = Worker(self.classifier.animal_classifier_dict[animal_id].classify_animal,
                         animal,pbar,max_annotations=100, labels2annotate = self.getLables2Annotate())
         self.threadpool.start(worker)
-        (1, 1)
+        return 1, 1
 
     def runGlobalClassifierGenerator(self, animal_id,pbar=None):
         return lambda: self.runGlobalClassifier(animal_id,pbar)
 
     def runGlobalClassifier(self, animal_id,pbar=None):
+        self.classifier.assimilate_global_classifier()
         print('Labeling', animal_id)
         animal = self.project.get_animal(animal_id)
         worker = Worker(self.classifier.classify_animal_with_global, animal, pbar, max_annotations=100,
                         labels2annotate = self.getLables2Annotate())
         self.threadpool.start(worker)
-        (1, 1)
+        return 1, 1
 
+    def update_settings(self):
+        pass
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

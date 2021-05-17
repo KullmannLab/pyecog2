@@ -1,0 +1,55 @@
+{
+  "feature_freq_functions": [
+    "fe.powerf(1, 4)",
+    "fe.powerf(4, 8)",
+    "fe.powerf(8, 12)",
+    "fe.powerf(12, 30)",
+    "fe.powerf(30, 50)",
+    "fe.powerf(50, 70)",
+    "fe.powerf(70, 120)",
+    "fe.reg_entropy"
+  ],
+  "feature_labels": [
+    "min",
+    "max",
+    "mean",
+    "log std",
+    "kurtosis",
+    "skewness",
+    "log coastline (log sum of abs diff)",
+    "log power in band (1, 4) Hz",
+    "log powerf in band (4, 8) Hz",
+    "log powerf in band (8, 12) Hz",
+    "log powerf in band (12, 30) Hz",
+    "log powerf in band (30, 50) Hz",
+    "log powerf in band (50, 70) Hz",
+    "log powerf in band (70, 120) Hz",
+    "Spectrum entropy"
+  ],
+  "feature_time_functions": [
+    "np.min",
+    "np.max",
+    "np.mean",
+    "lambda x:np.log(np.std(x))",
+    "stats.kurtosis",
+    "stats.skew",
+    "lambda d:np.log(np.mean(np.abs(np.diff(d,axis=0))))"
+  ],
+  "function_module_dependencies": [
+    [
+      "numpy",
+      "np"
+    ],
+    [
+      "pyecog2.feature_extractor",
+      "fe"
+    ],
+    [
+      "scipy.stats",
+      "stats"
+    ]
+  ],
+  "overlap": 0.5,
+  "window": "rectangular",
+  "window_length": 5
+}

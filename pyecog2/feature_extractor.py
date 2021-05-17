@@ -150,7 +150,7 @@ class FeatureExtractor():
         time_range = [eeg_init_time[i], eeg_init_time[i] + eeg_duration[i]]
         if re_write or not os.path.isfile(feature_fname):
             print('Extracting features for file', i + 1, 'of', len(eeg_files), ':', eeg_fname, end='\r')
-            file_buffer = FileBuffer(None,False,eeg_files,eeg_init_time,eeg_duration)
+            file_buffer = FileBuffer(None,False,[eeg_fname],[eeg_init_time[i]],[eeg_duration[i]])
             self.extract_features_from_time_range(file_buffer, time_range, feature_fname, feature_metafname,animal_id)
         else:
             # print(feature_fname,'already exists')

@@ -178,7 +178,11 @@ class FileBuffer():  # Consider translating this to cython
         metadata = load_metadata_file(fname)
         self.metadata.append(metadata)
         if metadata['data_format'] == 'h5':
-            h5file = H5File(fname[:-4] + 'h5')
+            try:
+                h5file = H5File(fname[:-4] + 'h5')
+            except:
+                print('error trying to open',fname[:-4] + 'h5')
+                raise
             channels = []
             duration = metadata['duration']
             for tid in h5file.attributes['t_ids']:

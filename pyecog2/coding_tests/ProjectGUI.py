@@ -6,7 +6,7 @@ from pyecog2.ProjectClass import Animal
 
 from pyqtgraph.parametertree import Parameter
 from pyecog2.coding_tests.pyecogParameterTree import PyecogParameterTree,PyecogGroupParameter
-
+from pyecog2.coding_tests.WaveletWidget import Worker
 
 class OutputWrapper(QtCore.QObject):
     outputWritten = QtCore.pyqtSignal(object, object)

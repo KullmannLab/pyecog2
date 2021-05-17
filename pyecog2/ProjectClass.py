@@ -183,7 +183,7 @@ class FileBuffer():  # Consider translating this to cython
             duration = metadata['duration']
             for tid in h5file.attributes['t_ids']:
                 if duration < 3600: # H5 file is screwed u, so will only grab the start of the data points
-                    channels.append(h5file[tid]['data'][:duration*metadata['fs']])
+                    channels.append(h5file[tid]['data'][:int(duration*metadata['fs'])])
                 else:
                     channels.append(h5file[tid]['data'])
             arr = np.vstack(channels).T

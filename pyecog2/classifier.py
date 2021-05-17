@@ -261,9 +261,7 @@ class GaussianClassifier():
                                      normalized_gc_mu, normalized_gc_cov, gc.blank_npoints)
         self.blank_means[:, np.newaxis] = mu
         self.blank_cov = cov
-        print('adding points to blanks:', gc.blank_npoints)
         self.blank_npoints += gc.blank_npoints
-        print('blanks have now :', self.blank_npoints)
         i,j = tuple(zip(*common_label_indices))  # self labels i correspond to gc labels j
         self.transitions_matrix[np.ix_(i,i)] += gc.transitions_matrix[np.ix_(j,j)]
 

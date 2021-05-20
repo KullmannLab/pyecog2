@@ -13,6 +13,7 @@ from pyecog2.classifier import GaussianClassifier, ProjectClassifier
 from pyecog2.ProjectClass import Project
 from pyecog2.coding_tests.WaveletWidget import Worker
 from collections import OrderedDict
+from pyqtgraph.console import ConsoleWidget
 
 class OutputWrapper(QtCore.QObject):
     outputWritten = QtCore.pyqtSignal(object, object)
@@ -73,7 +74,7 @@ class ClassifierWindow(QMainWindow):
         #     self.project = Project(main_model=MainModel())
         #     self.project.add_animal(Animal(id='0'))
         self.setCentralWidget(widget)
-        self.terminal = QTextBrowser(self)
+        self.terminal = ConsoleWidget(namespace={'self':self}) # QTextBrowser(self)
         self._err_color = QtCore.Qt.red
         self.button = QPushButton('Update', self)
         self.button.clicked.connect(self.update_settings)
@@ -182,17 +183,20 @@ class ClassifierWindow(QMainWindow):
                         animal2.annotations.label_color_dict[label] = annotation_page.label_color_dict[label] # if annotation exists copy color
 
     def handleOutput(self, text, stdout):
-        color = self.terminal.textColor()
-        self.terminal.setTextColor(color if stdout else self._err_color)
-        self.terminal.moveCursor(QtGui.QTextCursor.End)
-        self.terminal.insertPlainText(text)
-        self.terminal.setTextColor(color)
+        # color = self.terminal.textColor()
+        # self.terminal.setTextColor(color if stdout else self._err_color)
+        # self.terminal.moveCursor(QtGui.QTextCursor.End)
+        # self.terminal.insertPlainText(text)
+        # self.terminal.setTextColor(color)
+        self.terminal.write(text)
 
     def trainClassifierGenerator(self,animal_id,pbar=None):
         return lambda: self.trainClassifier(animal_id,pbar)
 
     def trainClassifier(self,animal_id,pbar=None):
         print('Training', animal_id)
+        if pbar is not None:
+            pbar.setValue(0.1)
         worker = Worker(self.classifier.train_animal,animal_id,pbar,self.getLables2train())
         self.threadpool.start(worker)
         return 1, 1
@@ -212,7 +216,7 @@ class ClassifierWindow(QMainWindow):
         return lambda: self.runGlobalClassifier(animal_id,pbar)
 
     def runGlobalClassifier(self, animal_id,pbar=None):
-        self.classifier.assimilate_global_classifier()
+        self.classifier.assimilate_global_classifier(labels2train=self.getLables2train())
         print('Labeling', animal_id)
         animal = self.project.get_animal(animal_id)
         worker = Worker(self.classifier.classify_animal_with_global, animal, pbar, max_annotations=100,

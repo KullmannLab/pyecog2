@@ -395,6 +395,7 @@ class ProjectNode(Node):
         self.name = project.title
         for animal in self.project.animal_list:
             AnimalNode(animal, parent=self)
+        self.setExpanded(True)
 
     def set_name(self, value):
         self.name = str(value)

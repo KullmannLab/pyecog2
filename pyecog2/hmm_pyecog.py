@@ -282,7 +282,7 @@ class HMM_LL():
 
             max_posterior_t = np.max(alpha[:, t] + beta[:, t])  # previous beta
             posterior_t = np.exp((alpha[:, t] + beta[:, t]) - max_posterior_t)
-            posterior_t = np.divide(posterior_t, np.sum(posterior_t))  # normalise as just proportional too...
+            posterior_t = np.divide(posterior_t, np.sum(posterior_t))  # normalise as just proportional to...
             posterior[:, t] = posterior_t
         return beta, posterior
 

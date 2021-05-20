@@ -76,11 +76,11 @@ def transitionslist2matrix(t, dt, n):
     return A
 
 def transitions2rates(B,nblankpoints,nclasspoints):
-    A = B
+    A = B.copy()
     A[0,0] = nblankpoints - np.sum(A[0,:])
     A[0,:] /= np.sum(A[0,:])
     for i in range(len(nclasspoints)):
-        if nclasspoints[i]:
+        if nclasspoints[i]>.5: # allow some numerical impersisions
             A[i+1,i+1] = nclasspoints[i] - np.sum(A[i+1,:])
             A[i+1,:] /= np.sum(A[i+1,:])
         else: # For classes that do not occur, default to transition to blanks
@@ -102,7 +102,7 @@ class ProjectClassifier():
         if os.path.isfile(os.path.join(classifier_dir, '_feature_extractor.json')):
             self.feature_extractor.load_settings(os.path.join(classifier_dir, '_feature_extractor.json'))
         self.global_classifier = GaussianClassifier(project, self.feature_extractor,labels)
-        self.imported_classifier = GaussianClassifier(project, self.feature_extractor)
+        self.imported_classifier = GaussianClassifier(project, self.feature_extractor,labels)
         if os.path.isdir(classifier_dir):
             self.load()
         else:
@@ -151,8 +151,12 @@ class ProjectClassifier():
     def import_classifier(self,fname):
         self.imported_classifier.load(fname)
 
-    def assimilate_global_classifier(self):
-        self.global_classifier.copy_from(self.imported_classifier) # start with either blank classifier or something imported
+    def assimilate_global_classifier(self,labels2train=None):
+        _,_,npoints = self.imported_classifier.all_mu_and_cov()
+        if npoints:
+            self.global_classifier.copy_from(self.imported_classifier) # start with either blank classifier or something imported
+        else:
+            self.global_classifier = GaussianClassifier(self.project, self.feature_extractor,labels = labels2train)
         for k, gc in self.animal_classifier_dict.items():
             print('assimilating',k)
             self.global_classifier.assimilate_classifier(gc)
@@ -226,6 +230,7 @@ class GaussianClassifier():
         # transform parameters from gc so to match data distribution of self
         mua, Wa, iWa = gc.whitening_mu_W_iW()
         mub, Wb, iWb = self.whitening_mu_W_iW()
+        self.labels2classify = gc.labels2classify
         for i in range(len(self.labels2classify)):
             self.class_means[i][:, np.newaxis] = iWb@Wa@(gc.class_means[i][:, np.newaxis] - mua) + mub
             self.class_cov[i] = iWb@Wa@gc.class_cov[i]@Wa.T@iWb.T
@@ -233,7 +238,7 @@ class GaussianClassifier():
         self.blank_means[:, np.newaxis] = iWb@Wa@(gc.blank_means[:, np.newaxis] - mua) + mub
         self.blank_cov = iWb@Wa@gc.blank_cov@Wa.T@iWb.T
         self.blank_npoints = gc.blank_npoints
-        self.transitions_matrix = gc.transitions_matrix
+        self.transitions_matrix = gc.transitions_matrix.copy()
         # self.hmm = gc.hmm
 
     def assimilate_classifier(self,gc):
@@ -409,7 +414,13 @@ class GaussianClassifier():
         hmm.A = transitions2rates(self.transitions_matrix, self.blank_npoints, self.class_npoints)
 
         # pf = hmm.forward_backward(LLv.T)
-        pf = hmm.forward_backward(LLv_reg.T)
+        pf = hmm.forward_backward(LLv_reg.T)  # posterior probabilities
+
+        # now will carefully compute log(1-posterior_probabilities) to avoid overflows
+        ab = (hmm.alpha + hmm.beta).T
+        ab = ab - ab.max(axis=1, keepdims=True)
+        log_not_posterior = np.log(np.exp(ab) @ (np.ones((ab.shape[1], ab.shape[1])) - np.eye(ab.shape[1]))) \
+                            - np.log(np.exp(ab) @ (np.ones((ab.shape[1], ab.shape[1]))))
 
         if progress_bar is not None:
             progress_bar.setValue(99)   # Almost done...
@@ -438,14 +449,16 @@ class GaussianClassifier():
                     # c = np.sum(np.log(pf[i,starts[j]:ends[j]])-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
                     # c = np.sum(-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],1e-12)))
                     # c = np.max(-np.log(np.maximum(1-pf[i,starts[j]:ends[j]],2**-50)))
-                    c = np.max(LLv[starts[j]:ends[j], i])
+                    # c = np.max(LLv_reg[starts[j]:ends[j], i])
+                    # c = np.mean(R2v[starts[j]:ends[j], i])
+                    c = np.max( - log_not_posterior[starts[j]:ends[j], i])
                     # print('start,end,confidence', starts[j], ends[j],c)
                     a = AnnotationElement(label='(auto)'+label,start=timev[starts[j]],end=timev[ends[j]],confidence=c)
                     alist.append((c,a))
                 else:
                     print('annotation already exists at', starts[j], ends[j])
 
-            print(alist)
+            print('Found',len(alist), 'putative events. Saving',max_annotations,'withh highest confidence score')
             alist.sort(key=lambda c:-c[0])
             animal.annotations.delete_label('(auto)'+label)  # Delete all previous auto generated labels
             try:

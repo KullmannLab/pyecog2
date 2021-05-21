@@ -173,7 +173,7 @@ class ProjectClassifier():
         gc.save(os.path.join(self.project.project_file + '_classifier',animal_id+'.npz'))
 
     def classify_animal_with_global(self, animal, progress_bar=None,max_annotations=-1,labels2annotate=None):
-        gc = GaussianClassifier(self.project,self.feature_extractor)
+        gc = GaussianClassifier(self.project,self.feature_extractor,self.global_classifier.labels2classify)
         gc.copy_from(self.animal_classifier_dict[animal.id])
         if gc.blank_npoints == 0:
             progress_bar.setValue(0.1)
@@ -195,6 +195,7 @@ class GaussianClassifier():
             labels = self.project.get_all_labels()
         self.labels2classify = np.array(list(labels)) # Populate this with the annotation labels to classify
         self.Ndim = np.array(feature_extractor.number_of_features)
+        self.overlap = np.array(feature_extractor.settings['overlap'])
         self.class_means   = np.zeros((len(self.labels2classify),self.Ndim))
         self.class_cov     = np.tile(np.eye(self.Ndim),(len(self.labels2classify),1,1))
         self.class_npoints = np.zeros(len(self.labels2classify),dtype=int)
@@ -406,7 +407,8 @@ class GaussianClassifier():
         _, _, total_npoints = self.all_mu_and_cov()
         th = chi2.isf(1/total_npoints,self.Ndim,scale=0.5)
         LLth = np.diag(self.log_likelyhoods(np.vstack((self.blank_means, self.class_means)), bias=False)) - th
-        LLv_reg = np.maximum(LLth, LLv) # trying to regularize LLv for extreme values
+        # Now will regularize LLv for extreme values and compensate HMMfor repeated observations because of overlap of Feature extractor
+        LLv_reg = np.maximum(LLth, LLv)*(1-self.overlap)
         R2v = np.vstack(R2v)
         timev = np.hstack(timev)
         print('\nRunning HMM...')

@@ -317,7 +317,7 @@ class NdfFile:
                               ' gaps of >1 second. Total Missing: '+str(seconds_missing)+ ' s.')
 
             # do linear interpolation between the points, where !nan
-            regularised_time = np.linspace(0, self.file_length, num= self.file_length * self.tid_to_fs_dict[tid])
+            regularised_time = np.linspace(0, self.file_length, num= int(self.file_length * self.tid_to_fs_dict[tid]),endpoint=False)
 
             not_nan = np.logical_not(np.isnan(self.tid_data_time_dict[tid]['data']))
             #print(sum(np.isnan(self.tid_data_time_dict[tid]['data'])))

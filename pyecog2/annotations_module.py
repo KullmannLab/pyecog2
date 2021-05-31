@@ -4,6 +4,7 @@ from PyQt5.QtCore import QObject
 import numpy as np
 import colorsys
 from collections import OrderedDict
+from timeit import default_timer as timer
 
 # Function to generate nicely spaced colors (i.e. points around a ring)
 def i_spaced_nfold(i,n):
@@ -146,17 +147,22 @@ class AnnotationPage(QObject):
         self.connect_annotations_to_history()
 
 
-    def copy_from(self, annotation_page, clear_history=True):
+    def copy_from(self, annotation_page, clear_history=True,connect_history=True,quiet = False):
+        start_t=timer()
+        print('AnnotationPage copy_from start')
         self.__dict__ = annotation_page.__dict__
         if not hasattr(annotation_page, 'label_channel_range_dict'):  # Back compatibility with projects before label_channel_range
             self.label_channel_range_dict = dict([(label, None) for label in self.labels])
         print(self.labels)
-        self.sigLabelsChanged.emit('')
-        self.connect_annotations_to_history()
+        if not quiet:
+            self.sigLabelsChanged.emit('')
+        if connect_history:
+            self.connect_annotations_to_history()
         if clear_history:
             self.clear_history() # Reset history
             print('copy from - history reset')
-            self.cache_to_history()
+
+        print('AnnotationPage copy_from finished in', timer()-start_t,'seconds')
 
     def copy_to(self, annotation_page):
         annotation_page.__dict__ = self.__dict__

@@ -12,6 +12,7 @@ from pyecog2.annotations_module import i_spaced_nfold
 from pyqtgraph.parametertree import Parameter
 from PyQt5 import QtGui
 from pyecog2.coding_tests.pyecogParameterTree import PyecogParameterTree, PyecogGroupParameter, PyecogGroupParameterItem
+from timeit import default_timer as timer
 
 ## this group includes a menu allowing the user to add new parameters into its child list
 # class ScalableGroup(pTypes.GroupParameter):
@@ -80,6 +81,7 @@ class AnnotationParameterTee(PyecogParameterTree):
         #     print('re_init already ran for', label)
         #     return # skip re_init because it already ran
         # self.last_label_change = label
+        start_t = timer()
         print('AnnotationParameterTree Re_init Called ', label)
         self.p.sigTreeStateChanged.disconnect()
         labels = self.annotationPage.labels
@@ -103,7 +105,7 @@ class AnnotationParameterTee(PyecogParameterTree):
         self.p.sigTreeStateChanged.connect(self.change)
         self.setParameters(self.p, showTop=False)
         self.headerItem().setHidden(True)
-        print('AnnotationParameterTree Re_init finished ')
+        print('AnnotationParameterTree Re_init finished (', timer()-start_t, 'seconds )')
 
 
     ## If anything changes in the tree, print a message

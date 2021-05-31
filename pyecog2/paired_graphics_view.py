@@ -14,7 +14,7 @@ import colorsys
 from pyecog2.pyecog_plot_item import PyecogPlotCurveItem, PyecogLinearRegionItem, PyecogCursorItem
 from pyqtgraph import functions as fn
 from pyqtgraph.Point import Point
-
+from timeit import default_timer as timer
 
 # Function to overide pyqtgraph ViewBox wheel events
 def wheelEvent(self, ev, axis=None):
@@ -147,6 +147,7 @@ class PairedGraphicsView():
         set_plotitem_data is snesnible
         pens - a list of len channels containing pens
         '''
+        start_t = timer()
         self.splitter.widget(0).setBackgroundBrush(self.main_brush)
         self.splitter.widget(1).setBackgroundBrush(self.main_brush)
 
@@ -164,6 +165,9 @@ class PairedGraphicsView():
         self.overview_plot.setXRange(*overview_range,padding=0)
         self.insetview_plot.vb.setXRange(overview_range[0],
                                          overview_range[0] + min(30, overview_range[1] - overview_range[0]),padding=0)
+        end_t = timer()
+        print('Paired graphics view init finnished in',end_t-start_t,'seconds')
+        start_t = end_t
         # if self.scale is None:  # running for the first time
         if True:  # running for the first time
             print('Getting data to compute plot scale factors')
@@ -176,6 +180,11 @@ class PairedGraphicsView():
             self.overview_plot.vb.setYRange(-2, arr.shape[1] + 1)
             self.insetview_plot.vb.setYRange(-2, arr.shape[1] + 1)
             self.overview_plot.setTitle('<p style="font-size:large"> Animal: ' + self.main_model.project.current_animal.id + '</b>')
+            end_t = timer()
+
+        end_t = timer()
+        print('Paired graphics view scale computation finnished in',end_t-start_t,'seconds')
+        start_t = end_t
 
         for i in range(self.n_channels):
             if pens is None:
@@ -184,6 +193,10 @@ class PairedGraphicsView():
                 pen = pen[i]
             print('Setting plotitem channel data')
             self.set_plotitem_channel_data(pen, i, self.scale)
+
+        end_t = timer()
+        print('Paired graphics view plot channels finnished in',end_t-start_t,'seconds')
+        start_t = end_t
 
         print('settng up extra plot parameters...')
         # prevent scrolling past 0 and end of data
@@ -205,6 +218,9 @@ class PairedGraphicsView():
         self.main_model.annotations.sigFocusOnAnnotation.connect(self.set_focus_on_annotation)
         self.set_scene_window(self.main_model.window)
         self.set_scene_cursor()
+
+        end_t = timer()
+        print('Paired graphics view plot annotations + etc. in',end_t-start_t,'seconds')
 
 
     def set_plotitem_channel_data(self, pen, index, init_scale):

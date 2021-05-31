@@ -2,6 +2,7 @@ from PyQt5 import QtGui, QtCore, QtWidgets
 from pyecog2.annotations_module import AnnotationPage
 from datetime import datetime
 import numpy as np
+from timeit import default_timer as timer
 
 basestring = str
 asUnicode = str
@@ -136,7 +137,8 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         * dict-of-lists  {'x': [1,2,3], 'y': [4,5,6]}
         * list-of-dicts  [{'x': 1, 'y': 4}, {'x': 2, 'y': 5}, ...]
         """
-        print('*** Set Data called. Annotations page length:', len(self.annotationsPage.annotations_list),
+        start_t = timer()
+        print('Annotations Table widget Set Data called. Annotations page length:', len(self.annotationsPage.annotations_list),
               'row count:', self.rowCount())
         ranges = self.selectedRanges()
         self.clear()
@@ -147,6 +149,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         items = self.selectedItems()
         if len(items) > 0:
             self.setCurrentItem(items[0])
+        print('Annotations Table widget Set Data ran in', timer()-start_t,'seconds')
 
     @_defersort
     def appendData(self, annotaion_list):

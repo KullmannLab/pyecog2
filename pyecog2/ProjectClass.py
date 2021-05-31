@@ -8,7 +8,7 @@ from pyecog2.annotations_module import AnnotationPage
 from scipy import signal
 from PyQt5 import QtCore
 import pyqtgraph as pg
-
+from timeit import default_timer as timer
 
 
 def clip(x, a, b):  # utility funciton for file buffer
@@ -421,13 +421,16 @@ class Project():
         self.main_model.sigProjectChanged.emit()
 
     def set_current_animal(self, animal):  # copy alterations made to annotations
+        start_t = timer()
+        print('ProjectClass set_current_animal start')
         if animal is None:
             return
-        self.current_animal.annotations.copy_from(self.main_model.annotations)
+        self.current_animal.annotations.copy_from(self.main_model.annotations,connect_history=False,quiet=True)
         self.main_model.annotations.copy_from(animal.annotations)
         self.current_animal = animal
         self.file_buffer = FileBuffer(self.current_animal)
         self.main_model.annotations.sigLabelsChanged.emit('')
+        print('ProjectClass set_current_animal ran in',timer()-start_t,'seconds')
 
     def save_to_json(self, fname):
         try:

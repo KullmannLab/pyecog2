@@ -426,7 +426,7 @@ class Project():
         if animal is None:
             return
         self.current_animal.annotations.copy_from(self.main_model.annotations,connect_history=False,quiet=True)
-        self.main_model.annotations.copy_from(animal.annotations)
+        self.main_model.annotations.copy_from(animal.annotations,quiet=True)
         self.current_animal = animal
         self.file_buffer = FileBuffer(self.current_animal)
         self.main_model.annotations.sigLabelsChanged.emit('')

@@ -15,6 +15,7 @@ from pyecog2.pyecog_plot_item import PyecogPlotCurveItem, PyecogLinearRegionItem
 from pyqtgraph import functions as fn
 from pyqtgraph.Point import Point
 from timeit import default_timer as timer
+from ProjectClass import intervals_overlap
 
 # Function to overide pyqtgraph ViewBox wheel events
 def wheelEvent(self, ev, axis=None):
@@ -443,6 +444,9 @@ class PairedGraphicsView():
 
     def overview_range_changed(self, mask=None):
         x_range, y_range = self.overview_plot.viewRange()
+        # self.inset_annotations
+        # self.overview_annotations
+        # self.insetview_plot.removeItem(annotation_graph_i)
 
     def insetview_range_changed(self, mask=None):
         '''connected to signal from insetview_plot'''

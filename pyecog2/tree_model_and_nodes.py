@@ -5,6 +5,7 @@ import json
 from pyecog2.ProjectClass import create_metafile_from_h5, load_metadata_file
 import pkg_resources
 
+from timeit import default_timer as timer
 
 # rename module to be filetree model?
 # maybe split file into one that has nodes seperately
@@ -379,6 +380,7 @@ class AnimalNode(Node):
 
     def prepare_for_plot(self):
         # plot the earliest file
+        print('Tree AnimalNode: Prepare for plot start **************************************************************')
         children = self.children
         if children:
             child = min(children, key=lambda a: a.name)

@@ -160,6 +160,7 @@ class AnnotationPage(QObject):
             self.connect_annotations_to_history()
         if clear_history:
             self.clear_history() # Reset history
+            # self.cache_to_history() # not necessaru already in clear_history()
             print('copy from - history reset')
 
         print('AnnotationPage copy_from finished in', timer()-start_t,'seconds')
@@ -362,7 +363,8 @@ class AnnotationPage(QObject):
         self.history_is_paused = pause
 
     def clear_history(self):
-        self.history=[]
+        self.history.clear()
+        self.history_step = -1
         self.cache_to_history()
 
     def cache_to_history(self,dummy_argument=None):

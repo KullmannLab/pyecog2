@@ -85,6 +85,10 @@ class PairedGraphicsView():
         self.main_pen = self.main_model.color_settings['pen']
         self.main_brush = self.main_model.color_settings['brush']
 
+        self.inset_annotations = []
+        self.overview_annotations = []
+        self.plotted_annotations = []
+
         overview_layout_widget = pg.GraphicsLayoutWidget()
         overview_date_axis = DateAxis(orientation='bottom')
         self.overview_plot = overview_layout_widget.addPlot(axisItems={'bottom':overview_date_axis})
@@ -127,6 +131,7 @@ class PairedGraphicsView():
                                       sideScalers=True, pen=pen, rotatable=False, removable=False)
         self.overviewROI.sigRegionChanged.connect(self.overviewROIchanged)
         self.overview_plot.addItem(self.overviewROI)
+
         self.inset_annotations = []
         self.overview_annotations = []
         # here we will store the plot items in nested dict form
@@ -213,9 +218,7 @@ class PairedGraphicsView():
 
         self.overview_plot.addItem(self.overviewROI) # put back the overview box
 
-        self.inset_annotations = []
-        self.overview_annotations = []
-        self.set_scenes_plot_annotations_data(self.main_model.annotations)
+        self.set_scenes_plot_annotations_data(self.main_model.annotations,self.overview_plot.viewRange)
         self.main_model.annotations.sigFocusOnAnnotation.connect(self.set_focus_on_annotation)
         self.set_scene_window(self.main_model.window)
         self.set_scene_cursor()
@@ -292,23 +295,40 @@ class PairedGraphicsView():
         self.insetview_plot.addItem(annotation_graph_i)
         self.inset_annotations.append(annotation_graph_i)  # lists to easily keep track of annotations
         self.overview_annotations.append(annotation_graph_o)
+        self.plotted_annotations.append(annotation)
 
         annotation.sigAnnotationElementDeleted.connect(lambda: self.insetview_plot.removeItem(annotation_graph_i))
         annotation.sigAnnotationElementDeleted.connect(lambda: self.overview_plot.removeItem(annotation_graph_o))
+        annotation.sigAnnotationElementDeleted.connect(lambda: self.plotted_annotations.remove(annotation))
 
-    def set_scenes_plot_annotations_data(self, annotations):
+    def set_scenes_plot_annotations_data(self, annotations, reset = True, pos=None):
         '''
         :param annotations: an annotations object
         :return: None
         '''
-        # Clear existing annotations
-        for item in self.inset_annotations:
-            self.insetview_plot.removeItem(item)
-        for item in self.overview_annotations:
-            self.overview_plot.removeItem(item)
+        if pos is None:
+            pos,_ = self.overview_plot.viewRange()
+        if reset:# Clear existing annotations
+            for item in self.inset_annotations:
+                self.insetview_plot.removeItem(item)
+            for item in self.overview_annotations:
+                self.overview_plot.removeItem(item)
+            self.plotted_annotations.clear()
+        else:
+            for i in range(len(self.overview_annotations)):
+                a = self.overview_annotations[-i + 1]
+                if intervals_overlap(pos, a.pos()):
+                    self.overview_plot.removeItem(a)
+                    b = self.inset_annotations[-i + 1]
+                    self.insetview_plot.removeItem(b)
+                    del self.overview_annotations[-i + 1]
+                    del self.inset_annotations[-i + 1]
+
         # Add annotation plots
         for annotation in annotations.annotations_list:
-            self.add_annotaion_plot(annotation)
+            if intervals_overlap(annotation.getPos(),pos) and annotation not in self.plotted_annotations:
+                print('annotation.getpos , pos:',(annotation.getPos(),pos))
+                self.add_annotaion_plot(annotation)
 
     def set_focus_on_annotation(self, annotation):
         if annotation is None:
@@ -443,9 +463,8 @@ class PairedGraphicsView():
             self.main_model.set_time_position(pos.x())
 
     def overview_range_changed(self, mask=None):
-        x_range, y_range = self.overview_plot.viewRange()
-        # self.inset_annotations
-        # self.overview_annotations
+        x_range, _ = self.overview_plot.viewRange()
+        self.set_scenes_plot_annotations_data(self.main_model.annotations, reset=False, pos=x_range)
         # self.insetview_plot.removeItem(annotation_graph_i)
 
     def insetview_range_changed(self, mask=None):

@@ -61,7 +61,9 @@ class MainWindow(QMainWindow):
         # self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
         self.main_model = MainModel()
         self.autosave_timer = QtCore.QTimer()
+        self.autosave_timer.timeout.connect(self.auto_save)
         self.live_recording_timer = QtCore.QTimer()
+        self.live_recording_timer.timeout.connect(self.reload_plot)
 
         # Populate Main window with widgets
         # self.createDockWidget()
@@ -403,7 +405,6 @@ class MainWindow(QMainWindow):
 
 
     def load_live_recording(self):
-        self.timer.timeout.connect(self.reload_plot)
         if self.actionLiveUpdate.isChecked():
             self.live_recording_timer.start(100)
         else:
@@ -520,7 +521,6 @@ class MainWindow(QMainWindow):
         self.action_autosave.setCheckable(True)
         self.action_autosave.toggled.connect(self.toggle_auto_save)
         self.action_autosave.setChecked(True)
-        self.autosave_timer.timeout.connect(self.auto_save)
 
 
         # ANNOTATIONS section

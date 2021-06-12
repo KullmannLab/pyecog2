@@ -45,11 +45,15 @@ class ScalableGroup(PyecogGroupParameter):
         opts['addList'] = ['New Animal']  # ,'yellow','magenta','cyan']
         PyecogGroupParameter.__init__(self, **opts)
 
-    def addNew(self, typ):
-        n = (len(self.childs) + 1)
-        self.addChild(
-            dict(name= 'Animal '+str(n), type='str', value='[tid],fs', removable=True,
-                 renamable=True))
+    def addNew(self, typ,n=None):
+        if n is None:
+            n = (len(self.childs) + 1)
+        try:
+            self.addChild(
+                dict(name= 'Animal '+str(n), type='str', value='[tid],fs', removable=True,
+                     renamable=True))
+        except Exception:
+            self.addNew(typ,n+1)
 
 
 

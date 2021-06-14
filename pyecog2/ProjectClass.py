@@ -414,6 +414,7 @@ class Project():
         self.set_current_animal(Animal())  # start with empty animal
         self.filter_settings = (False,0,1e6) # initialize filter settings
         self.file_buffer = FileBuffer(self.current_animal)
+        self.ndf_converter_settings = None
         self.main_model.sigProjectChanged.emit()
 
     def setTitle(self,title):

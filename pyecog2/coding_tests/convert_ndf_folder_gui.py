@@ -60,9 +60,10 @@ class ScalableGroup(PyecogGroupParameter):
 class NDFConverterWindow(QMainWindow):
     def __init__(self,parent = None):
         QMainWindow.__init__(self,parent = parent)
-        if hasattr(parent.main_model.project,'ndf_converter_settings'):
+        self.settings = None
+        if hasattr(parent.main_model.project,'ndf_converter_settings'): # For backwards compatibility
             self.settings = parent.main_model.project.ndf_converter_settings
-        else:
+        if self.settings is None:
             self.settings = {'NDFdir': os.getcwd(),
                              'H5dir': os.getcwd(),
                              'start': '00/00/00 00:00:00',
@@ -216,6 +217,8 @@ class NDFConverterWindow(QMainWindow):
         end_string = self.p.param('Date Range', 'End').value()
         end_file_name = 'M' + str(int(datetime.strptime(end_string, self.dfrmt).timestamp())) + '.ndf'
 
+        self.folder2convert = os.path.normpath(self.folder2convert)
+        self.destination_folder = os.path.normpath(self.destination_folder)
         self.settings['NDFdir'] = self.folder2convert
         self.settings['H5dir'] = self.destination_folder
         self.settings['start'] = start_string

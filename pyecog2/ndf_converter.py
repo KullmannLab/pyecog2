@@ -657,7 +657,7 @@ class DataHandler:
             ndf.set_modified_time_to_old()
 
         except Exception:
-            print('Something unexpected went wrong loading '+str(tids)+' from '+filename+' :')
+            print('Something unexpected went wrong loading '+str(tids)+' from '+filename+':')
             #print('Valid ids are:'+str(ndf.tid_set))
             exc_type, exc_value, exc_traceback = sys.exc_info()
             print (traceback.print_exception(exc_type, exc_value,exc_traceback))

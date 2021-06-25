@@ -193,6 +193,8 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         self.hist.axis.setLabel( text = 'Amplitude', units = 'Log<sub>10</sub> a.u.')
         self.hist.gradient.loadPreset('viridis')
         self.hist_levels = None
+        self.hist_levels_cross = None
+        self.last_plot_was_cross = False
 
         # Multithread controls
         self.threadpool = QThreadPool()
@@ -228,8 +230,13 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             # print('Killswitch list:',self.thread_killswitch_list)
         self.data = np.array([[1, 0], [0, 1]])
         self.start_t = timer()
-        if self.hist_levels is not None:
-            self.hist_levels = self.hist.getLevels()
+        if not self.last_plot_was_cross:
+            if self.hist_levels is not None:
+                self.hist_levels = self.hist.getLevels()
+        else:
+            if self.hist_levels_cross is not None:
+                self.hist_levels_cross = self.hist.getLevels()
+
         if self.isVisible():
             self.setBackground(self.main_model.color_settings['brush'])
             if self.main_model is None:
@@ -253,8 +260,8 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
                 return
             # print('Wavelet data shape:',data.shape)
             self.img.setImage(self.data*0)
-            if self.hist_levels is not None: # Mantain levels from previous view if they exist
-                self.hist.setLevels(*self.hist_levels)
+            # if self.hist_levels is not None: # Mantain levels from previous view if they exist
+            #     self.hist.setLevels(*self.hist_levels)
             self.p1.setLabel('bottom', 'Computing Wavelet tranform...', units='')
             self.show()
             # print('Computing Wavelet...')
@@ -291,9 +298,10 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             # print('Killswitch list:', self.thread_killswitch_list)
             return
         if self.cross_wav is not None: # plotting cross wavelet
+            self.last_plot_was_cross = True
             cross_wav = self.wav*np.conj(self.cross_wav)
             # self.value = np.log(np.abs(cross_wav)+1)/2
-            self.value = np.sqrt(np.abs(cross_wav))
+            self.value = np.log(np.sqrt(np.abs(cross_wav))+1.001)
             maxvalue = np.max(self.value)
             self.data = hsvcolormap.map((np.angle(cross_wav)/(2*np.pi))%1)/256
             # self.data = np.apply_along_axis(lambda x:colorsys.hsv_to_rgb(*x), 0,  #apply function over 0th axis
@@ -308,12 +316,13 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             # intensity = np.abs(result)[:, :, np.newaxis]
 
             self.hist.gradient.loadPreset('spectrum')
-            # self.hist_levels = None
             self.hist.axis.setLabel( text = 'Phase (0 - 360<sup>o</sup>)', units = '')
-            if self.hist_levels is None:
-                self.hist.setLevels(0,maxvalue)
+            if self.hist_levels_cross is None:
+                self.hist_levels_cross = [0,maxvalue]
+                self.hist.setLevels(*self.hist_levels_cross)
 
         else:  # plotting normal wavelet
+            self.last_plot_was_cross = False
             self.data = np.log(np.abs(self.wav)+1e-6)  # +1e-3
             self.img.setImage(self.data*(1-self.coi))
             self.hist.gradient.loadPreset('viridis')
@@ -328,10 +337,17 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         self.vb.setLimits(xMin=0, xMax=self.data.shape[1]*self.dt, yMin=ymin, yMax=ymax)
         self.vb.setRange(xRange=[0,self.data.shape[1]*self.dt])
         self.p1.setLabel('bottom', 'Time', units='s')
-        if self.hist_levels is not None:  # Mantain levels from previous view if they exist
-            self.hist.setLevels(*self.hist_levels)
+        if self.cross_wav is None:
+            if self.hist_levels is not None:  # Mantain levels from previous standard wavelet view if they exist
+                self.hist.setLevels(*self.hist_levels)
+            else:
+                self.hist_levels = self.hist.getLevels()
         else:
-            self.hist_levels = self.hist.getLevels()
+            if self.hist_levels_cross is not None:  # Mantain levels from previous cross-wavelet view if they exist
+                self.hist.setLevels(*self.hist_levels_cross)
+            else:
+                self.hist_levels_cross = self.hist.getLevels()
+
         self.cursor.setPos(self.main_model.time_position - self.main_model.window[0])
         self.show()
         end_t = timer()

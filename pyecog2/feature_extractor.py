@@ -169,9 +169,9 @@ class FeatureExtractor():
             if len(data) != len(window):
                 window = get_window(self.settings['window'],len(data))
             window.shape = (data.shape[0],1)
-            data *= window
+            # data *= window
             fs = 1/(time[1]-time[0])
-            dataf = np.fft.rfft(data,axis=0)/len(data)
+            dataf = np.fft.rfft(data*window,axis=0)/len(data)
             # for j,func in enumerate(self.feature_time_functions):
             for j,func in enumerate(_time_flist):
                 features[i,j] = func(data)

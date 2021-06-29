@@ -4,9 +4,9 @@ Wavelet widget for EEG signals in pyecog
 """
 
 import pyqtgraph as pg
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtWidgets import QApplication, QWidget
-from PyQt5.QtCore import QRunnable, pyqtSlot, QThreadPool
+from PySide2 import QtCore, QtGui
+from PySide2.QtWidgets import QApplication, QWidget
+from PySide2.QtCore import QRunnable, Slot, QThreadPool
 import numpy as np
 import scipy.signal as sg
 from timeit import default_timer as timer
@@ -134,7 +134,7 @@ class Worker(QRunnable):
         if 'progress_signal' in s.parameters.keys():
             self.kwargs['progress_signal'] = self.signals.progress
 
-    @pyqtSlot()
+    @Slot()
     def run(self):
         '''
         Initialise the runner function with passed args, kwargs.

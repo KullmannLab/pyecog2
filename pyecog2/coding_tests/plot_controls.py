@@ -1,8 +1,8 @@
 import pyqtgraph as pg
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QWidget, QCheckBox, QPushButton, QMainWindow, QGridLayout, QTableView
-from PyQt5.QtCore import QRunnable, pyqtSlot, QThreadPool
+from PySide2 import QtCore, QtGui
+from PySide2.QtCore import Qt
+from PySide2.QtWidgets import QApplication, QWidget, QCheckBox, QPushButton, QMainWindow, QGridLayout, QTableView
+from PySide2.QtCore import QRunnable, Slot, QThreadPool
 import numpy as np
 import scipy.signal as sg
 from timeit import default_timer as timer
@@ -46,9 +46,9 @@ class ChannelSelectorWindow(QMainWindow):
 
 
 class PlotControls(QWidget):
-    sigUpdateFilter = QtCore.pyqtSignal(tuple)
-    sigUpdateXrange_i = QtCore.pyqtSignal(float)
-    sigUpdateXrange_o = QtCore.pyqtSignal(float)
+    sigUpdateFilter = QtCore.Signal(tuple)
+    sigUpdateXrange_i = QtCore.Signal(float)
+    sigUpdateXrange_o = QtCore.Signal(float)
     def __init__(self, main_model = None):
         self.main_model = main_model
         QWidget.__init__(self)

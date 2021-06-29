@@ -2,7 +2,7 @@ import sys
 import os
 import numpy as np
 
-from PyQt5 import QtWidgets, QtCore#,# uic
+from PySide2 import QtWidgets, QtCore#,# uic
 
 import pyqtgraph_copy.pyqtgraph as pg
 

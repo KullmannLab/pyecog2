@@ -62,7 +62,7 @@ def wheelEventWrapper(s):
 
 class PairedGraphicsView():
     '''
-    This is pyqgraph implementation of plotting windows.
+    This is pyqtgraph implementation of plotting windows.
     This should be focused on working, not particularly elegant.
     '''
 
@@ -123,7 +123,7 @@ class PairedGraphicsView():
         self.is_setting_ROI_position = False
 
         x_range, y_range = self.insetview_plot.viewRange()
-        pen = pg.mkPen(color=(44, 133, 160,192), width=2)
+        pen = pg.mkPen(color=(44, 133, 242,192), width=2)
         # penh = pg.mkPen(color=(211, 122, 95,255), width=2)
 
         self.overviewROI = pg.RectROI(pos=(x_range[0], y_range[0]),
@@ -150,7 +150,7 @@ class PairedGraphicsView():
     def set_scenes_plot_channel_data(self, overview_range = None, pens=None):
         '''
         # Not entirely clear the differences between this and
-        set_plotitem_data is snesnible
+        set_plotitem_data is sensible
         pens - a list of len channels containing pens
         '''
         start_t = timer()
@@ -182,21 +182,27 @@ class PairedGraphicsView():
             if len(arr.shape)<2:
                 return
             self.n_channels = arr.shape[1]
-            self.scale = 1 / (6 * np.mean(np.std(arr, axis=0, keepdims=True), axis=1))
+            self.scale = 1 / (8 * np.mean(np.std(arr, axis=0, keepdims=True), axis=1))
             self.overview_plot.vb.setYRange(-2, arr.shape[1] + 1)
             self.insetview_plot.vb.setYRange(-2, arr.shape[1] + 1)
             self.overview_plot.setTitle('<p style="font-size:large"> Animal: ' + self.main_model.project.current_animal.id + '</b>')
             end_t = timer()
 
         end_t = timer()
-        print('Paired graphics view scale computation finnished in',end_t-start_t,'seconds')
+        print('Paired graphics view scale computation finished in',end_t-start_t,'seconds')
         start_t = end_t
 
+        if len(arr.shape) > 1:
+            pens = [
+                    pg.mkPen(color=(214, 39, 40, 130)),
+                    pg.mkPen(color=(31, 119, 180, 130)),
+                    pg.mkPen(color=(44, 160, 44, 130)),
+                    pg.mkPen(color=(148, 103, 189, 130))]
         for i in range(self.n_channels):
             if pens is None:
-                pen=self.main_pen
+                pen = self.main_pen
             else:
-                pen = pen[i]
+                pen = pens[i % 4]
             print('Setting plotitem channel data')
             self.set_plotitem_channel_data(pen, i, self.scale)
 
@@ -390,7 +396,7 @@ class PairedGraphicsView():
         self.main_model.sigWindowChanged.connect(window_item_i.setRegion)
 
     def graphics_object_xchanged(self):
-        print('xChanged grahics object')
+        print('xChanged graphics object')
 
     def overviewROIchanged(self):
         state = self.overviewROI.getState()

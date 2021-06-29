@@ -1,4 +1,4 @@
-from PyQt5 import QtGui, QtCore, QtWidgets
+from PySide2 import QtGui, QtCore, QtWidgets
 from pyecog2.annotations_module import AnnotationPage
 from datetime import datetime
 import numpy as np
@@ -25,7 +25,6 @@ def _defersort(fn):
             if setSorting:
                 self.setSortingEnabled(self._sorting)
                 self._sorting = None
-
     return defersort
 
 
@@ -172,7 +171,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
             self.setRow(r, annotation, [i[0] for i in annotation.element_dict.items()])
             annotation.sigAnnotationElementDeleted.connect(lambda: self.myremoveRow(r))
             for c in range(self.columnCount()):
-                annotation.sigAnnotationElementChanged.connect(self.item(r,c).update_value_from_annotation)
+                annotation.sigAnnotationElementChanged.connect(lambda: self.item(r,c).update_value_from_annotation())
             r+=1
 
         if (self._sorting and self.horizontalHeadersSet and

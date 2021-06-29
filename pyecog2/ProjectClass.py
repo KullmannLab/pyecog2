@@ -6,7 +6,7 @@ import glob, os
 from datetime import datetime
 from pyecog2.annotations_module import AnnotationPage
 from scipy import signal
-from PyQt5 import QtCore
+from PySide2 import QtCore
 import pyqtgraph as pg
 from timeit import default_timer as timer
 
@@ -435,17 +435,17 @@ class Project():
 
     def save_to_json(self, fname):
         try:
-            self.main_model.annotations.copy_to(self.current_animal.annotations)
-            # self.current_animal.annotations.copy_from(
-            #     self.main_model.annotations)  # save alterations made to the current animal annotations
+            # save alterations made to the current animal annotations
+            # self.main_model.annotations.copy_to(self.current_animal.annotations)
+            self.current_animal.annotations.copy_from(self.main_model.annotations, connect_history=False, quiet=True)
         except Exception:
             print('no main model defined')
 
         dict = self.__dict__.copy()
+        print(dict.keys())
         del (dict['main_model'])
         dict['animal_list'] = [animal.dict() for animal in self.animal_list]  # make animals into dicts
-        dict[
-            'current_animal'] = self.current_animal.id  # Animal().dict() # self.current_animal.dict() # Otherwise when loading the current animal would not be in the animal_list
+        dict['current_animal'] = self.current_animal.id  # Animal().dict() # self.current_animal.dict() # Otherwise when loading the current animal would not be in the animal_list
         dict['file_buffer'] = None
         # print(dict)
         json.dump(dict, open(fname, 'w'), indent=2)

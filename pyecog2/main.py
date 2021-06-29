@@ -4,10 +4,10 @@ import sys
 import webbrowser
 
 import numpy as np
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtGui import QPalette, QColor
-from PyQt5.QtCore import Qt, QSettings, QByteArray, QObject
-from PyQt5.QtWidgets import QApplication, QPlainTextEdit, QTextEdit,QTextBrowser, QDockWidget, QMainWindow, QFileDialog, QMessageBox
+from PySide2 import QtCore, QtGui
+from PySide2.QtGui import QPalette, QColor
+from PySide2.QtCore import Qt, QSettings, QByteArray, QObject
+from PySide2.QtWidgets import QApplication, QPlainTextEdit, QTextEdit,QTextBrowser, QDockWidget, QMainWindow, QFileDialog, QMessageBox
 
 from pyecog2.ProjectClass import Project, Animal, MainModel
 from pyecog2.annotation_table_widget import AnnotationTableWidget
@@ -173,11 +173,19 @@ class MainWindow(QMainWindow):
         settings.endGroup()
 
         self.settings = QSettings("PyEcog", "PyEcog")
-        print("reading configurations from: " + self.settings.fileName())
+        print("Reading GUI configurations from: " + self.settings.fileName())
         self.settings.beginGroup("MainWindow")
         # print(self.settings.value("windowGeometry", type=QByteArray))
-        self.restoreGeometry(self.settings.value("windowGeometry", type=QByteArray))
-        self.restoreState(self.settings.value("windowState", type=QByteArray))
+        try:
+            self.restoreGeometry(self.settings.value("windowGeometry"))
+        except Exception as e:
+            print('Error restoring geometry')
+            print(e)
+        try:
+            self.restoreState(self.settings.value("windowState"))
+        except Exception as e:
+            print('Error restiring state')
+            print(e)
 
         self.action_darkmode.setChecked(self.settings.value("darkMode",type=bool))
         self.toggle_darkmode()  # pre toggle darkmode to make sure project loading dialogs are made with the correct color pallete
@@ -673,6 +681,8 @@ def execute():
     os.environ['QT_MULTIMEDIA_PREFERRED_PLUGINS'] = 'windowsmediafoundation'
     app = QApplication(sys.argv)
     app.setApplicationName('PyEcog')
+    app.setOrganizationDomain('PyEcog')
+    app.setOrganizationName('PyEcog')
     app.setStyle("fusion")
     # Mikail feel free to play about if you feel so inclined :P
     # Now use a palette to switch to dark colors:

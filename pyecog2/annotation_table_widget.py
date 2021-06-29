@@ -171,7 +171,8 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
             self.setRow(r, annotation, [i[0] for i in annotation.element_dict.items()])
             annotation.sigAnnotationElementDeleted.connect(lambda: self.myremoveRow(r))
             for c in range(self.columnCount()):
-                annotation.sigAnnotationElementChanged.connect(lambda: self.item(r,c).update_value_from_annotation())
+                item = self.item(r,c)
+                annotation.sigAnnotationElementChanged.connect(self.function_generator_link(item))
             r+=1
 
         if (self._sorting and self.horizontalHeadersSet and
@@ -179,6 +180,10 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
             self.sortByColumn(1, QtCore.Qt.AscendingOrder)
 
         self.updateTableColor()
+
+    @staticmethod
+    def function_generator_link(table_item):
+        return lambda: table_item.update_value_from_annotation()
 
     def myremoveRow(self,r):
         # couldn't figure out any other way apart from reseting all the data
@@ -485,6 +490,7 @@ class AnnotationTableWidgetItem(QtWidgets.QTableWidgetItem):
         self.setFormat(format)
 
     def update_value_from_annotation(self):
+        print('updating table item', self.index,self.key,self.value)
         if self.value != self.annotation.element_dict[self.key]:
             self.setValue(self.annotation.element_dict[self.key])
 

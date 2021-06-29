@@ -348,16 +348,18 @@ class AnnotationPage(QObject):
         return str([json.loads(repr(a).replace('\'','\"')) for a in self.annotations_list])
 
     def dict(self):
-        dict = self.__dict__.copy()
+        # dict = self.__dict__.copy()
+        dic = {}
         # Copy more deeply some of the fields
-        dict['annotations_list'] = [annotation.dict() for annotation in self.annotations_list]
-        dict['labels'] = self.labels.copy()
-        dict['label_color_dict'] = self.label_color_dict.copy()
-        dict['label_channel_range_dict'] = self.label_channel_range_dict.copy()
-        dict['focused_annotation'] = self.get_annotation_index(self.focused_annotation)
-        dict['history'] = None
-        dict['history_step'] = None
-        return dict
+        dic['annotations_list'] = [annotation.dict() for annotation in self.annotations_list]
+        dic['labels'] = self.labels.copy()
+        dic['label_color_dict'] = self.label_color_dict.copy()
+        dic['label_channel_range_dict'] = self.label_channel_range_dict.copy()
+        dic['focused_annotation'] = self.get_annotation_index(self.focused_annotation)
+        dic['history'] = None
+        dic['history_step'] = None
+        dic['history_is_paused'] = False
+        return dic
 
     def restore_from_dict(self,dic):
         # to be used with history dictionaries so that history is not overwriten as would happen with shallower copies

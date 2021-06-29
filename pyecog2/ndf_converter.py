@@ -552,7 +552,7 @@ class DataHandler:
                                     n_cores=-1,
                                     fs='auto',
                                     glitch_detection=True,
-                                    high_pass_filter=True,
+                                    high_pass_filter=False,
                                     gui_object=False):
         """
         Converts a folder of ndf files to h5 files

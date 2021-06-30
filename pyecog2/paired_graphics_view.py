@@ -16,6 +16,8 @@ from pyqtgraph import functions as fn
 from pyqtgraph.Point import Point
 from timeit import default_timer as timer
 from ProjectClass import intervals_overlap
+from annotations_module import i_spaced_nfold
+
 
 # Function to overide pyqtgraph ViewBox wheel events
 def wheelEvent(self, ev, axis=None):
@@ -192,11 +194,28 @@ class PairedGraphicsView():
         print('Paired graphics view scale computation finnished in',end_t-start_t,'seconds')
         start_t = end_t
 
+        if self.n_channels > 1:
+            color = [(*tuple(np.array(colorsys.hls_to_rgb(i_spaced_nfold(int(i*self.n_channels/8)%self.n_channels+1,self.n_channels), .4, .8)) * 255), 230)
+                     for i in range(self.n_channels)]
+            color = [(*tuple(np.array(colorsys.hsv_to_rgb(i_spaced_nfold(int(i*self.n_channels/8)%self.n_channels+1,self.n_channels),.8,.9)) * 255), 230)
+                     for i in range(self.n_channels)]
+            pens = [pg.mkPen(color=
+                             color[i])
+                    for i in range(self.n_channels)]
+
+            pens = [
+                pg.mkPen(color=(214, 39, 40, 130)),
+                pg.mkPen(color=(31, 119, 180, 130)),
+                pg.mkPen(color=(44, 160, 44, 130)),
+                pg.mkPen(color=(148, 103, 189, 130))]
+
+            # pens=None
+
         for i in range(self.n_channels):
             if pens is None:
                 pen=self.main_pen
             else:
-                pen = pen[i]
+                pen = pens[i%len(pens)]
             print('Setting plotitem channel data')
             self.set_plotitem_channel_data(pen, i, self.scale)
 
@@ -255,9 +274,14 @@ class PairedGraphicsView():
         # self.insetview_plot.vb.setXRange(t0, t0 + min(30, y.shape[0] / fs))
 
     # The following static methods are auxiliary functions to link several annotation related signals:
-    @staticmethod
-    def function_generator_link_annotaions_to_graphs(annotation_object, annotation_graph):
-        return lambda: annotation_graph.setRegion(annotation_object.getPos())
+    # @staticmethod
+    def function_generator_link_annotaions_to_graphs(self,annotation_object, annotation_graph):
+        return lambda: annotation_graph.update_fields(annotation_object.getPos(),
+                                                      annotation_object.getLabel(),
+                                                      (*self.main_model.annotations.label_color_dict[annotation_object.getLabel()], 25),
+                                                      (*self.main_model.annotations.label_color_dict[
+                                                          annotation_object.getLabel()], 200)
+                                                      )
 
     @staticmethod
     def function_generator_link_graphs_to_annotations(annotation_object, annotation_graph):

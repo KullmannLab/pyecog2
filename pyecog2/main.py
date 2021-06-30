@@ -499,7 +499,7 @@ class MainWindow(QMainWindow):
         self.actionLiveUpdate.setCheckable(True)
         self.actionLiveUpdate.toggled.connect(self.load_live_recording)
         self.actionLiveUpdate.setChecked(False)
-        self.actionLiveUpdate.setShortcut('Ctrl+L')
+        self.actionLiveUpdate.setShortcut('Ctrl+R')
 
         self.menu_file.addSeparator()
         self.action_quit       = self.menu_file.addAction("Quit")
@@ -516,6 +516,7 @@ class MainWindow(QMainWindow):
         self.menu_project.addSeparator()
         self.action_new_project = self.menu_project.addAction("New Project")
         self.action_load_project = self.menu_project.addAction("Load Project")
+        self.action_load_project.setShortcut('Ctrl+L')
         self.action_save = self.menu_project.addAction("Save Project")
         self.action_save.setShortcut('Ctrl+S')
         self.action_save_as = self.menu_project.addAction("Save Project as...")
@@ -577,6 +578,7 @@ class MainWindow(QMainWindow):
         self.action_reset_geometry.triggered.connect(self.reset_geometry)
 
         self.action_fullscreen = self.menu_help.addAction("Full Screen")
+        self.action_fullscreen.setShortcut('F11')
         self.action_fullscreen.setCheckable(True)
         self.action_fullscreen.toggled.connect(self.toggle_fullscreen)
         self.action_fullscreen.setChecked(False)

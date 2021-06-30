@@ -169,11 +169,11 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
             c.setAlpha(min(c.alpha() * 2, 255))
             hoverBrush = pg.functions.mkBrush(c)
         self.setHoverBrush(hoverBrush)
-        self.label = label  # Label of the annotation
+        # self.label = label  # Label of the annotation
         self.id = id  # field to identify corresponding annotation in the annotations object
-        label_text = pg.TextItem(label, anchor=(0, 0), color=pen.color())
-        label_text.setParentItem(self.lines[0])
-        label_text.updateTextPos()
+        self.label_text = pg.TextItem(label, anchor=(0, 0), color=pen.color())
+        self.label_text.setParentItem(self.lines[0])
+        self.label_text.updateTextPos()
         self.menu = None
         self.setAcceptedMouseButtons(self.acceptedMouseButtons() | QtCore.Qt.RightButton)
         self.setZValue(0.1)
@@ -311,6 +311,16 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
             self.prepareGeometryChange()
 
         return br
+
+    def update_fields(self,pos,label,color_brush,color_pen):
+        self.setRegion(pos)
+        self.label_text.setText(label)
+        self.label_text.setColor(pg.functions.mkColor(color_pen))
+        self.brush.setColor(pg.functions.mkColor(color_brush))
+        self.lines[0].pen.setColor(pg.functions.mkColor(color_pen))
+        self.lines[1].pen.setColor(pg.functions.mkColor(color_pen))
+        self.update()
+
 
 class PyecogCursorItem(pg.InfiniteLine):
     def __init__(self, pos=None, angle=90, pen=None, movable=True, bounds=None,

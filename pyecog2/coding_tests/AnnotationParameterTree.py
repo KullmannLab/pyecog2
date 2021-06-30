@@ -35,18 +35,25 @@ class ScalableGroup(PyecogGroupParameter):
                 }[typ]
 
         n = (len(self.childs) + 1)
-        if val == 'auto':
-            v = i_spaced_nfold(n,6)
-            val = tuple(np.array(colorsys.hls_to_rgb(v, .5, .9)) * 255)
-        self.addChild(
-            {'name': "Label %d" % n,
-             'type': 'group',
-             'children': [
-                 {'name':'shortcut key','type':'int','value': n},
-                 {'name': 'color', 'type': 'color', 'value':val},
-                 {'name': 'Channel range', 'type': 'str','value': str(None)}],
-             'renamable': True,
-             'removable': True})
+        while n<255:
+            try:
+                if val == 'auto':
+                    v = i_spaced_nfold(n,6)
+                    val = tuple(np.array(colorsys.hls_to_rgb(v, .5, .9)) * 255)
+                self.addChild(
+                    {'name': "Label %d" % n,
+                     'type': 'group',
+                     'children': [
+                         {'name':'shortcut key','type':'int','value': n},
+                         {'name': 'color', 'type': 'color', 'value':val},
+                         {'name': 'Channel range', 'type': 'str','value': str(None)}],
+                     'renamable': True,
+                     'removable': True})
+                break
+            except Exception:
+                print("Label %d" % n,'already exists')
+                n +=1
+
 
 class AnnotationParameterTee(PyecogParameterTree):
     def __init__(self,annotations):
@@ -142,6 +149,7 @@ class AnnotationParameterTee(PyecogParameterTree):
             if change == 'childRemoved':
                 label = data.name()
                 del self.shortcut_keys[label]
+                print('Shortcut Keys:',self.shortcut_keys)
                 self.annotationPage.delete_label(label)
             if change == 'childAdded':
                 label = data[0].name()
@@ -161,8 +169,8 @@ class AnnotationParameterTee(PyecogParameterTree):
         #         label = p.name()
         # return label
         label = None
+        print('Shortcut Keys:', self.shortcut_keys)
         print('looking for key', shortcutkey)
-        for k in self.shortcut_keys.keys():
-            if self.shortcut_keys[k] == shortcutkey:
-                label = k
+        for label in self.shortcut_keys.keys():
+            if self.shortcut_keys[label] == shortcutkey:
                 return label

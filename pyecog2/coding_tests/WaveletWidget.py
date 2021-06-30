@@ -195,7 +195,7 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         self.hist_levels = None
         self.hist_levels_cross = None
         self.last_plot_was_cross = False
-
+        self.hist.vb.enableAutoRange(self.hist.vb.XYAxes,enable=.99)
         # Multithread controls
         self.threadpool = QThreadPool()
         self.thread_killswitch_list = []
@@ -230,12 +230,6 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             # print('Killswitch list:',self.thread_killswitch_list)
         self.data = np.array([[1, 0], [0, 1]])
         self.start_t = timer()
-        if not self.last_plot_was_cross:
-            if self.hist_levels is not None:
-                self.hist_levels = self.hist.getLevels()
-        else:
-            if self.hist_levels_cross is not None:
-                self.hist_levels_cross = self.hist.getLevels()
 
         if self.isVisible():
             self.setBackground(self.main_model.color_settings['brush'])
@@ -251,13 +245,27 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
                     return
                 # print('window' , self.main_model.window)
                 data, time = self.main_model.project.get_data_from_range(self.main_model.window,channel = self.channel)
+                if len(data) <= 10:
+                    return
                 if self.cross_channel!=-1 and self.cross_channel != self.channel:
                     cross_data,_ = self.main_model.project.get_data_from_range(self.main_model.window,channel = self.cross_channel)
                     cross_data = cross_data.ravel()
+                    if len(cross_data) != len(data):
+                        return
                 else:
                     cross_data = None
-            if len(data) <= 10 :
-                return
+
+            # save levels from colorbar
+            if not self.last_plot_was_cross:
+                if self.hist_levels is not None:
+                    # print('updating hist_levels',self.hist_levels )
+                    self.hist_levels = self.hist.getLevels()
+                    # print('updataed hist_levels',self.hist_levels )
+            else:
+                if self.hist_levels_cross is not None:
+                    # print('updating hist_levels_cross',self.hist_levels_cross )
+                    self.hist_levels_cross = self.hist.getLevels()
+                    # print('updataed hist_levels_cross',self.hist_levels_cross)
             # print('Wavelet data shape:',data.shape)
             self.img.setImage(self.data*0)
             # if self.hist_levels is not None: # Mantain levels from previous view if they exist
@@ -310,21 +318,21 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             #               value-minvalue]))  # temporary value
             # self.data = np.moveaxis(self.data,0,-1) +minvalue
             print('data shape',self.data.shape)
-            self.img.setImage(self.data*((self.value - self.coi)[:,:,np.newaxis]), # *(value[:,:,np.newaxis]),
+            self.img.setImage(self.data*((self.value + self.coi)[:,:,np.newaxis]), # *(value[:,:,np.newaxis]),
                               autoLevels=False)
             # hsvim = plt.cm.hsv(np.angle(result) / 2 / np.pi + .5)
             # intensity = np.abs(result)[:, :, np.newaxis]
 
             self.hist.gradient.loadPreset('spectrum')
-            self.hist.axis.setLabel( text = 'Phase (0 - 360<sup>o</sup>)', units = '')
+            self.hist.axis.setLabel( text = 'Hue: Phase (0 - 360<sup>o</sup>) <br> Saturation: Coherence', units = '')
             if self.hist_levels_cross is None:
                 self.hist_levels_cross = [0,maxvalue]
-                self.hist.setLevels(*self.hist_levels_cross)
+                # self.hist.setLevels(*self.hist_levels_cross)
 
         else:  # plotting normal wavelet
             self.last_plot_was_cross = False
             self.data = np.log(np.abs(self.wav)+1e-6)  # +1e-3
-            self.img.setImage(self.data*(1-self.coi))
+            self.img.setImage(self.data + self.coi)
             self.hist.gradient.loadPreset('viridis')
             # self.hist_levels = None
             self.hist.axis.setLabel(text='Amplitude', units='Log<sub>10</sub> a.u.')

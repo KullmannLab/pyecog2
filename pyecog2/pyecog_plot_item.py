@@ -1,5 +1,5 @@
-from PyQt5 import QtGui, QtWidgets, QtCore
-from PyQt5.QtCore import QThread, pyqtSignal, Qt, QRect, QTimer
+from PySide2 import QtGui, QtWidgets, QtCore
+from PySide2.QtCore import QThread, Signal, Qt, QRect, QTimer
 from scipy import signal, stats
 # import pyqtgraph_copy.pyqtgraph as pg
 import pyqtgraph as pg
@@ -113,8 +113,8 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
     '''
     Class to be used to plot annotations and current window
     '''
-    sigRemoveRequested = QtCore.pyqtSignal(object)
-    sigClicked = QtCore.pyqtSignal(object)
+    sigRemoveRequested = QtCore.Signal(object)
+    sigClicked = QtCore.Signal(object)
 
     def __init__(self, values=(0, 1), orientation='vertical', brush=None, pen=None,
                  hoverBrush=None, hoverPen=None, movable=True, bounds=None,

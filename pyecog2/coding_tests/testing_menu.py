@@ -1,5 +1,5 @@
-from PyQt5 import QtCore
-from PyQt5.QtWidgets import QMenuBar, QGridLayout, QApplication, QWidget, QPlainTextEdit
+from PySide2 import QtCore
+from PySide2.QtWidgets import QMenuBar, QGridLayout, QApplication, QWidget, QPlainTextEdit
 import sys
 
 class Window(QWidget):

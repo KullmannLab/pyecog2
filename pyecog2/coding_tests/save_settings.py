@@ -1,7 +1,7 @@
 import sys
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
+from PySide2.QtCore import *
+from PySide2.QtGui import *
+from PySide2.QtWidgets import *
 
 class Window(QMainWindow):
     def __init__(self, parent=None):
@@ -69,8 +69,8 @@ class Window(QMainWindow):
 
     def readSettings(self):
         settings = QSettings()
-        self.restoreGeometry(settings.value("geometry").toByteArray())
-        self.restoreState(settings.value("windowState").toByteArray())
+        self.restoreGeometry(settings.value("geometry"))
+        self.restoreState(settings.value("windowState"))
 
 class Dock(QDockWidget):
     def __init__(self, title, parent=None):

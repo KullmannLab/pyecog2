@@ -1,8 +1,8 @@
-from PyQt5.QtWidgets import QMainWindow, QApplication, QDockWidget, QListWidget, QTextEdit
+from PySide2.QtWidgets import QMainWindow, QApplication, QDockWidget, QListWidget, QTextEdit
 import sys
-from PyQt5.QtGui import QIcon
-from PyQt5 import QtGui
-from PyQt5.QtCore import Qt, QSettings, QByteArray
+from PySide2.QtGui import QIcon
+from PySide2 import QtGui
+from PySide2.QtCore import Qt, QSettings, QByteArray
  
  
  
@@ -11,7 +11,7 @@ from PyQt5.QtCore import Qt, QSettings, QByteArray
 class DockDialog(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.title = "PyQt5 StackedWidget"
+        self.title = "PySide2 StackedWidget"
         self.top = 200
         self.left = 500
         self.width = 400

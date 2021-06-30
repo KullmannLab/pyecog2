@@ -1,5 +1,5 @@
 import os
-from PyQt5 import QtGui, QtCore, QtWidgets
+from PySide2 import QtGui, QtCore, QtWidgets
 import numpy as np
 import json
 from pyecog2.ProjectClass import create_metafile_from_h5, load_metadata_file
@@ -14,8 +14,8 @@ class TreeModel(QtCore.QAbstractItemModel):
     # hmmm not sure best but lets roll with it
     # sends an array of data and their sampling freq in hz
     # maybe memmap is better?
-    plot_node_signal = QtCore.pyqtSignal(np.ndarray)
-    #plot_node_signal = QtCore.pyqtSignal()
+    plot_node_signal = QtCore.Signal(np.ndarray)
+    #plot_node_signal = QtCore.Signal()
     '''
     Naming convention (not right at the moment)
     lowerUpper is overidded modules

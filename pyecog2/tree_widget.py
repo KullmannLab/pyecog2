@@ -1,4 +1,4 @@
-from PyQt5 import QtGui, QtWidgets, QtCore
+from PySide2 import QtGui, QtWidgets, QtCore
 
 import sys
 import os
@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 import pickle as p
 
-from PyQt5 import QtGui, QtWidgets, QtCore#,# uic
-from PyQt5.QtCore import QThread, pyqtSignal, Qt, QRect, QTimer
+from PySide2 import QtGui, QtWidgets, QtCore#,# uic
+from PySide2.QtCore import QThread, Signal, Qt, QRect, QTimer
 
 # import pyqtgraph_copy.pyqtgraph as pg
 import pyqtgraph as pg

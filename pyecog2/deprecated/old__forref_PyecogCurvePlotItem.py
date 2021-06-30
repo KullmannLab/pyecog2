@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 import pickle as p
 
-from PyQt5 import QtGui, QtWidgets#,# uic
-from PyQt5.QtCore import QThread, pyqtSignal, Qt, QRect, QTimer
+from PySide2 import QtGui, QtWidgets#,# uic
+from PySide2.QtCore import QThread, Signal, Qt, QRect, QTimer
 from scipy import signal, stats
 import pyqtgraph as pg
 import inspect

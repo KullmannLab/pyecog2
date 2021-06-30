@@ -1,14 +1,14 @@
 import sys
-from PyQt5.QtWidgets import QMainWindow, QApplication, QWidget, QAction, QTableWidget, QTableWidgetItem, QVBoxLayout
-from PyQt5.QtGui import QIcon, QBrush, QColor
-from PyQt5.QtCore import pyqtSlot,Qt
+from PySide2.QtWidgets import QMainWindow, QApplication, QWidget, QAction, QTableWidget, QTableWidgetItem, QVBoxLayout
+from PySide2.QtGui import QIcon, QBrush, QColor
+from PySide2.QtCore import Slot,Qt
 
 
 class App(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.title = 'PyQt5 table - pythonspot.com'
+        self.title = 'PySide2 table - pythonspot.com'
         self.left = 0
         self.top = 0
         self.width = 300
@@ -50,7 +50,7 @@ class App(QWidget):
         # table selection change
         self.tableWidget.doubleClicked.connect(self.on_click)
 
-    # @pyqtSlot()
+    # @Slot()
     def on_click(self):
         print("\n")
         for currentQTableWidgetItem in self.tableWidget.selectedItems():

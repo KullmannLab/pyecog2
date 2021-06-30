@@ -20,7 +20,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
   python_requires='>=3.8',
-  install_requires=['PyQt5==5.15.2',
+  install_requires=['PySide2==5.15.2',
                     'scipy==1.5.4',
                     'pandas==1.1.5',
                     'matplotlib==3.3.3',

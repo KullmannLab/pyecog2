@@ -1,6 +1,6 @@
 import json
-from PyQt5 import QtCore
-from PyQt5.QtCore import QObject
+from PySide2 import QtCore
+from PySide2.QtCore import QObject
 import numpy as np
 import colorsys
 from collections import OrderedDict
@@ -19,8 +19,8 @@ def i_spaced_nfold(i,n):
     return v
 
 class AnnotationElement(QObject):
-    sigAnnotationElementChanged = QtCore.pyqtSignal(object) # emited when any attribute is changed
-    sigAnnotationElementDeleted = QtCore.pyqtSignal(object) # emited when all references to annotation are deleted
+    sigAnnotationElementChanged = QtCore.Signal(object) # emited when any attribute is changed
+    sigAnnotationElementDeleted = QtCore.Signal(object) # emited when all references to annotation are deleted
     def __init__(self, dictionary=None, label='', start=0, end=0, confidence=float('inf'), notes=''):
         super().__init__()
         if dictionary is not None:
@@ -109,20 +109,14 @@ class AnnotationElement(QObject):
         return self.element_dict.copy()
 
 class AnnotationPage(QObject):
-    sigFocusOnAnnotation = QtCore.pyqtSignal(object)
-    sigAnnotationAdded   = QtCore.pyqtSignal(object)
-    sigLabelsChanged     = QtCore.pyqtSignal(object)
-    sigPauseTable        = QtCore.pyqtSignal(bool)
+    sigFocusOnAnnotation = QtCore.Signal(object)
+    sigAnnotationAdded   = QtCore.Signal(object)
+    sigLabelsChanged     = QtCore.Signal(object)
+    sigPauseTable        = QtCore.Signal(bool)
     def __init__(self, alist=None, fname=None, dic=None, history = [],history_step=-1):
         super().__init__()
         if dic is not None:
-            self.annotations_list = [AnnotationElement(annotation) for annotation in dic['annotations_list']]
-            self.labels = dic['labels']
-            self.label_color_dict = dic['label_color_dict']
-            if 'label_channel_range_dict' in dic.keys():  #Back compatibility with projects before label_channel_range
-                self.label_channel_range_dict = dic['label_channel_range_dict']
-            else:
-                self.label_channel_range_dict = dict([(label,None) for label in self.labels])
+            self.initialize_from_dict(dic,include_history=False)
         elif alist is not None and self.checklist(alist):
             self.annotations_list = alist
             self.labels = list(set([annotation.getLabel() for annotation in alist]))
@@ -147,26 +141,43 @@ class AnnotationPage(QObject):
         self.connect_annotations_to_history()
 
 
+    def initialize_from_dict(self,dic,include_history=True):
+        if dic['annotations_list'] and type(dic['annotations_list'][0])==dict:
+            self.annotations_list = [AnnotationElement(annotation) for annotation in dic['annotations_list']]
+        else:
+            self.annotations_list = dic['annotations_list']
+        self.labels = dic['labels']
+        self.label_color_dict = dic['label_color_dict']
+        if 'label_channel_range_dict' in dic.keys():  # Back compatibility with projects before label_channel_range
+            self.label_channel_range_dict = dic['label_channel_range_dict']
+        else:
+            self.label_channel_range_dict = dict([(label, None) for label in self.labels])
+
+        if include_history:
+            self.focused_annotation = dic['focused_annotation']
+            self.history = dic['history']
+            self.history_step = dic['history_step']
+            self.history_is_paused = dic['history_is_paused']
+            if not self.history:  # add oneself to history if it is empty
+                self.clear_history()
+
     def copy_from(self, annotation_page, clear_history=True,connect_history=True,quiet = False):
         start_t=timer()
         print('AnnotationPage copy_from start')
-        self.__dict__ = annotation_page.__dict__
-        if not hasattr(annotation_page, 'label_channel_range_dict'):  # Back compatibility with projects before label_channel_range
-            self.label_channel_range_dict = dict([(label, None) for label in self.labels])
-        print(self.labels)
+        # self.__dict__ = annotation_page.__dict__  # does not work with PySide
+        self.initialize_from_dict(annotation_page.__dict__)
         if not quiet:
             self.sigLabelsChanged.emit('')
         if connect_history:
             self.connect_annotations_to_history()
         if clear_history:
             self.clear_history() # Reset history
-            # self.cache_to_history() # not necessaru already in clear_history()
             print('copy from - history reset')
 
         print('AnnotationPage copy_from finished in', timer()-start_t,'seconds')
 
-    def copy_to(self, annotation_page):
-        annotation_page.__dict__ = self.__dict__
+    # def copy_to(self, annotation_page):
+    #     annotation_page.__dict__ = self.__dict__
 
     def focusOnAnnotation(self, annotation):
         if annotation != self.focused_annotation:
@@ -337,16 +348,18 @@ class AnnotationPage(QObject):
         return str([json.loads(repr(a).replace('\'','\"')) for a in self.annotations_list])
 
     def dict(self):
-        dict = self.__dict__.copy()
+        # dict = self.__dict__.copy()
+        dic = {}
         # Copy more deeply some of the fields
-        dict['annotations_list'] = [annotation.dict() for annotation in self.annotations_list]
-        dict['labels'] = self.labels.copy()
-        dict['label_color_dict'] = self.label_color_dict.copy()
-        dict['label_channel_range_dict'] = self.label_channel_range_dict.copy()
-        dict['focused_annotation'] = self.get_annotation_index(self.focused_annotation)
-        dict['history'] = None
-        dict['history_step'] = None
-        return dict
+        dic['annotations_list'] = [annotation.dict() for annotation in self.annotations_list]
+        dic['labels'] = self.labels.copy()
+        dic['label_color_dict'] = self.label_color_dict.copy()
+        dic['label_channel_range_dict'] = self.label_channel_range_dict.copy()
+        dic['focused_annotation'] = self.get_annotation_index(self.focused_annotation)
+        dic['history'] = None
+        dic['history_step'] = None
+        dic['history_is_paused'] = False
+        return dic
 
     def restore_from_dict(self,dic):
         # to be used with history dictionaries so that history is not overwriten as would happen with shallower copies

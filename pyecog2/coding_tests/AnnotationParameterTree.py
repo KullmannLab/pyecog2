@@ -10,7 +10,7 @@ import numpy as np
 import colorsys
 from pyecog2.annotations_module import i_spaced_nfold
 from pyqtgraph.parametertree import Parameter
-from PyQt5 import QtGui
+from PySide2 import QtGui
 from pyecog2.coding_tests.pyecogParameterTree import PyecogParameterTree, PyecogGroupParameter, PyecogGroupParameterItem
 from timeit import default_timer as timer
 

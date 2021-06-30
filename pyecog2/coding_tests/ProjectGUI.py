@@ -1,6 +1,6 @@
 import sys
-from PyQt5 import QtGui, QtCore
-from PyQt5.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog
+from PySide2 import QtGui, QtCore
+from PySide2.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog
 from pyecog2.ProjectClass import Animal
 # from main import MainModel
 
@@ -9,7 +9,7 @@ from pyecog2.coding_tests.pyecogParameterTree import PyecogParameterTree,PyecogG
 from pyecog2.coding_tests.WaveletWidget import Worker
 
 class OutputWrapper(QtCore.QObject):
-    outputWritten = QtCore.pyqtSignal(object, object)
+    outputWritten = QtCore.Signal(object, object)
 
     def __init__(self, parent, stdout=True):
         QtCore.QObject.__init__(self, parent)

@@ -1,5 +1,5 @@
 from pyecog2.annotation_table_widget import AnnotationTableWidget
-from PyQt5 import QtCore, QtWidgets
+from PySide2 import QtCore, QtWidgets
 import numpy as np
 from pyecog2.annotations_module import AnnotationElement, AnnotationPage
 

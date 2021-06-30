@@ -1,13 +1,13 @@
 # PyQt5 Video player
 import os
 os.environ['QT_MULTIMEDIA_PREFERRED_PLUGINS'] = 'windowsmediafoundation'
-from PyQt5.QtCore import QDir, Qt, QUrl, pyqtSignal
-from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer
-from PyQt5.QtMultimediaWidgets import QVideoWidget
-from PyQt5.QtWidgets import (QApplication, QFileDialog, QHBoxLayout, QLabel, QInputDialog,
+from PySide2.QtCore import QDir, Qt, QUrl, Signal
+from PySide2.QtMultimedia import QMediaContent, QMediaPlayer
+from PySide2.QtMultimediaWidgets import QVideoWidget
+from PySide2.QtWidgets import (QApplication, QFileDialog, QHBoxLayout, QLabel, QInputDialog,
         QPushButton, QSizePolicy, QSlider, QStyle, QVBoxLayout, QWidget)
-from PyQt5.QtWidgets import QMainWindow,QWidget, QPushButton, QAction
-from PyQt5.QtGui import QIcon
+from PySide2.QtWidgets import QMainWindow,QWidget, QPushButton, QAction
+from PySide2.QtGui import QIcon
 import sys
 import time
 
@@ -17,7 +17,7 @@ play_icon_file = pkg_resources.resource_filename('pyecog2', 'icons/play.png')
 pause_icon_file = pkg_resources.resource_filename('pyecog2', 'icons/pause.png')
 
 class VideoWindow(QWidget):
-    sigTimeChanged = pyqtSignal(object)
+    sigTimeChanged = Signal(object)
 
     def __init__(self, project=None, parent=None):
         super(VideoWindow, self).__init__(parent)

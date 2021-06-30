@@ -1,7 +1,7 @@
 import sys, os, glob
 from datetime import datetime
-from PyQt5 import QtGui, QtCore
-from PyQt5.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog, \
+from PySide2 import QtGui, QtCore
+from PySide2.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog, \
     QProgressBar
 
 from pyqtgraph.parametertree import Parameter, ParameterTree
@@ -16,7 +16,7 @@ from collections import OrderedDict
 from pyqtgraph.console import ConsoleWidget
 
 class OutputWrapper(QtCore.QObject):
-    outputWritten = QtCore.pyqtSignal(object, object)
+    outputWritten = QtCore.Signal(object, object)
 
     def __init__(self, parent, stdout=True):
         QtCore.QObject.__init__(self, parent)

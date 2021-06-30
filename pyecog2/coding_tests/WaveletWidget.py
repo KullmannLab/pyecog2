@@ -324,7 +324,7 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             # intensity = np.abs(result)[:, :, np.newaxis]
 
             self.hist.gradient.loadPreset('spectrum')
-            self.hist.axis.setLabel( text = 'Hue: Phase (0 - 360<sup>o</sup>) <br> Saturation: Coherence', units = '')
+            self.hist.axis.setLabel( text = 'Hue: Phase (0 - 360<sup>o</sup>) <br> Saturation: Log Coherence', units = '')
             if self.hist_levels_cross is None:
                 self.hist_levels_cross = [0,maxvalue]
                 # self.hist.setLevels(*self.hist_levels_cross)

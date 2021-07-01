@@ -64,7 +64,7 @@ def wheelEventWrapper(s):
 
 class PairedGraphicsView():
     '''
-    This is pyqgraph implementation of plotting windows.
+    This is pyqtgraph implementation of plotting windows.
     This should be focused on working, not particularly elegant.
     '''
 
@@ -126,7 +126,9 @@ class PairedGraphicsView():
         self.is_setting_ROI_position = False
 
         x_range, y_range = self.insetview_plot.viewRange()
-        pen = pg.mkPen(color=(44, 133, 160,192), width=2)
+        pen = pg.mkPen(color=(44, 133, 160, 192), width=2)
+        # pen = pg.mkPen(color=(64, 192, 231, 255), width=2)
+        # pen = pg.mkPen(color=(44, 133, 242,192), width=2)
         # penh = pg.mkPen(color=(211, 122, 95,255), width=2)
 
         self.overviewROI = pg.RectROI(pos=(x_range[0], y_range[0]),
@@ -153,18 +155,15 @@ class PairedGraphicsView():
     def set_scenes_plot_channel_data(self, overview_range = None, pens=None):
         '''
         # Not entirely clear the differences between this and
-        set_plotitem_data is snesnible
+        set_plotitem_data is sensible
         pens - a list of len channels containing pens
         '''
         start_t = timer()
-
-
         self.splitter.widget(0).setBackgroundBrush(self.main_brush)
         self.splitter.widget(1).setBackgroundBrush(self.main_brush)
 
         if overview_range is None:
             overview_range, y_range = self.overview_plot.viewRange()
-
         self.overview_plot.setXRange(*overview_range,padding=0)
         self.insetview_plot.vb.setXRange(overview_range[0],
                                          overview_range[0] + min(30, overview_range[1] - overview_range[0]),padding=0)
@@ -185,7 +184,7 @@ class PairedGraphicsView():
         # print(overview_range)
 
         end_t = timer()
-        print('Paired graphics view init finnished in',end_t-start_t,'seconds')
+        print('Paired graphics view init finished in',end_t-start_t,'seconds')
         start_t = end_t
         # if self.scale is None:  # running for the first time
         if True:  # running for the first time
@@ -206,13 +205,13 @@ class PairedGraphicsView():
         start_t = end_t
 
         if self.n_channels > 1:
-            color = [(*tuple(np.array(colorsys.hls_to_rgb(i_spaced_nfold(int(i*self.n_channels/8)%self.n_channels+1,self.n_channels), .4, .8)) * 255), 230)
-                     for i in range(self.n_channels)]
-            color = [(*tuple(np.array(colorsys.hsv_to_rgb(i_spaced_nfold(int(i*self.n_channels/8)%self.n_channels+1,self.n_channels),.8,.9)) * 255), 230)
-                     for i in range(self.n_channels)]
-            pens = [pg.mkPen(color=
-                             color[i])
-                    for i in range(self.n_channels)]
+            # color = [(*tuple(np.array(colorsys.hls_to_rgb(i_spaced_nfold(int(i*self.n_channels/8)%self.n_channels+1,self.n_channels), .4, .8)) * 255), 230)
+            #          for i in range(self.n_channels)]
+            # color = [(*tuple(np.array(colorsys.hsv_to_rgb(i_spaced_nfold(int(i*self.n_channels/8)%self.n_channels+1,self.n_channels),.8,.9)) * 255), 230)
+            #          for i in range(self.n_channels)]
+            # pens = [pg.mkPen(color=
+            #                  color[i])
+            #         for i in range(self.n_channels)]
 
             pens = [
                 pg.mkPen(color=(214, 39, 40, 130)),
@@ -425,7 +424,7 @@ class PairedGraphicsView():
         self.main_model.sigWindowChanged.connect(window_item_i.setRegion)
 
     def graphics_object_xchanged(self):
-        print('xChanged grahics object')
+        print('xChanged graphics object')
 
     def overviewROIchanged(self):
         state = self.overviewROI.getState()

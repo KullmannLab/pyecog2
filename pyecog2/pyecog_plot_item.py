@@ -4,6 +4,7 @@ from scipy import signal, stats
 # import pyqtgraph_copy.pyqtgraph as pg
 import pyqtgraph as pg
 import numpy as np
+from scipy import signal
 
 
 class PyecogPlotCurveItem(pg.PlotCurveItem):
@@ -66,6 +67,23 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
         if self.parent_viewbox.viewRange()[1][0]-2 < self.channel < self.parent_viewbox.viewRange()[1][1]+2: # Avoid plotting channels out of view
             visible_data, visible_time = self.project.get_data_from_range(self.parent_viewbox.viewRange()[0], self.channel,
                                                                           n_envelope=n, for_plot = True)
+            if self.project.filter_settings[0]: # apply LP filter only for plots
+                fs = 2/(visible_time[2]-visible_time[0])
+                nyq = 0.5 * fs[0]
+                hpcutoff = min(max(self.project.filter_settings[1] / nyq, 0.001), .5)
+                visible_data = visible_data - np.mean(visible_data)
+                lpcutoff = min(max(self.project.filter_settings[2] / nyq, 0.001), 1)
+                # for some reason the bandpass butterworth filter is very unstable
+                if lpcutoff<.99:  # don't apply filter if LP cutoff freqquency is above nyquist freq.
+                    # if self.verbose: print('applying LP filter to display data:', filter_settings, fs, nyq, lpcutoff)
+                    b, a = signal.butter(2, lpcutoff, 'lowpass', analog=False)
+                    visible_data = signal.filtfilt(b, a, visible_data,axis =0,method='gust')
+                if hpcutoff > .001: # don't apply filter if HP cutoff frequency too low.
+                    # if self.verbose: print('applying HP filter to display data:', filter_settings, fs, nyq, hpcutoff)
+                    b, a = signal.butter(2, hpcutoff, 'highpass', analog=False)
+                    visible_data = signal.filtfilt(b, a, visible_data,axis =0,method='gust')
+
+
         else:
             visible_data = np.zeros(1)
             visible_time = np.zeros(1)

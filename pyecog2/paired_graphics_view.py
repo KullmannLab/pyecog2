@@ -226,6 +226,7 @@ class PairedGraphicsView():
                 pen=self.main_pen
             else:
                 pen = pens[i%len(pens)]
+
             print('Setting plotitem channel data')
             self.set_plotitem_channel_data(pen, i, self.scale)
 

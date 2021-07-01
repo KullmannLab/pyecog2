@@ -250,7 +250,7 @@ class FileBuffer():  # Consider translating this to cython
             pass
         else:
             # Now clear buffer if range is not contiguous to previous range
-            if trange[1] <= self.range[0] or trange[0] >= self.range[1]:
+            if trange[1] < self.range[0] or trange[0] > self.range[1]:
                 if self.verbose: print('Non-contiguous data: restarting buffer...')
                 self.clear_buffer()
             # fill buffer with the necessary files:
@@ -315,9 +315,13 @@ class FileBuffer():  # Consider translating this to cython
                 # Here convert data into a down-sampled array suitable for visualizing.
                 # Must do this piecewise to limit memory usage.
                 dss = 1
-                # if ds > 100: # so much downsampling that we might as well skip some samples
-                #     dss = ds//100  # we will only grab about 10 samples to compute min and max for envlope
-                #     ds = 100
+                originalds = ds
+                if ds > 10: # so much downsampling that we might as well skip some samples
+                    dss = ds//10  # we will only grab about 10 samples to compute min and max for envelope
+                    originalds = ds
+                    ds = 10
+                print('Decimating data in filebuffer by', dss, 'x factor. (original ds:', originalds, ')')
+
                 samples = (1 + (stop - start) // ds)
                 visible_data = np.zeros((samples * 2, 1), dtype=data.dtype)
                 sourcePtr = start
@@ -371,21 +375,21 @@ class FileBuffer():  # Consider translating this to cython
         if len(enveloped_data) > 0:
             data = np.vstack(enveloped_data)
             time = np.vstack(enveloped_time)
-            if for_plot and filter_settings[0]: # apply LP filter only for plots
-                fs = 2/(time[2]-time[0])
-                nyq = 0.5 * fs[0]
-                hpcutoff = min(max(filter_settings[1] / nyq, 0.001), .5)
-                data = data - np.mean(data)
-                lpcutoff = min(max(filter_settings[2] / nyq, 0.001), 1)
-                # for some reason the bandpass butterworth filter is very unstable
-                if lpcutoff<.99:  # don't apply filter if LP cutoff freqquency is above nyquist freq.
-                    # if self.verbose: print('applying LP filter to display data:', filter_settings, fs, nyq, lpcutoff)
-                    b, a = signal.butter(2, lpcutoff, 'lowpass', analog=False)
-                    data = signal.filtfilt(b, a, data,axis =0,method='gust')
-                if hpcutoff > .001: # don't apply filter if HP cutoff frequency too low.
-                    # if self.verbose: print('applying HP filter to display data:', filter_settings, fs, nyq, hpcutoff)
-                    b, a = signal.butter(2, hpcutoff, 'highpass', analog=False)
-                    data = signal.filtfilt(b, a, data,axis =0,method='gust')
+            # if for_plot and filter_settings[0]: # apply LP filter only for plots
+            #     fs = 2/(time[2]-time[0])
+            #     nyq = 0.5 * fs[0]
+            #     hpcutoff = min(max(filter_settings[1] / nyq, 0.001), .5)
+            #     data = data - np.mean(data)
+            #     lpcutoff = min(max(filter_settings[2] / nyq, 0.001), 1)
+            #     # for some reason the bandpass butterworth filter is very unstable
+            #     if lpcutoff<.99:  # don't apply filter if LP cutoff freqquency is above nyquist freq.
+            #         # if self.verbose: print('applying LP filter to display data:', filter_settings, fs, nyq, lpcutoff)
+            #         b, a = signal.butter(2, lpcutoff, 'lowpass', analog=False)
+            #         data = signal.filtfilt(b, a, data,axis =0,method='gust')
+            #     if hpcutoff > .001: # don't apply filter if HP cutoff frequency too low.
+            #         # if self.verbose: print('applying HP filter to display data:', filter_settings, fs, nyq, hpcutoff)
+            #         b, a = signal.butter(2, hpcutoff, 'highpass', analog=False)
+            #         data = signal.filtfilt(b, a, data,axis =0,method='gust')
         else:
             data = np.array([0, 0])
             time = np.array(trange)

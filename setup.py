@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
   name = 'pyecog2',
-  version = '0.0.1b',
+  version = '0.0.1c',
   description = 'For visualizing and classifying video-ECoG recordings (iEEG)',
   long_description=long_description,
   long_description_content_type="text/markdown",
@@ -20,11 +20,12 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
   python_requires='>=3.8',
-  install_requires=['PySide2==5.15.2',
-                    'scipy==1.5.4',
+  install_requires=['scipy==1.5.4',
+                    'numpy>=1.15',
                     'pandas==1.1.5',
                     'matplotlib==3.3.3',
                     'h5py==3.1.0',
+                    'PySide2==5.15.2',
                     'pyqtgraph==0.11.0',
                     'numba==0.52.0',
                     'pyopengl==3.1.1a1',

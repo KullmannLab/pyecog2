@@ -91,6 +91,7 @@ class PairedGraphicsView():
         self.overview_annotations = []
         self.plotted_annotations = []
 
+        self.animalid = None
         overview_layout_widget = pg.GraphicsLayoutWidget()
         overview_date_axis = DateAxis(orientation='bottom')
         self.overview_plot = overview_layout_widget.addPlot(axisItems={'bottom':overview_date_axis})
@@ -156,11 +157,23 @@ class PairedGraphicsView():
         pens - a list of len channels containing pens
         '''
         start_t = timer()
+
+
         self.splitter.widget(0).setBackgroundBrush(self.main_brush)
         self.splitter.widget(1).setBackgroundBrush(self.main_brush)
 
         if overview_range is None:
             overview_range, y_range = self.overview_plot.viewRange()
+
+        self.overview_plot.setXRange(*overview_range,padding=0)
+        self.insetview_plot.vb.setXRange(overview_range[0],
+                                         overview_range[0] + min(30, overview_range[1] - overview_range[0]),padding=0)
+        if self.animalid == self.main_model.project.current_animal.id:  # running for the first time
+            print('Same animal:',self.animalid)
+            return
+
+        self.animalid = self.main_model.project.current_animal.id
+
         # we need to handle if channel not seen before
         # 6 std devations
         print('Items to delete')
@@ -170,24 +183,22 @@ class PairedGraphicsView():
         print(self.overview_plot.items)
         self.insetview_plot.clear()
         # print(overview_range)
-        self.overview_plot.setXRange(*overview_range,padding=0)
-        self.insetview_plot.vb.setXRange(overview_range[0],
-                                         overview_range[0] + min(30, overview_range[1] - overview_range[0]),padding=0)
+
         end_t = timer()
         print('Paired graphics view init finnished in',end_t-start_t,'seconds')
         start_t = end_t
         # if self.scale is None:  # running for the first time
         if True:  # running for the first time
-            print('Getting data to compute plot scale factors')
+            print('Getting data to compute plot scale factors for new animal', self.animalid)
             arr,tarr = self.main_model.project.get_data_from_range(overview_range,n_envelope=1000) # self.overview_plot.vb.viewRange()[0]) wierd behaviour here because vb.viewRange() range is not updated
             # print(arr.shape, tarr.shape)
             if len(arr.shape)<2:
                 return
             self.n_channels = arr.shape[1]
-            self.scale = 1 / (6 * np.mean(np.std(arr, axis=0, keepdims=True), axis=1))
+            self.scale = 1 / (8 * np.mean(np.std(arr, axis=0, keepdims=True), axis=1))
             self.overview_plot.vb.setYRange(-2, arr.shape[1] + 1)
             self.insetview_plot.vb.setYRange(-2, arr.shape[1] + 1)
-            self.overview_plot.setTitle('<p style="font-size:large"> Animal: ' + self.main_model.project.current_animal.id + '</b>')
+            self.overview_plot.setTitle('<p style="font-size:large"> Animal: ' + self.animalid  + '</b>')
             end_t = timer()
 
         end_t = timer()

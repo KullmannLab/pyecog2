@@ -86,6 +86,7 @@ class FileTreeElement():
         # now it feels we are getting into pretty poor coding
         if self.mainwindow_parent is not None:
             self.model.plot_node_signal.connect(
+                # self.mainwindow_parent.paired_graphics_view.overview_plot.setRange)
                 self.mainwindow_parent.paired_graphics_view.set_scenes_plot_channel_data)
                 # ML: I don't like this, probably best is to have the parent have an update_graphics() method and maybe
                 # even an object containng all the info necessary to be comunicated between widgets like filenames,

@@ -15,7 +15,6 @@ class TreeModel(QtCore.QAbstractItemModel):
     # sends an array of data and their sampling freq in hz
     # maybe memmap is better?
     plot_node_signal = QtCore.Signal(np.ndarray)
-    #plot_node_signal = QtCore.Signal()
     '''
     Naming convention (not right at the moment)
     lowerUpper is overidded modules
@@ -381,6 +380,8 @@ class AnimalNode(Node):
     def prepare_for_plot(self):
         # plot the earliest file
         print('Tree AnimalNode: Prepare for plot start **************************************************************')
+        if self.animal.id == self.parent.project.current_animal.id:
+            return
         children = self.children
         if children:
             child = min(children, key=lambda a: a.name)

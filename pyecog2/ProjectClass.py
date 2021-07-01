@@ -424,7 +424,7 @@ class Project():
     def set_current_animal(self, animal):  # copy alterations made to annotations
         start_t = timer()
         print('ProjectClass set_current_animal start')
-        if animal is None:
+        if animal is None or animal is self.current_animal:
             return
         self.current_animal.annotations.copy_from(self.main_model.annotations,connect_history=False,quiet=True)
         self.main_model.annotations.copy_from(animal.annotations,quiet=True)

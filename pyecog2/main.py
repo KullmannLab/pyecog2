@@ -234,9 +234,10 @@ class MainWindow(QMainWindow):
         print('Openening folder')
         if type(dirname) != str:
             dirname = self.select_directory()
-        temp_animal = Animal(id='-', eeg_folder=dirname)
+        # temp_animal = Animal(id='-', eeg_folder=dirname)
         temp_project = Project(self.main_model,eeg_data_folder=dirname, title=dirname,project_file = dirname)
-        temp_project.add_animal(temp_animal)
+        # temp_project.add_animal(temp_animal)
+        temp_project.set_temp_project_from_folder(dirname)
         self.tree_element.set_rootnode_from_project(temp_project)
         self.main_model.project = temp_project
 
@@ -499,7 +500,7 @@ class MainWindow(QMainWindow):
         self.actionLiveUpdate.setCheckable(True)
         self.actionLiveUpdate.toggled.connect(self.load_live_recording)
         self.actionLiveUpdate.setChecked(False)
-        self.actionLiveUpdate.setShortcut('Ctrl+L')
+        self.actionLiveUpdate.setShortcut('Ctrl+R')
 
         self.menu_file.addSeparator()
         self.action_quit       = self.menu_file.addAction("Quit")
@@ -516,6 +517,7 @@ class MainWindow(QMainWindow):
         self.menu_project.addSeparator()
         self.action_new_project = self.menu_project.addAction("New Project")
         self.action_load_project = self.menu_project.addAction("Load Project")
+        self.action_load_project.setShortcut('Ctrl+L')
         self.action_save = self.menu_project.addAction("Save Project")
         self.action_save.setShortcut('Ctrl+S')
         self.action_save_as = self.menu_project.addAction("Save Project as...")
@@ -577,6 +579,7 @@ class MainWindow(QMainWindow):
         self.action_reset_geometry.triggered.connect(self.reset_geometry)
 
         self.action_fullscreen = self.menu_help.addAction("Full Screen")
+        self.action_fullscreen.setShortcut('F11')
         self.action_fullscreen.setCheckable(True)
         self.action_fullscreen.toggled.connect(self.toggle_fullscreen)
         self.action_fullscreen.setChecked(False)

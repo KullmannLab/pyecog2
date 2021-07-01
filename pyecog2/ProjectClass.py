@@ -424,7 +424,7 @@ class Project():
     def set_current_animal(self, animal):  # copy alterations made to annotations
         start_t = timer()
         print('ProjectClass set_current_animal start')
-        if animal is None:
+        if animal is None or animal is self.current_animal:
             return
         self.current_animal.annotations.copy_from(self.main_model.annotations,connect_history=False,quiet=True)
         self.main_model.annotations.copy_from(animal.annotations,quiet=True)
@@ -556,6 +556,31 @@ class Project():
     def get_all_labels(self):
         return set([l for a in self.animal_list for l in a.annotations.labels if not l.startswith('(auto)')])
 
+    def set_temp_project_from_folder(self,eeg_folder):
+        eeg_folder = os.path.normpath(eeg_folder)
+        print('Looking for files:', eeg_folder, os.path.sep, '*.h5')
+        h5files = glob.glob(eeg_folder + os.path.sep + '*.h5')
+        h5files.sort()
+        for i, file in enumerate(h5files):
+            if os.path.isfile(file[:-2] + 'meta'):
+                # print(file[:-2] + 'meta already exists')
+                continue
+            start = int(os.path.split(file)[-1].split('_')[0][1:])
+            try:
+                next_start = int(os.path.split(h5files[i + 1])[-1].split('_')[0][1:])
+                duration = min(next_start - start, 3600)
+            except Exception:
+                duration = 3600
+            create_metafile_from_h5(file, duration)
+        eeg_files = glob.glob(eeg_folder + os.path.sep + '*.meta')
+        eeg_files.sort()
+        for fname in eeg_files:
+            animal = Animal(id=os.path.split(fname)[-1], eeg_folder='')
+            metadata = load_metadata_file(fname)
+            animal.eeg_files.append(fname)
+            animal.eeg_init_time.append(metadata['start_timestamp_unix'])
+            animal.eeg_duration.append(metadata['duration'])
+            self.add_animal(animal)
 
 class MainModel(QtCore.QObject):
     sigTimeChanged      = QtCore.Signal(object)

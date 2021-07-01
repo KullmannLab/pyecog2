@@ -90,6 +90,8 @@ class PlotControls(QWidget):
         self.channel_selector_butotn.clicked.connect(self.launch_channel_selector)
         self.layout.addWidget(self.channel_selector_butotn,2,0)
 
+
+
     def update_filter(self):
         print(self.filter_check.checkState()>0,self.hp_spin.value(),self.lp_spin.value())
         self.sigUpdateFilter.emit((self.filter_check.checkState()>0,self.hp_spin.value(),self.lp_spin.value()))

@@ -234,9 +234,10 @@ class MainWindow(QMainWindow):
         print('Openening folder')
         if type(dirname) != str:
             dirname = self.select_directory()
-        temp_animal = Animal(id='-', eeg_folder=dirname)
+        # temp_animal = Animal(id='-', eeg_folder=dirname)
         temp_project = Project(self.main_model,eeg_data_folder=dirname, title=dirname,project_file = dirname)
-        temp_project.add_animal(temp_animal)
+        # temp_project.add_animal(temp_animal)
+        temp_project.set_temp_project_from_folder(dirname)
         self.tree_element.set_rootnode_from_project(temp_project)
         self.main_model.project = temp_project
 

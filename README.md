@@ -17,6 +17,14 @@ conda create --name pyecog2 python=3.8
 ```shell
 python setup.py install
 ```
+On Windows, if PySide2 fails to load with the following error:
+```
+ImportError(shiboken2 + ' does not exist')
+```
+- Run this command:
+``` shell
+pip install PySide2==5.15.2 --force-reinstall
+```
 
 Hopefully in the future:
 ```shell

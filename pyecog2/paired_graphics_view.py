@@ -126,6 +126,7 @@ class PairedGraphicsView():
         self.is_setting_ROI_position = False
 
         x_range, y_range = self.insetview_plot.viewRange()
+
         pen = pg.mkPen(color=(44, 133, 160, 192), width=2)
         # pen = pg.mkPen(color=(64, 192, 231, 255), width=2)
         # pen = pg.mkPen(color=(44, 133, 242,192), width=2)
@@ -201,7 +202,7 @@ class PairedGraphicsView():
             end_t = timer()
 
         end_t = timer()
-        print('Paired graphics view scale computation finnished in',end_t-start_t,'seconds')
+        print('Paired graphics view scale computation finished in',end_t-start_t,'seconds')
         start_t = end_t
 
         if self.n_channels > 1:
@@ -223,7 +224,7 @@ class PairedGraphicsView():
 
         for i in range(self.n_channels):
             if pens is None:
-                pen=self.main_pen
+                pen = self.main_pen
             else:
                 pen = pens[i%len(pens)]
 

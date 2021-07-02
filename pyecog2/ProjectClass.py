@@ -297,7 +297,7 @@ class FileBuffer():  # Consider translating this to cython
             start = sample_ranges[i][0]
             stop = sample_ranges[i][1]
             fs = self.metadata[i]['fs']
-
+            no_channels = self.metadata[i]['no_channels']
             # Decide by how much we should downsample
             ds = int((stop - start) / file_envlopes[i]) + 1
             # print('Downsampling ratio:', ds,file_envlopes,sample_ranges)
@@ -316,11 +316,11 @@ class FileBuffer():  # Consider translating this to cython
                 # Must do this piecewise to limit memory usage.
                 dss = 1
                 originalds = ds
-                if ds > 10: # so much downsampling that we might as well skip some samples
+                if ds > 10 and no_channels > 10: # so much downsampling that we might as well skip some samples if lots of channels
                     dss = ds//10  # we will only grab about 10 samples to compute min and max for envelope
                     originalds = ds
                     ds = 10
-                print('Decimating data in filebuffer by', dss, 'x factor. (original ds:', originalds, ')')
+                # print('Decimating data in filebuffer by', dss, 'x factor. (original ds:', originalds, ')')
 
                 samples = (1 + (stop - start) // ds)
                 visible_data = np.zeros((samples * 2, 1), dtype=data.dtype)
@@ -352,6 +352,8 @@ class FileBuffer():  # Consider translating this to cython
 
             enveloped_time.append(np.linspace(start / fs + self.data_ranges[i][0], (stop-1) / fs + self.data_ranges[i][0],
                                               len(enveloped_data[-1])).reshape(-1, 1))
+            # enveloped_time.append(np.linspace(start / fs + self.data_ranges[i][0], (stop-1) / fs + self.data_ranges[i][0],
+            #                                   len(enveloped_data[-1])).reshape(-1, 1))
             if len(enveloped_time[-1]) == 0:
                 del (enveloped_time[-1])
                 del (enveloped_data[-1])
@@ -391,8 +393,11 @@ class FileBuffer():  # Consider translating this to cython
             #         b, a = signal.butter(2, hpcutoff, 'highpass', analog=False)
             #         data = signal.filtfilt(b, a, data,axis =0,method='gust')
         else:
-            data = np.array([0, 0])
-            time = np.array(trange)
+            data = np.zeros((0,1))
+            time = np.zeros((0,1))
+            # data = np.array([0, 0])
+            # time = np.array(trange)
+
         return data, time
 
 

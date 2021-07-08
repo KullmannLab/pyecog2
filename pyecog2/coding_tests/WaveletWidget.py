@@ -334,7 +334,6 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             self.data = np.log(np.abs(self.wav)+1e-6)  # +1e-3
             self.img.setImage(self.data + self.coi)
             self.hist.gradient.loadPreset('viridis')
-            # self.hist_levels = None
             self.hist.axis.setLabel(text='Amplitude', units='Log<sub>10</sub> a.u.')
 
         self.img.resetTransform()
@@ -349,11 +348,13 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             if self.hist_levels is not None:  # Mantain levels from previous standard wavelet view if they exist
                 self.hist.setLevels(*self.hist_levels)
             else:
+                self.hist.autoHistogramRange()
                 self.hist_levels = self.hist.getLevels()
         else:
             if self.hist_levels_cross is not None:  # Mantain levels from previous cross-wavelet view if they exist
                 self.hist.setLevels(*self.hist_levels_cross)
             else:
+                self.hist.autoHistogramRange()
                 self.hist_levels_cross = self.hist.getLevels()
 
         self.cursor.setPos(self.main_model.time_position - self.main_model.window[0])

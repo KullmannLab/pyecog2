@@ -15,8 +15,8 @@ from pyecog2.pyecog_plot_item import PyecogPlotCurveItem, PyecogLinearRegionItem
 from pyqtgraph import functions as fn
 from pyqtgraph.Point import Point
 from timeit import default_timer as timer
-from ProjectClass import intervals_overlap
-from annotations_module import i_spaced_nfold
+from pyecog2.ProjectClass import intervals_overlap
+from pyecog2.annotations_module import i_spaced_nfold
 
 
 # Function to overide pyqtgraph ViewBox wheel events

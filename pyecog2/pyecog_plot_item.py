@@ -5,7 +5,7 @@ from scipy import signal, stats
 import pyqtgraph as pg
 import numpy as np
 from scipy import signal
-from ProjectClass import intervals_overlap
+from pyecog2.ProjectClass import intervals_overlap
 
 class PyecogPlotCurveItem(pg.PlotCurveItem):
     ''' Hmm seems like you need the graphics scene subcalss of pyqtgraph

@@ -1,7 +1,9 @@
 import sys
 from PySide2 import QtGui, QtCore
 from PySide2.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog
+
 from pyecog2.ProjectClass import Animal
+# from ..ProjectClass import Animal
 # from main import MainModel
 
 from pyqtgraph.parametertree import Parameter

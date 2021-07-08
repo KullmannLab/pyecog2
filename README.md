@@ -13,10 +13,16 @@ For alpha testing:
 conda create --name pyecog2 python=3.8 
 ```
 - activate the environment with `activate pyecog2` in Windows or `source activate pyecog2` in MacOS/Linux
-- run the setup script with install option:
+- run pip install with the development option :
 ```shell
-python setup.py install
+python -m pip install -e <repository directory>
 ```
+
+- To launch PyEcog you should now, from any directory, be able to call:
+```shell
+python -m pyecog2
+```
+
 On Windows, if PySide2 fails to load with the following error:
 ```
 ImportError(shiboken2 + ' does not exist')

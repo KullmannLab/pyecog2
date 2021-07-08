@@ -23,15 +23,6 @@ python -m pip install -e <repository directory>
 python -m pyecog2
 ```
 
-On Windows, if PySide2 fails to load with the following error:
-```
-ImportError(shiboken2 + ' does not exist')
-```
-- Run this command:
-``` shell
-pip install PySide2==5.15.2 --force-reinstall
-```
-
 Hopefully in the future:
 ```shell
 pip install pyecog2

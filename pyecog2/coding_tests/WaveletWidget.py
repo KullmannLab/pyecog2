@@ -195,6 +195,7 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         self.hist_levels = None
         self.hist_levels_cross = None
         self.last_plot_was_cross = False
+        self.last_plot_was_wave = False
         self.hist.vb.enableAutoRange(self.hist.vb.XYAxes,enable=.99)
         # Multithread controls
         self.threadpool = QThreadPool()
@@ -256,17 +257,19 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
                     cross_data = None
 
             # save levels from colorbar
-            if not self.last_plot_was_cross:
+            if self.last_plot_was_wave:
                 if self.hist_levels is not None:
                     # print('updating hist_levels',self.hist_levels )
                     self.hist_levels = self.hist.getLevels()
                     # print('updataed hist_levels',self.hist_levels )
-            else:
+            elif self.last_plot_was_cross:
                 if self.hist_levels_cross is not None:
                     # print('updating hist_levels_cross',self.hist_levels_cross )
                     self.hist_levels_cross = self.hist.getLevels()
                     # print('updataed hist_levels_cross',self.hist_levels_cross)
             # print('Wavelet data shape:',data.shape)
+            self.last_plot_was_wave = False
+            self.last_plot_was_cross = False
             self.img.setImage(self.data*0)
             # if self.hist_levels is not None: # Mantain levels from previous view if they exist
             #     self.hist.setLevels(*self.hist_levels)
@@ -330,7 +333,7 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
                 # self.hist.setLevels(*self.hist_levels_cross)
 
         else:  # plotting normal wavelet
-            self.last_plot_was_cross = False
+            self.last_plot_was_wave = True
             self.data = np.log(np.abs(self.wav)+1e-6)  # +1e-3
             self.img.setImage(self.data + self.coi)
             self.hist.gradient.loadPreset('viridis')

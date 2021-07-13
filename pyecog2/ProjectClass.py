@@ -151,6 +151,11 @@ class Animal():
         dict['annotations'] = self.annotations.dict()
         return dict
 
+    def get_animal_time_range(self):
+        i = min(self.eeg_init_time)
+        e = max(np.array(self.eeg_init_time) + np.array(self.eeg_duration))
+        return np.array([i, e])
+
 
 class FileBuffer():  # Consider translating this to cython
     def __init__(self, animal=None, verbose=True, eeg_files=None, eeg_init_time=None, eeg_duration=None):
@@ -558,8 +563,9 @@ class Project():
         e = -np.Inf
         for animal in self.animal_list:
             if animal.eeg_init_time: # only consider animals with files
-                i = min(min(animal.eeg_init_time),i)
-                e = max(max(np.array(animal.eeg_init_time) + np.array(animal.eeg_duration)),e)
+                ai, ae = animal.get_animal_time_range()
+                i = min(ai,i)
+                e = max(ae,e)
         return np.array([i,e])
 
     def get_all_labels(self):

@@ -76,7 +76,7 @@ class PairedGraphicsView():
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                            QtWidgets.QSizePolicy.Expanding)
         self.splitter.setSizePolicy(sizePolicy)
-        self.splitter.setChildrenCollapsible(False)
+        # self.splitter.setChildrenCollapsible(False)
 
     def __init__(self, parent=None):
         # todo clean this method up!
@@ -95,16 +95,17 @@ class PairedGraphicsView():
         self.animalid = None
 
         timeline_layout_widget = pg.GraphicsLayoutWidget()
-        timeline_date_axis = pg.DateAxisItem(orientation='top')
-        self.timeline_plot = timeline_layout_widget.addPlot(axisItems={'top':timeline_date_axis})
+        timeline_date_axis = pg.DateAxisItem(orientation='bottom')
+        timeline_date_axis.autoSIPrefix = False
+        self.timeline_plot = timeline_layout_widget.addPlot(axisItems={'bottom':timeline_date_axis})
         self.timeline_plot.showAxis('left', show=False)
-        self.timeline_plot.showAxis('bottom', show=False)
+        # self.timeline_plot.showAxis('bottom', show=False)
         # self.overview_plot.setLabel('bottom', text='Time', units='s')
-        self.timeline_plot.setLabel('top', units=None)
+        # self.timeline_plot.setLabel('top', units=None)
         self.timeline_plot.showGrid(x=True, y=False, alpha=.5)
 
         overview_layout_widget = pg.GraphicsLayoutWidget()
-        overview_date_axis = DateAxis(orientation='bottom')
+        overview_date_axis = DateAxis(orientation='bottom',label_date=False)
         self.overview_plot = overview_layout_widget.addPlot(axisItems={'bottom':overview_date_axis})
         # self.overview_plot.showAxis('left', show=False)
         # self.overview_plot.setLabel('bottom', text='Time', units='s')
@@ -129,7 +130,7 @@ class PairedGraphicsView():
         self.splitter.addWidget(overview_layout_widget)
         self.splitter.addWidget(insetview_layout_widget)
         print('setting splitter sizes')
-        self.splitter.setSizes([10,1000,1000])
+        self.splitter.setSizes([150,500,500])
         # self.splitter.setStretchFactor(1, 6)  # make inset view 6 times larger
 
         self.insetview_plot.sigRangeChanged.connect(self.insetview_range_changed)
@@ -267,6 +268,9 @@ class PairedGraphicsView():
         self.timeline_plot.vb.setLimits(xMin=max_range[0], xMax=max_range[1],yMin=0,yMax=1,minYRange = 1)
         self.timeline_plot.setRange(xRange = max_range,yRange = [0,1])
         self.timeline_plot.plot(max_range,[0.5,0.5],pen = self.main_pen)
+        label = 'Start: ' + time.strftime('%H:%M:%S %b %d, %Y', time.localtime(max_range[0])) + \
+                '; - End: '+time.strftime('%H:%M:%S %b %d, %Y', time.localtime(max_range[1]))
+        self.timeline_plot.setLabel(axis='bottom',text=label)
         self.overview_plot.addItem(self.overviewROI) # put back the overview box
 
         self.set_scenes_plot_annotations_data(self.main_model.annotations,self.overview_plot.viewRange)

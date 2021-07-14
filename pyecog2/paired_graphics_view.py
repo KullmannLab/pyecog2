@@ -103,6 +103,7 @@ class PairedGraphicsView():
         # self.overview_plot.setLabel('bottom', text='Time', units='s')
         # self.timeline_plot.setLabel('top', units=None)
         self.timeline_plot.showGrid(x=True, y=False, alpha=.5)
+        self.timeline_plot_items = []
 
         overview_layout_widget = pg.GraphicsLayoutWidget()
         overview_date_axis = DateAxis(orientation='bottom',label_date=False)
@@ -265,9 +266,25 @@ class PairedGraphicsView():
         print('Project time range:', max_range)
         self.overview_plot.vb.setLimits(xMin=max_range[0], xMax=max_range[1])
         self.insetview_plot.vb.setLimits(xMin=max_range[0], xMax=max_range[1])
+
         self.timeline_plot.vb.setLimits(xMin=max_range[0], xMax=max_range[1],yMin=0,yMax=1,minYRange = 1)
         self.timeline_plot.setRange(xRange = max_range,yRange = [0,1])
-        self.timeline_plot.plot(max_range,[0.5,0.5],pen = self.main_pen)
+        eeg_times = np.empty(2*len(self.main_model.project.current_animal.eeg_init_time))
+        eeg_times[0::2] = self.main_model.project.current_animal.eeg_init_time
+        eeg_times[1::2] = eeg_times[0::2] + self.main_model.project.current_animal.eeg_duration
+        vid_times = np.empty(2*len(self.main_model.project.current_animal.video_init_time))
+        vid_times[0::2] = self.main_model.project.current_animal.video_init_time
+        vid_times[1::2] = vid_times[0::2] + self.main_model.project.current_animal.video_duration
+        pen_eeg = pg.functions.mkPen(color = self.main_pen.color(), width=4)
+        pen_vid = pg.functions.mkPen(color=(64, 192, 231, 127), width=2)
+        for item in self.timeline_plot_items: # remove previous lines without removing cursonr
+            self.timeline_plot.removeItem(item)
+        eeg_files_line = pg.PlotCurveItem(eeg_times,0*eeg_times+.5,connect='pairs',pen = pen_eeg)
+        vid_files_line = pg.PlotCurveItem(vid_times,0*vid_times+.25,connect='pairs',pen = pen_vid)
+        self.timeline_plot_items = [eeg_files_line,vid_files_line]
+        self.timeline_plot.addItem(eeg_files_line)
+        self.timeline_plot.addItem(vid_files_line)
+
         label = 'Start: ' + time.strftime('%H:%M:%S %b %d, %Y', time.localtime(max_range[0])) + \
                 '; - End: '+time.strftime('%H:%M:%S %b %d, %Y', time.localtime(max_range[1]))
         self.timeline_plot.setLabel(axis='bottom',text=label)

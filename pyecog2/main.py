@@ -374,17 +374,15 @@ class MainWindow(QMainWindow):
             self.app_handle.setPalette(palette)
             self.main_model.color_settings['pen'].setColor(QColor(255, 255, 255, 100))
             self.main_model.color_settings['brush'].setColor(QColor(0, 0, 0, 255))
-            self.paired_graphics_view.set_scenes_plot_channel_data()
-            self.main_model.sigWindowChanged.emit(self.main_model.window)
-
         else:
             print('Setting Light Mode')
             palette = QPalette()
             self.app_handle.setPalette(palette)
             self.main_model.color_settings['pen'].setColor(QColor(0, 0, 0, 100))
             self.main_model.color_settings['brush'].setColor(QColor(255, 255, 255, 255))
-            self.paired_graphics_view.set_scenes_plot_channel_data()
-            self.main_model.sigWindowChanged.emit(self.main_model.window)
+
+        self.paired_graphics_view.set_scenes_plot_channel_data(force_reset=True)
+        self.main_model.sigWindowChanged.emit(self.main_model.window)
 
     def select_directory(self, label_text='Select a directory'):
         '''

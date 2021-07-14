@@ -3,7 +3,7 @@ import os
 import numpy as np
 import time
 from datetime import datetime
-from PySide2 import QtGui, QtCore, QtWidgets #, uic, Qt
+from PySide2 import QtGui, QtCore, QtWidgets  # , uic, Qt
 from PySide2.QtGui import QPainter, QBrush, QPen
 
 from datetime import datetime
@@ -57,10 +57,13 @@ def wheelEvent(self, ev, axis=None):
     ev.accept()
     self.sigRangeChangedManually.emit(mask)
 
+
 def wheelEventWrapper(s):
-    def wrappedWheelEvent(ev,axis=None):
-        return wheelEvent(s,ev,axis=axis)
+    def wrappedWheelEvent(ev, axis=None):
+        return wheelEvent(s, ev, axis=axis)
+
     return wrappedWheelEvent
+
 
 class PairedGraphicsView():
     '''
@@ -97,7 +100,7 @@ class PairedGraphicsView():
         timeline_layout_widget = pg.GraphicsLayoutWidget()
         timeline_date_axis = pg.DateAxisItem(orientation='bottom')
         timeline_date_axis.autoSIPrefix = False
-        self.timeline_plot = timeline_layout_widget.addPlot(axisItems={'bottom':timeline_date_axis})
+        self.timeline_plot = timeline_layout_widget.addPlot(axisItems={'bottom': timeline_date_axis})
         self.timeline_plot.showAxis('left', show=False)
         # self.timeline_plot.showAxis('bottom', show=False)
         # self.overview_plot.setLabel('bottom', text='Time', units='s')
@@ -106,8 +109,8 @@ class PairedGraphicsView():
         self.timeline_plot_items = []
 
         overview_layout_widget = pg.GraphicsLayoutWidget()
-        overview_date_axis = DateAxis(orientation='bottom',label_date=False)
-        self.overview_plot = overview_layout_widget.addPlot(axisItems={'bottom':overview_date_axis})
+        overview_date_axis = DateAxis(orientation='bottom', label_date=False)
+        self.overview_plot = overview_layout_widget.addPlot(axisItems={'bottom': overview_date_axis})
         # self.overview_plot.showAxis('left', show=False)
         # self.overview_plot.setLabel('bottom', text='Time', units='s')
         self.overview_plot.setLabel('bottom', units=None)
@@ -116,8 +119,8 @@ class PairedGraphicsView():
         overview_layout_widget.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
 
         insetview_layout_widget = pg.GraphicsLayoutWidget()
-        insetview_date_axis = DateAxis(orientation='bottom',label_date=False)
-        self.insetview_plot = insetview_layout_widget.addPlot(axisItems={'bottom':insetview_date_axis})
+        insetview_date_axis = DateAxis(orientation='bottom', label_date=False)
+        self.insetview_plot = insetview_layout_widget.addPlot(axisItems={'bottom': insetview_date_axis})
         # self.insetview_plot.showAxis('left', show=False)
         self.insetview_plot.showGrid(x=True, y=True, alpha=0.15)
         # self.insetview_plot.setLabel('bottom', text='Time', units='s')
@@ -131,12 +134,13 @@ class PairedGraphicsView():
         self.splitter.addWidget(overview_layout_widget)
         self.splitter.addWidget(insetview_layout_widget)
         print('setting splitter sizes')
-        self.splitter.setSizes([150,500,500])
+        self.splitter.setSizes([150, 500, 500])
         # self.splitter.setStretchFactor(1, 6)  # make inset view 6 times larger
 
         self.insetview_plot.sigRangeChanged.connect(self.insetview_range_changed)
         self.overview_plot.sigRangeChanged.connect(self.overview_range_changed)
-        self.insetview_plot.vb.scene().sigMouseClicked.connect(self.inset_clicked) # Get original mouseclick signal with modifiers
+        self.insetview_plot.vb.scene().sigMouseClicked.connect(
+            self.inset_clicked)  # Get original mouseclick signal with modifiers
         self.overview_plot.vb.scene().sigMouseClicked.connect(self.overview_clicked)
         self.timeline_plot.vb.scene().sigMouseClicked.connect(self.timeline_clicked)
         # hacky use of self.vb, but just rolling with it
@@ -167,12 +171,12 @@ class PairedGraphicsView():
         self.main_model.annotations.sigLabelsChanged.connect(
             lambda: self.set_scenes_plot_annotations_data(self.main_model.annotations))
 
-         # now overide the viewbox wheel event to allow shift wheel to zoom
+        # now overide the viewbox wheel event to allow shift wheel to zoom
         self.overview_plot.vb.wheelEvent = wheelEventWrapper(self.overview_plot.vb)
         self.insetview_plot.vb.wheelEvent = wheelEventWrapper(self.insetview_plot.vb)
         self.updateFilterSettings()
 
-    def set_scenes_plot_channel_data(self, overview_range = None, pens=None):
+    def set_scenes_plot_channel_data(self, overview_range=None, pens=None, force_reset=False):
         '''
         # Not entirely clear the differences between this and
         set_plotitem_data is sensible
@@ -183,17 +187,18 @@ class PairedGraphicsView():
         self.splitter.widget(1).setBackgroundBrush(self.main_brush)
         self.splitter.widget(2).setBackgroundBrush(self.main_brush)
 
-
         if overview_range is None:
             overview_range, y_range = self.overview_plot.viewRange()
-        self.overview_plot.setXRange(*overview_range,padding=0)
+        self.overview_plot.setXRange(*overview_range, padding=0)
         self.insetview_plot.vb.setXRange(overview_range[0],
-                                         overview_range[0] + min(30, overview_range[1] - overview_range[0]),padding=0)
-        if self.animalid == self.main_model.project.current_animal.id:  # running for the first time
-            print('Same animal:',self.animalid)
+                                         overview_range[0] + min(30, overview_range[1] - overview_range[0]), padding=0)
+        if self.animalid == self.main_model.project.current_animal.id and not force_reset:  # running for the first time
+            print('Same animal:', self.animalid)
             return
 
         self.animalid = self.main_model.project.current_animal.id
+        if self.animalid is None:
+            return
 
         # we need to handle if channel not seen before
         # 6 std devations
@@ -206,24 +211,25 @@ class PairedGraphicsView():
         # print(overview_range)
 
         end_t = timer()
-        print('Paired graphics view init finished in',end_t-start_t,'seconds')
+        print('Paired graphics view init finished in', end_t - start_t, 'seconds')
         start_t = end_t
         # if self.scale is None:  # running for the first time
         if True:  # running for the first time
             print('Getting data to compute plot scale factors for new animal', self.animalid)
-            arr,tarr = self.main_model.project.get_data_from_range(overview_range,n_envelope=1000) # self.overview_plot.vb.viewRange()[0]) wierd behaviour here because vb.viewRange() range is not updated
+            arr, tarr = self.main_model.project.get_data_from_range(overview_range,
+                                                                    n_envelope=1000)  # self.overview_plot.vb.viewRange()[0]) wierd behaviour here because vb.viewRange() range is not updated
             # print(arr.shape, tarr.shape)
-            if len(arr.shape)<2:
+            if len(arr.shape) < 2:
                 return
             self.n_channels = arr.shape[1]
             self.scale = 1 / (8 * np.mean(np.std(arr, axis=0, keepdims=True), axis=1))
             self.overview_plot.vb.setYRange(-2, arr.shape[1] + 1)
             self.insetview_plot.vb.setYRange(-2, arr.shape[1] + 1)
-            self.timeline_plot.setTitle('<p style="font-size:large"> Animal: ' + self.animalid  + '</b>')
+            self.timeline_plot.setTitle('<p style="font-size:large"> Animal: ' + self.animalid + '</b>')
             end_t = timer()
 
         end_t = timer()
-        print('Paired graphics view scale computation finished in',end_t-start_t,'seconds')
+        print('Paired graphics view scale computation finished in', end_t - start_t, 'seconds')
         start_t = end_t
 
         if self.n_channels > 1:
@@ -247,13 +253,13 @@ class PairedGraphicsView():
             if pens is None:
                 pen = self.main_pen
             else:
-                pen = pens[i%len(pens)]
+                pen = pens[i % len(pens)]
 
             print('Setting plotitem channel data')
             self.set_plotitem_channel_data(pen, i, self.scale)
 
         end_t = timer()
-        print('Paired graphics view plot channels finnished in',end_t-start_t,'seconds')
+        print('Paired graphics view plot channels finnished in', end_t - start_t, 'seconds')
         start_t = end_t
 
         print('settng up extra plot parameters...')
@@ -266,38 +272,37 @@ class PairedGraphicsView():
         print('Project time range:', max_range)
         self.overview_plot.vb.setLimits(xMin=max_range[0], xMax=max_range[1])
         self.insetview_plot.vb.setLimits(xMin=max_range[0], xMax=max_range[1])
+        self.overview_plot.addItem(self.overviewROI)  # put back the overview box
 
-        self.timeline_plot.vb.setLimits(xMin=max_range[0], xMax=max_range[1],yMin=0,yMax=1,minYRange = 1)
-        self.timeline_plot.setRange(xRange = max_range,yRange = [0,1])
-        eeg_times = np.empty(2*len(self.main_model.project.current_animal.eeg_init_time))
+        # Updating timeline plots
+        self.timeline_plot.vb.setLimits(xMin=max_range[0], xMax=max_range[1], yMin=0, yMax=1, minYRange=1)
+        self.timeline_plot.setRange(xRange=max_range, yRange=[0, 1])
+        eeg_times = np.empty(2 * len(self.main_model.project.current_animal.eeg_init_time))
         eeg_times[0::2] = self.main_model.project.current_animal.eeg_init_time
         eeg_times[1::2] = eeg_times[0::2] + self.main_model.project.current_animal.eeg_duration
-        vid_times = np.empty(2*len(self.main_model.project.current_animal.video_init_time))
+        vid_times = np.empty(2 * len(self.main_model.project.current_animal.video_init_time))
         vid_times[0::2] = self.main_model.project.current_animal.video_init_time
         vid_times[1::2] = vid_times[0::2] + self.main_model.project.current_animal.video_duration
-        pen_eeg = pg.functions.mkPen(color = self.main_pen.color(), width=4)
+        pen_eeg = pg.functions.mkPen(color=self.main_pen.color(), width=4)
         pen_vid = pg.functions.mkPen(color=(64, 192, 231, 127), width=2)
-        for item in self.timeline_plot_items: # remove previous lines without removing cursonr
+        for item in self.timeline_plot_items:  # remove previous lines without removing cursonr
             self.timeline_plot.removeItem(item)
-        eeg_files_line = pg.PlotCurveItem(eeg_times,0*eeg_times+.5,connect='pairs',pen = pen_eeg)
-        vid_files_line = pg.PlotCurveItem(vid_times,0*vid_times+.25,connect='pairs',pen = pen_vid)
-        self.timeline_plot_items = [eeg_files_line,vid_files_line]
+        eeg_files_line = pg.PlotCurveItem(eeg_times, 0 * eeg_times + .5, connect='pairs', pen=pen_eeg)
+        vid_files_line = pg.PlotCurveItem(vid_times, 0 * vid_times + .25, connect='pairs', pen=pen_vid)
+        self.timeline_plot_items = [eeg_files_line, vid_files_line]
         self.timeline_plot.addItem(eeg_files_line)
         self.timeline_plot.addItem(vid_files_line)
-
         label = 'Start: ' + time.strftime('%H:%M:%S %b %d, %Y', time.localtime(max_range[0])) + \
-                '; - End: '+time.strftime('%H:%M:%S %b %d, %Y', time.localtime(max_range[1]))
-        self.timeline_plot.setLabel(axis='bottom',text=label)
-        self.overview_plot.addItem(self.overviewROI) # put back the overview box
+                '; - End: ' + time.strftime('%H:%M:%S %b %d, %Y', time.localtime(max_range[1]))
+        self.timeline_plot.setLabel(axis='bottom', text=label)
 
-        self.set_scenes_plot_annotations_data(self.main_model.annotations,self.overview_plot.viewRange)
+        self.set_scenes_plot_annotations_data(self.main_model.annotations, self.overview_plot.viewRange)
         self.main_model.annotations.sigFocusOnAnnotation.connect(self.set_focus_on_annotation)
         self.set_scene_window(self.main_model.window)
         self.set_scene_cursor()
 
         end_t = timer()
-        print('Paired graphics view plot annotations + etc. in',end_t-start_t,'seconds')
-
+        print('Paired graphics view plot annotations + etc. in', end_t - start_t, 'seconds')
 
     def set_plotitem_channel_data(self, pen, index, init_scale):
         '''
@@ -307,12 +312,13 @@ class PairedGraphicsView():
         init_scale is the initial scaling of the channels. Set transform
         '''
         # todo stop passing the vb to construction have it added automatically when add the item to plot
-        if True: # index not in self.channel_plotitem_dict.keys(): # This was used before we were clearing the scenes upon file loading
+        if True:  # index not in self.channel_plotitem_dict.keys(): # This was used before we were clearing the scenes upon file loading
             self.channel_plotitem_dict[index] = {}
             self.channel_plotitem_dict[index]['overview'] = PyecogPlotCurveItem(self.main_model.project, index,
-                                                                                viewbox=self.overview_plot.vb,pen=pen)
+                                                                                viewbox=self.overview_plot.vb, pen=pen)
             self.channel_plotitem_dict[index]['insetview'] = PyecogPlotCurveItem(self.main_model.project, index,
-                                                                                 viewbox=self.insetview_plot.vb, pen=pen)
+                                                                                 viewbox=self.insetview_plot.vb,
+                                                                                 pen=pen)
             self.channel_plotitem_dict[index]['overview'].setY(index)
             self.channel_plotitem_dict[index]['insetview'].setY(index)
             m = QtGui.QTransform().scale(1, init_scale)
@@ -328,10 +334,11 @@ class PairedGraphicsView():
 
     # The following static methods are auxiliary functions to link several annotation related signals:
     # @staticmethod
-    def function_generator_link_annotaions_to_graphs(self,annotation_object, annotation_graph):
+    def function_generator_link_annotaions_to_graphs(self, annotation_object, annotation_graph):
         return lambda: annotation_graph.update_fields(annotation_object.getPos(),
                                                       annotation_object.getLabel(),
-                                                      (*self.main_model.annotations.label_color_dict[annotation_object.getLabel()], 25),
+                                                      (*self.main_model.annotations.label_color_dict[
+                                                          annotation_object.getLabel()], 25),
                                                       (*self.main_model.annotations.label_color_dict[
                                                           annotation_object.getLabel()], 200)
                                                       )
@@ -349,16 +356,17 @@ class PairedGraphicsView():
         return lambda: annotationpage.focusOnAnnotation(annotation_object)
 
     def add_annotaion_plot(self, annotation):
-        color = self.main_model.annotations.label_color_dict[annotation.getLabel()]  # circle hue with constant luminosity an saturation
+        color = self.main_model.annotations.label_color_dict[
+            annotation.getLabel()]  # circle hue with constant luminosity an saturation
         brush = pg.functions.mkBrush(color=(*color, 25))
         pen = pg.functions.mkPen(color=(*color, 200))
         channel_range = self.main_model.annotations.label_channel_range_dict[annotation.getLabel()]
         annotation_graph_o = PyecogLinearRegionItem((annotation.getStart(), annotation.getEnd()), pen=pen,
-                                                    brush=brush, movable=False, id=None,channel_range=channel_range)
+                                                    brush=brush, movable=False, id=None, channel_range=channel_range)
         annotation_graph_o.setZValue(-1)
         annotation_graph_i = PyecogLinearRegionItem((annotation.getStart(), annotation.getEnd()), pen=pen,
                                                     brush=brush, swapMode='push', label=annotation.getLabel(), id=None,
-                                                    channel_range=channel_range,movable=False, movable_lines=True)
+                                                    channel_range=channel_range, movable=False, movable_lines=True)
 
         annotation_graph_i.sigRegionChangeFinished.connect(
             self.function_generator_link_graphs_to_annotations(annotation, annotation_graph_i))
@@ -378,35 +386,35 @@ class PairedGraphicsView():
         annotation.sigAnnotationElementDeleted.connect(lambda: self.overview_plot.removeItem(annotation_graph_o))
         annotation.sigAnnotationElementDeleted.connect(lambda: self.plotted_annotations.remove(annotation))
 
-    def set_scenes_plot_annotations_data(self, annotations, reset = True, pos=None):
+    def set_scenes_plot_annotations_data(self, annotations, reset=True, pos=None):
         '''
         :param annotations: an annotations object
         :return: None
         '''
         if pos is None:
-            pos,_ = self.overview_plot.viewRange()
-        if reset:# Clear existing annotations
+            pos, _ = self.overview_plot.viewRange()
+        if reset:  # Clear existing annotations
             for item in self.inset_annotations:
                 self.insetview_plot.removeItem(item)
             for item in self.overview_annotations:
                 self.overview_plot.removeItem(item)
             self.plotted_annotations.clear()
         else:
-            n=len(self.overview_annotations)
+            n = len(self.overview_annotations)
             for i in range(n):
-                a = self.overview_annotations[n-i - 1]
+                a = self.overview_annotations[n - i - 1]
                 if intervals_overlap(pos, a.pos()):
                     self.overview_plot.removeItem(a)
-                    b = self.inset_annotations[n-i - 1]
+                    b = self.inset_annotations[n - i - 1]
                     self.insetview_plot.removeItem(b)
-                    del self.overview_annotations[n-i - 1]
-                    del self.inset_annotations[n-i - 1]
-                    n -=1
+                    del self.overview_annotations[n - i - 1]
+                    del self.inset_annotations[n - i - 1]
+                    n -= 1
 
         # Add annotation plots
         for annotation in annotations.annotations_list:
-            if intervals_overlap(annotation.getPos(),pos) and annotation not in self.plotted_annotations:
-                print('annotation.getpos , pos:',(annotation.getPos(),pos))
+            if intervals_overlap(annotation.getPos(), pos) and annotation not in self.plotted_annotations:
+                print('annotation.getpos , pos:', (annotation.getPos(), pos))
                 self.add_annotaion_plot(annotation)
 
     def set_focus_on_annotation(self, annotation):
@@ -414,24 +422,25 @@ class PairedGraphicsView():
             return
         state = self.overviewROI.getState()
         annotation_pos = annotation.getPos()
-        self.main_model.set_time_position(annotation_pos[0]-0.9)
-        self.main_model.set_window_pos([annotation_pos[0]-1, annotation_pos[1]+1])
+        self.main_model.set_time_position(annotation_pos[0] - 0.9)
+        self.main_model.set_window_pos([annotation_pos[0] - 1, annotation_pos[1] + 1])
         if annotation_pos[0] > state['pos'][0] and annotation_pos[1] < state['pos'][0] + state['size'][0]:
-            return # skip if annotation is already completely in the plot area
+            return  # skip if annotation is already completely in the plot area
 
-        state['pos'][0] = annotation_pos[0] - .25*(state['size'][0])  # put start of annotation in first quarter of screen
+        state['pos'][0] = annotation_pos[0] - .25 * (
+        state['size'][0])  # put start of annotation in first quarter of screen
         self.insetview_plot.setRange(xRange=(state['pos'][0], state['pos'][0] + state['size'][0]),
                                      yRange=(state['pos'][1], state['pos'][1] + state['size'][1]),
                                      padding=0)
 
         xmin, xmax = self.overview_plot.viewRange()[0]
         x_range = xmax - xmin
-        if annotation_pos[1]-annotation_pos[0] < 0.8*x_range:
-            new_xrange = ( (annotation_pos[1]+annotation_pos[0]-x_range)/2, (annotation_pos[1]+annotation_pos[0]+x_range)/2)
+        if annotation_pos[1] - annotation_pos[0] < 0.8 * x_range:
+            new_xrange = ((annotation_pos[1] + annotation_pos[0] - x_range) / 2,
+                          (annotation_pos[1] + annotation_pos[0] + x_range) / 2)
         else:
-            new_xrange = ( annotation_pos[0]-x_range*.1, annotation_pos[0]+x_range*.9)
+            new_xrange = (annotation_pos[0] - x_range * .1, annotation_pos[0] + x_range * .9)
         self.overview_plot.setRange(xRange=new_xrange, padding=0)
-
 
     def set_scene_cursor(self):
         cursor_o = PyecogCursorItem(pos=0)
@@ -447,8 +456,9 @@ class PairedGraphicsView():
         self.insetview_plot.addItem(cursor_i)
 
     def set_timeline_cursor(self):
-        self.timeline_cursor = PyecogCursorItem(pos = 0)
-        self.timeline_cursor.sigPositionChanged.connect(lambda: self.set_overview_center_position(self.timeline_cursor.getXPos()))
+        self.timeline_cursor = PyecogCursorItem(pos=0)
+        self.timeline_cursor.sigPositionChanged.connect(
+            lambda: self.set_overview_center_position(self.timeline_cursor.getXPos()))
         self.timeline_plot.addItem(self.timeline_cursor)
         # cursor_i.sigPositionChanged.connect(lambda: self.main_model.set_time_position(cursor_i.getXPos()))
         # cursor_i.sigPositionChanged.connect(lambda: cursor_o.setPos(cursor_i.getPos()))
@@ -470,7 +480,7 @@ class PairedGraphicsView():
         self.overview_plot.addItem(window_item_o)
         # window_item_i = pg.LinearRegionItem(window, brush=brush)
         window_item_i = PyecogLinearRegionItem(window, pen=pen, brush=brush, movable=True, id=None)
-        window_item_i.setZValue(-2) # Bellow traces 0 and annotations -1
+        window_item_i.setZValue(-2)  # Bellow traces 0 and annotations -1
         self.insetview_plot.addItem(window_item_i)
         window_item_i.sigRegionChangeFinished.connect(lambda: window_item_o.setRegion(window_item_i.getRegion()))
         window_item_i.sigRegionChangeFinished.connect(lambda: self.main_model.set_window_pos(window_item_i.getRegion()))
@@ -502,15 +512,14 @@ class PairedGraphicsView():
             # self.main_model.annotations.focusOnAnnotation(None)
             self.main_model.set_time_position(pos.x())
 
-    def set_overview_center_position(self,pos):
+    def set_overview_center_position(self, pos):
         xmin, xmax = self.overview_plot.viewRange()[0]
         x_range = xmax - xmin
-        print(x_range,pos)
+        print(x_range, pos)
         new_xrange = (pos - x_range / 2, pos + x_range / 2)
         print(new_xrange)
         self.overview_plot.setRange(xRange=new_xrange,
-                                     padding=0, )
-
+                                    padding=0, )
 
     def overview_clicked(self, ev):
         '''
@@ -525,10 +534,10 @@ class PairedGraphicsView():
                 self.is_setting_ROI_position = pos  # save position of first click
                 return
             else:
-                pos0 =  self.is_setting_ROI_position
-                new_xrange = (min(pos0.x(),pos.x()),max(pos0.x(),pos.x()))
-                new_yrange = (min(pos0.y(),pos.y()),max(pos0.y(),pos.y()))
-                print('old range:', self.insetview_plot.viewRange()[0], 'new range:',new_xrange)
+                pos0 = self.is_setting_ROI_position
+                new_xrange = (min(pos0.x(), pos.x()), max(pos0.x(), pos.x()))
+                new_yrange = (min(pos0.y(), pos.y()), max(pos0.y(), pos.y()))
+                print('old range:', self.insetview_plot.viewRange()[0], 'new range:', new_xrange)
                 self.is_setting_ROI_position = False  # clear position of first shift+click
                 self.overviewROI.setPos((new_xrange[0], new_yrange[0]))
                 self.overviewROI.setSize((new_xrange[1] - new_xrange[0], new_yrange[1] - new_yrange[0]))
@@ -550,7 +559,7 @@ class PairedGraphicsView():
         print(new_xrange)
         self.insetview_plot.setRange(xRange=new_xrange,
                                      yRange=new_yrange,
-                                     padding=0,)
+                                     padding=0, )
 
         if modifiers == QtCore.Qt.ControlModifier:
             # self.main_model.annotations.focusOnAnnotation(None)
@@ -559,13 +568,13 @@ class PairedGraphicsView():
     def inset_clicked(self, ev):
         pos = self.insetview_plot.vb.mapSceneToView(ev.scenePos())
         print('insetclicked ', pos)
-        print('modifiers:',ev.modifiers())
+        print('modifiers:', ev.modifiers())
         modifiers = ev.modifiers()
         if modifiers == QtCore.Qt.ShiftModifier:
             self.main_model.annotations.focusOnAnnotation(None)
             if not self.is_setting_window_position:
                 self.main_model.set_window_pos([pos.x(), pos.x()])
-                self.is_setting_window_position = True # pos.x()
+                self.is_setting_window_position = True  # pos.x()
                 return
             else:
                 current_pos = self.main_model.window
@@ -588,7 +597,7 @@ class PairedGraphicsView():
         self.overviewROI.setPos((x_range[0], y_range[0]))
         self.overviewROI.setSize((x_range[1] - x_range[0], y_range[1] - y_range[0]))
 
-        ox_range, oy_range = self.overview_plot.viewRange() # scroll the overview if the inset is on the edge
+        ox_range, oy_range = self.overview_plot.viewRange()  # scroll the overview if the inset is on the edge
         if x_range[0] < ox_range[0]:
             self.overview_plot.vb.setXRange(x_range[0], x_range[0] + ox_range[1] - ox_range[0], padding=0)
         elif x_range[1] > ox_range[1]:
@@ -608,10 +617,10 @@ class PairedGraphicsView():
         print(new_xrange)
         self.insetview_plot.setRange(xRange=new_xrange, padding=0)
 
-    def insetview_set_xrange(self,x_range):
+    def insetview_set_xrange(self, x_range):
         xmin, xmax = self.insetview_plot.viewRange()[0]
-        centre = (xmax + xmin)/2
-        new_xrange = (centre - x_range/2, centre + x_range/2)
+        centre = (xmax + xmin) / 2
+        new_xrange = (centre - x_range / 2, centre + x_range / 2)
         print(new_xrange)
         self.insetview_plot.setRange(xRange=new_xrange, padding=0)
 
@@ -636,59 +645,63 @@ class PairedGraphicsView():
         print(new_xrange)
         self.overview_plot.setRange(xRange=new_xrange, padding=0)
 
-    def updateFilterSettings(self, settings=(False,0,1e6)):
+    def updateFilterSettings(self, settings=(False, 0, 1e6)):
         self.apply_filter = settings[0]
         self.highpass_frequency = settings[1]
         self.lowpass_frequency = settings[1]
         self.main_model.project.updateFilterSettings(settings)
         xmin, xmax = self.insetview_plot.viewRange()[0]
-        self.insetview_plot.setRange(xRange=(0.9*xmin+0.1*xmax,0.1*xmin+0.9*xmax), padding=0) # just to update the plots
-        self.insetview_plot.setRange(xRange=(xmin,xmax), padding=0)
+        self.insetview_plot.setRange(xRange=(0.9 * xmin + 0.1 * xmax, 0.1 * xmin + 0.9 * xmax),
+                                     padding=0)  # just to update the plots
+        self.insetview_plot.setRange(xRange=(xmin, xmax), padding=0)
         xmin, xmax = self.overview_plot.viewRange()[0]
-        self.overview_plot.setRange(xRange=(0.9*xmin+0.1*xmax,0.1*xmin+0.9*xmax), padding=0) # just to update the plots
-        self.overview_plot.setRange(xRange=(xmin,xmax), padding=0)
+        self.overview_plot.setRange(xRange=(0.9 * xmin + 0.1 * xmax, 0.1 * xmin + 0.9 * xmax),
+                                    padding=0)  # just to update the plots
+        self.overview_plot.setRange(xRange=(xmin, xmax), padding=0)
+
 
 class DateAxis(pg.AxisItem):
-    def __init__(self, label_date = True,*args,**kwargs):
-        super().__init__(*args,**kwargs)
+    def __init__(self, label_date=True, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.label_date = label_date
 
     def tickStrings(self, values, scale, spacing):
         strns = []
-        rng = self.range[1] - self.range[0] #max(values)-min(values)
-        #if rng < 120:
+        rng = self.range[1] - self.range[0]  # max(values)-min(values)
+        # if rng < 120:
         #    return pg.AxisItem.tickStrings(self, values, scale, spacing)
         if rng <= 2:
             string = '%H:%M:%S.%f'
             label1 = '%b %d -'
             label2 = ' %b %d, %Y'
-        elif rng < 3600*24:
+        elif rng < 3600 * 24:
             string = '%H:%M:%S'
             label1 = '%b %d -'
             label2 = ' %b %d, %Y'
-        elif rng >= 3600*24 and rng < 3600*24*30:
+        elif rng >= 3600 * 24 and rng < 3600 * 24 * 30:
             string = '%d'
             label1 = '%b - '
             label2 = '%b, %Y'
-        elif rng >= 3600*24*30 and rng < 3600*24*30*24:
+        elif rng >= 3600 * 24 * 30 and rng < 3600 * 24 * 30 * 24:
             string = '%b'
             label1 = '%Y -'
             label2 = ' %Y'
-        elif rng >=3600*24*30*24:
+        elif rng >= 3600 * 24 * 30 * 24:
             string = '%Y'
             label1 = ''
             label2 = ''
 
         for x in values:
             try:
-                strns.append(datetime.strftime(datetime.fromtimestamp(x),string))
+                strns.append(datetime.strftime(datetime.fromtimestamp(x), string))
             except ValueError:  ## Windows can't handle dates before 1970
                 strns.append('err')
         try:
-            label = time.strftime(label1, time.localtime(min(values)))+time.strftime(label2, time.localtime(max(values)))
+            label = time.strftime(label1, time.localtime(min(values))) + time.strftime(label2,
+                                                                                       time.localtime(max(values)))
         except ValueError:
             label = ''
         self.autoSIPrefix = False
         if self.label_date:
-            self.setLabel(text=label,units=None)
+            self.setLabel(text=label, units=None)
         return strns

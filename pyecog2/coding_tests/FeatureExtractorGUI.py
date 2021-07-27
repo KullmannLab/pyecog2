@@ -101,14 +101,15 @@ def settings2params(settings):
              }]
 
 def params2settings(params):
-    window_settings = params[0]['children'][0]['children']
-    feature_time_functions = params[0]['children'][1].children()
-    feature_freq_functions = params[0]['children'][2].children()
-    function_module_dependencies = params[0]['children'][3].children()
+    fe_settings_list = params.children()[0].children()
+    window_settings = fe_settings_list[0].children()
+    feature_time_functions = fe_settings_list[1].children()
+    feature_freq_functions = fe_settings_list[2].children()
+    function_module_dependencies = fe_settings_list[3].children()
     return OrderedDict(
-        window_length=window_settings[1]['value'],  # length in seconds for the segments on which to compute features
-        overlap=window_settings[2]['value'],  # overlap ratio between windows
-        window=window_settings[0]['value'], # window type
+        window_length=window_settings[1].value(),  # length in seconds for the segments on which to compute features
+        overlap=window_settings[2].value(),  # overlap ratio between windows
+        window=window_settings[0].value(), # window type
         feature_labels=[f.name() for f in feature_time_functions] + [f.name() for f in feature_freq_functions],
         feature_time_functions=[f.value() for f in feature_time_functions],
         feature_freq_functions=[f.value() for f in feature_freq_functions],
@@ -212,7 +213,7 @@ class FeatureExtractorWindow(QMainWindow):
         self.terminal.setTextColor(color)
 
     def setProjectFeatureExtraction(self):
-        self.feature_extractor.update_from_settings(params2settings(self.params))
+        self.feature_extractor.update_from_settings(params2settings(self.p))
         print(self.feature_extractor.settings)
 
     def runFeatureExtraction(self):
@@ -226,6 +227,8 @@ class FeatureExtractorWindow(QMainWindow):
         self.threadpool.start(worker)
 
     def extractFeatures(self):
+        self.progressBar0.setValue(0)
+        self.progressBar1.setValue(0)
         for i,animal in enumerate(self.project.animal_list):
             self.feature_extractor.extract_features_from_animal(animal, re_write = self.re_write.isChecked(), n_cores = -1,
                                                                 progress_bar = self.progressBar1)

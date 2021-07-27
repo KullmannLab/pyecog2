@@ -192,12 +192,13 @@ class PairedGraphicsView():
         self.overview_plot.setXRange(*overview_range, padding=0)
         self.insetview_plot.vb.setXRange(overview_range[0],
                                          overview_range[0] + min(30, overview_range[1] - overview_range[0]), padding=0)
+
         if self.animalid == self.main_model.project.current_animal.id and not force_reset:  # running for the first time
             print('Same animal:', self.animalid)
             return
 
         self.animalid = self.main_model.project.current_animal.id
-        if self.animalid is None:
+        if self.animalid is None: # No animal is currently selected to plot
             return
 
         # we need to handle if channel not seen before

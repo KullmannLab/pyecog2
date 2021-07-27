@@ -13,6 +13,7 @@ from pyqtgraph.parametertree import Parameter
 from PySide2 import QtGui
 from pyecog2.coding_tests.pyecogParameterTree import PyecogParameterTree, PyecogGroupParameter, PyecogGroupParameterItem
 from timeit import default_timer as timer
+from time import sleep
 
 ## this group includes a menu allowing the user to add new parameters into its child list
 # class ScalableGroup(pTypes.GroupParameter):
@@ -94,6 +95,7 @@ class AnnotationParameterTee(PyecogParameterTree):
         labels = self.annotationPage.labels
         if set(labels) != set(self.shortcut_keys.keys()):  # restart shortcut keys in case labels change in annotationPage
             self.shortcut_keys = dict([(l, i + 1) for i, l in enumerate(labels)])
+        print('AnnotationParameterTree Re_init shortcuts redefined (', timer()-start_t, 'seconds )')
 
         Label_dict = [{'name': label,
                                'type': 'group',
@@ -105,13 +107,17 @@ class AnnotationParameterTee(PyecogParameterTree):
                                           ],
                                'renamable': True,
                                'removable': True} for i, label in enumerate(labels)]
+        print('AnnotationParameterTree Re_init label_dict generated (', timer()-start_t, 'seconds )')
         self.p.clearChildren()
+        print('AnnotationParameterTree Re_init children cleard (', timer()-start_t, 'seconds )')
         self.params = [ScalableGroup(name="Annotation Labels", children=Label_dict)]
+        print('AnnotationParameterTree Re_init params created (', timer()-start_t, 'seconds )')
         self.p.addChildren(self.params)
+        print('AnnotationParameterTree Re_init children added (', timer()-start_t, 'seconds )')
         # self.update_color_from_group_parameters()
-        self.p.sigTreeStateChanged.connect(self.change)
         self.setParameters(self.p, showTop=False)
         self.headerItem().setHidden(True)
+        self.p.sigTreeStateChanged.connect(self.change)
         print('AnnotationParameterTree Re_init finished (', timer()-start_t, 'seconds )')
 
 

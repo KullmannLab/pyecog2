@@ -46,7 +46,8 @@ def LL2prob(LL):
 
 
 def reg_invcov(M,n):
-    return np.linalg.inv(M*n/(n+1) + np.eye(len(M))*M.diagonal()/(n+1))
+    # return np.linalg.inv(M*n/(n+1) + np.eye(len(M))*M.diagonal()/(n+1))
+    return np.linalg.inv(M*np.sqrt(n)/(np.sqrt(n)+1) + np.eye(len(M))*M.diagonal()/(np.sqrt(n)+1))
 
 
 def average_mu_and_cov(mu1,cov1,n1,mu2,cov2,n2):
@@ -172,7 +173,7 @@ class ProjectClassifier():
         gc.train([a],progress_bar=pbar)
         gc.save(os.path.join(self.project.project_file + '_classifier',animal_id+'.npz'))
 
-    def classify_animal_with_global(self, animal, progress_bar=None,max_annotations=-1,labels2annotate=None):
+    def classify_animal_with_global(self, animal, progress_bar=None,max_annotations=-1,labels2annotate=None, prob_th=0.5, outlier_th = 1):
         gc = GaussianClassifier(self.project,self.feature_extractor,self.global_classifier.labels2classify)
         gc.copy_from(self.animal_classifier_dict[animal.id])
         if gc.blank_npoints == 0:
@@ -180,7 +181,7 @@ class ProjectClassifier():
             print('Training animal specific classifier first...')
             gc.train([animal])
         gc.copy_re_normalized_classifier(self.global_classifier)
-        gc.classify_animal(animal,progress_bar,max_annotations,labels2annotate)
+        gc.classify_animal(animal,progress_bar,max_annotations,labels2annotate, prob_th=prob_th, outlier_th = outlier_th)
 
 
 
@@ -220,7 +221,8 @@ class GaussianClassifier():
     def whitening_mu_W_iW(self): # return mean of full data and whitening matrix such that W(x-mu) has standard normal dist.
         mu,cov,n = self.all_mu_and_cov() # mean and covariance of full data
         if n: # if the datapoints considered are more than 0
-            W = linalg.sqrtm(reg_invcov(cov,n))
+            W = linalg.sqrtm(reg_invcov(cov,n)) # use all the covariance matrix
+            # W = linalg.sqrtm(reg_invcov(cov,0)) # only use the diagonal of the covariance matrix
             iW = linalg.inv(W)
         else:
             W = np.eye(self.Ndim)
@@ -367,7 +369,7 @@ class GaussianClassifier():
             LL = LL + bias_v.T
         return LL
 
-    def classify_animal(self, animal,progress_bar=None,max_annotations=-1,labels2annotate=None):
+    def classify_animal(self, animal, progress_bar=None, max_annotations=-1, labels2annotate=None, prob_th=0.5, outlier_th = 1):
         if self.blank_npoints == 0:
             print('Classifier needs to be trained first')
             return None,None,None,None
@@ -408,7 +410,7 @@ class GaussianClassifier():
         th = chi2.isf(1/total_npoints,self.Ndim,scale=0.5)
         LLth = np.diag(self.log_likelyhoods(np.vstack((self.blank_means, self.class_means)), bias=False)) - th
         # Now will regularize LLv for extreme values and compensate HMMfor repeated observations because of overlap of Feature extractor
-        LLv_reg = np.maximum(LLth, LLv)*(1-self.overlap)
+        LLv_reg = np.maximum(LLth, LLv)*(1-self.overlap) # TEMPORARY 0.5 FACTOR!
         R2v = np.vstack(R2v)
         timev = np.hstack(timev)
         print('\nRunning HMM...')
@@ -429,22 +431,22 @@ class GaussianClassifier():
         print('Combining results and generating annotations...')
         # threshold to reject classifications outside .999 confidence interval of the class distribution
         th = chi2.isf(1e-3,self.Ndim,scale=0.5)
-        th = chi2.isf(1/total_npoints,self.Ndim,scale=0.5)
+        th = chi2.isf(outlier_th/total_npoints,self.Ndim,scale=0.5)
 
         for i2,label in enumerate(self.labels2classify):
             if label not in labels2annotate: # ignore labels that are not in labels2annotate
                 continue
             i = i2+1
             print(i,label)
-            starts = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > .5).astype('int')) > 0)[0] + 1
-            ends = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > .5).astype('int')) < 0)[0] + 1
+            starts = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > prob_th).astype('int')) > 0)[0] + 1
+            ends = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > prob_th).astype('int')) < 0)[0] + 1
             alist = []
             print('len starts',len(starts))
             manual_label_positions = [a.getPos() for a in animal.annotations.get_all_with_label(label)]
             print('manual label positions:',manual_label_positions)
             for j in range(len(starts)):
                 if not any([intervals_overlap([timev[starts[j]],timev[ends[j]]],pos) for pos in manual_label_positions]):
-                    if ends[j]-starts[j]<1:
+                    if ends[j]-starts[j]<.5:
                         print('interval too small:',starts[j],ends[j])
                         continue
                     # c = np.sum(LLv[starts[j]:ends[j],i])-np.sum(LLv[starts[j]:ends[j],0])
@@ -460,7 +462,7 @@ class GaussianClassifier():
                 else:
                     print('annotation already exists at', starts[j], ends[j])
 
-            print('Found',len(alist), 'putative events. Saving',max_annotations,'withh highest confidence score')
+            print('Found',len(alist), 'putative events. Saving',max_annotations,'with highest confidence score')
             alist.sort(key=lambda c:-c[0])
             animal.annotations.delete_label('(auto)'+label)  # Delete all previous auto generated labels
             try:

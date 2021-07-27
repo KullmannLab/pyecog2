@@ -285,7 +285,10 @@ class AnnotationPage(QObject):
         try:
             # if not channel_range.startswith('['):
             #     channel_range = '[' + channel_range + ']'
-            c = list(eval(channel_range))
+            c = eval(channel_range)
+            if not hasattr(c,'__iter__'):
+                c = [c]
+            c = list(c)
             min(c) # check that we can compute min of c
         except Exception:
             c = None

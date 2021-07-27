@@ -176,6 +176,7 @@ class FileTreeElement():
         # self.widget.show()
         ProjectNode(project,parent=self.root_node)
         self.connect_model_to_parent_paired_graph()
+        self.tree_view.expandToDepth(0)
 
     def get_default_folder(self):
         # normally should have the pickle file here

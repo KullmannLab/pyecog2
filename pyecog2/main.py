@@ -23,7 +23,6 @@ from pyecog2.coding_tests.convert_ndf_folder_gui import NDFConverterWindow
 from pyecog2.coding_tests.FeatureExtractorGUI import FeatureExtractorWindow
 from pyecog2.coding_tests.ClassifierGUI import ClassifierWindow
 from pyecog2.paired_graphics_view import PairedGraphicsView
-from pyecog2.tree_model_and_nodes import TreeModel
 from pyecog2.tree_widget import FileTreeElement
 from pyecog2.coding_tests.plot_controls import PlotControls
 from datetime import datetime
@@ -295,7 +294,7 @@ class MainWindow(QMainWindow):
                 init_time = 0
             plot_range = np.array([init_time, init_time + 3600])
             print('trying to plot ', plot_range)
-            self.paired_graphics_view.set_scenes_plot_channel_data(plot_range)
+            self.paired_graphics_view.set_scenes_plot_channel_data(plot_range,force_reset=True)
             self.main_model.set_time_position(init_time)
             self.main_model.set_window_pos([init_time, init_time])
 

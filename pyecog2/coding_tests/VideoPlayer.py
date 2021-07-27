@@ -10,6 +10,7 @@ from PySide2.QtWidgets import QMainWindow,QWidget, QPushButton, QAction
 from PySide2.QtGui import QIcon
 import sys
 import time
+import numpy as np
 
 import pkg_resources
 clock_icon_file = pkg_resources.resource_filename('pyecog2', 'icons/wall-clock.png')
@@ -193,7 +194,7 @@ class VideoWindow(QWidget):
                     self.playButton.setEnabled(True)
                     # self.duration = (arange[1]-arange[0])*1000
                     return
-        print('no video file found for current position')
+        print('no video file found for current position',pos)
         self.errorLabel.setText("No video file found for current position")
         self.mediaPlayer.stop()
         self.mediaPlayer.setMedia(QMediaContent())

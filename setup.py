@@ -29,7 +29,8 @@ setuptools.setup(
                     'pyqtgraph==0.11.0',
                     'numba==0.52.0',
                     'pyopengl==3.1.1a1',
-                    'pyopengl-accelerate==3.1.3b1'
+                    'pyopengl-accelerate==3.1.3b1',
+                    'jupyter'
                     ],
    include_package_data = True
   )

@@ -50,7 +50,7 @@ class ScalableGroup(PyecogGroupParameter):
             n = (len(self.childs) + 1)
         try:
             self.addChild(
-                dict(name= 'Animal '+str(n), type='str', value='[tid],fs', removable=True,
+                dict(name= 'Animal '+str(n), type='str', value='[tid],auto', removable=True,
                      renamable=True))
         except Exception:
             self.addNew(typ,n+1)
@@ -66,8 +66,8 @@ class NDFConverterWindow(QMainWindow):
         if self.settings is None:
             self.settings = {'NDFdir': os.getcwd(),
                              'H5dir': os.getcwd(),
-                             'start': '00/00/00 00:00:00',
-                             'end': '00/00/00 00:00:00',
+                             'start': '0001-01-01 00:00:00',
+                             'end': '9999-01-01 00:00:00',
                              'AnimalDictList':[{'id': 'Animal 1',
                                                 'tidfs': '[0],auto'}]
                              }

@@ -86,13 +86,19 @@ class ClassifierWindow(QMainWindow):
             {'name': 'Global Settings','type':'group','children':[
                 {'name': 'Lablels to train',
                  'type': 'group',
-                 'children': [{'name': l, 'type': 'bool', 'value': True} for l in all_labels]
+                 'children': [{'name': l, 'type': 'bool', 'value': False} for l in all_labels]
                  },
                 {'name': 'Homogenize ticked labels across project', 'type': 'action'},
                 {'name': 'Lablels to annotate',
                  'type': 'group',
-                 'children': [{'name': l, 'type': 'bool', 'value': True} for l in all_labels]
+                 'children': [{'name': l, 'type': 'bool', 'value': False} for l in all_labels]
                  },
+                {'name': 'Automatic annotation settings',
+                 'type': 'group',
+                 'children': [{'name': 'Annotation threshold probability', 'type': 'float', 'value': 0.5},
+                              {'name': 'Outlier threshold factor', 'type': 'float', 'value': 1},
+                              {'name': 'maximum number of annotations', 'type': 'int', 'value': 100} ]
+                 }
                 # {'name': 'Assimilate global classifier from individual animals', 'type': 'action'},
                 # {'name': 'Train global classifier','type': 'action', 'children':[
                 #     {'name': 'Training Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}
@@ -103,7 +109,7 @@ class ClassifierWindow(QMainWindow):
             ]},
             {'name': 'Animal Settings', 'type': 'group', 'expanded': True, 'children': [
                 {'name': animal, 'type': 'group','children':[
-                    {'name': 'Use animal for global classifier', 'type': 'bool', 'value': True},
+                    {'name': 'Use animal for global classifier', 'type': 'bool', 'value': False},
                     {'name': 'Train animal-specific classifier', 'type': 'action','children':[
                         {'name': 'Training Progress', 'type': 'float', 'readonly': True, 'suffix':'%',
                          'value': 100*(self.classifier.animal_classifier_dict[animal].blank_npoints>0)}]},
@@ -207,8 +213,12 @@ class ClassifierWindow(QMainWindow):
     def runAnimalClassifier(self,animal_id,pbar=None):
         animal = self.project.get_animal(animal_id)
         print('Classifying', animal_id)
+        prob_th = self.p.param('Global Settings','Automatic annotation settings', 'Annotation threshold probability').value()
+        outlier_th = self.p.param('Global Settings','Automatic annotation settings', 'Outlier threshold factor').value()
+        max_anno = self.p.param('Global Settings','Automatic annotation settings', 'maximum number of annotations').value()
         worker = Worker(self.classifier.animal_classifier_dict[animal_id].classify_animal,
-                        animal,pbar,max_annotations=100, labels2annotate = self.getLables2Annotate())
+                        animal,pbar,max_annotations=max_anno, prob_th=prob_th,outlier_th =outlier_th,
+                        labels2annotate = self.getLables2Annotate())
         self.threadpool.start(worker)
         return 1, 1
 
@@ -219,8 +229,11 @@ class ClassifierWindow(QMainWindow):
         self.classifier.assimilate_global_classifier(labels2train=self.getLables2train())
         print('Labeling', animal_id)
         animal = self.project.get_animal(animal_id)
-        worker = Worker(self.classifier.classify_animal_with_global, animal, pbar, max_annotations=100,
-                        labels2annotate = self.getLables2Annotate())
+        prob_th = self.p.param('Global Settings','Automatic annotation settings', 'Annotation threshold probability').value()
+        outlier_th = self.p.param('Global Settings','Automatic annotation settings', 'Outlier threshold factor').value()
+        max_anno = self.p.param('Global Settings','Automatic annotation settings', 'maximum number of annotations').value()
+        worker = Worker(self.classifier.classify_animal_with_global, animal, pbar, max_annotations=max_anno,
+                        prob_th=prob_th,outlier_th =outlier_th, labels2annotate = self.getLables2Annotate())
         self.threadpool.start(worker)
         return 1, 1
 

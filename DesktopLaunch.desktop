@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Terminal=true
+Exec=/home/mfpleite/PycharmProjects/pyecog2/LinuxLaunch.sh
+Name=PyEcog
+Comment=comment here
+Icon=/home/mfpleite/PycharmProjects/pyecog2/pyecog2/icons/icon.png
+Name[en_GB]=DesktopLaunch.desktop

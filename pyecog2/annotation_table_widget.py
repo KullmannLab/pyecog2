@@ -468,6 +468,10 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
                 print('passing to main window')
                 self.parent.keyPressEvent(ev)
 
+        if ev.key() == QtCore.Qt.Key_Delete:
+            # self.main_model.annotations.delete_annotation(self.main_model.annotations.focused_annotation)
+            self.removeSelection()
+
         QtWidgets.QTableWidget.keyPressEvent(self, ev)
 
     def handleItemChanged(self, item):

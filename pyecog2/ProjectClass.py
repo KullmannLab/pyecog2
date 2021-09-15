@@ -485,10 +485,11 @@ class Project():
 
     def export_annotations(self, fname):
         with open(fname, 'w') as f:
-            f.write('Animal ID,label,' + 'start,stop\n')
+            f.write('Animal ID,label,start,stop,confidence,notes\n')
             for animal in self.animal_list:
                 for a in animal.annotations.annotations_list:
-                    f.write(animal.id + ',' + a.getLabel() + ',' + str(a.getStart()) + ',' + str(a.getEnd()) + '\n')
+                    f.write(animal.id + ',' + a.getLabel() + ',' + str(a.getStart()) + ',' + str(a.getEnd()) +
+                            ',' + str(a.getConfidence()) +  ',' + str(a.getNotes()) + '\n')
         return
 
     def get_animal(self, animal_id):
@@ -529,7 +530,7 @@ class Project():
                 id = directory.split(os.path.sep)[-2]
                 print('Creating animal from directory:' ,directory)
                 print('Adding animal with id:',id)
-                video_dir = self.video_root_folder + os.path.sep + id
+                video_dir = self.video_root_folder + os.path.sep + id + os.path.sep
                 if video_dir not in video_dir_list:
                     video_dir = None  # check if compatible video dir exists
                 self.add_animal(Animal(id=id,eeg_folder=directory,video_folder=video_dir))

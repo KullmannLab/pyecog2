@@ -226,6 +226,9 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
             l.setZValue(101)
         self.lines[0].sigPositionChanged.connect(lambda: self.lineMoved(0))
         self.lines[1].sigPositionChanged.connect(lambda: self.lineMoved(1))
+        self.lines[0].sigDragged.connect(self.sigClicked.emit)
+        self.lines[1].sigDragged.connect(self.sigClicked.emit)
+
 
         if brush is None:
             brush = QtGui.QBrush(QtGui.QColor(0, 0, 255, 50))
@@ -238,7 +241,7 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
         self.setHoverBrush(hoverBrush)
         # self.label = label  # Label of the annotation
         self.id = id  # field to identify corresponding annotation in the annotations object
-        self.label_text = pg.TextItem(label, anchor=(0, 0), color=pen.color())
+        self.label_text = pg.TextItem(label, anchor=(0, -1), color=pen.color())
         self.label_text.setParentItem(self.lines[0])
         self.label_text.updateTextPos()
         self.menu = None

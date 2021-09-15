@@ -179,6 +179,7 @@ class VideoWindow(QWidget):
                 arange = [self.project.current_animal.video_init_time[i] + self.video_time_offset,
                           self.project.current_animal.video_init_time[i] + self.project.current_animal.video_duration[i]
                           + self.video_time_offset]
+                print((arange[0], pos, arange[1]),(arange[0] <= pos <= arange[1]))
                 if (arange[0] <= pos <= arange[1]):
                     print('Changing video file: ', file)
                     self.current_file = file
@@ -195,7 +196,7 @@ class VideoWindow(QWidget):
                     # self.duration = (arange[1]-arange[0])*1000
                     return
         print('no video file found for current position',pos)
-        self.errorLabel.setText("No video file found for current position")
+        self.errorLabel.setText('No video file found for current position ' + str(pos))
         self.mediaPlayer.stop()
         self.mediaPlayer.setMedia(QMediaContent())
         self.current_file = ''

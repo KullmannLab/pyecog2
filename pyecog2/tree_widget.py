@@ -1,4 +1,4 @@
-from PyQt5 import QtGui, QtWidgets, QtCore
+from PySide2 import QtGui, QtWidgets, QtCore
 
 import sys
 import os
@@ -6,14 +6,14 @@ import numpy as np
 import pandas as pd
 import pickle as p
 
-from PyQt5 import QtGui, QtWidgets, QtCore#,# uic
-from PyQt5.QtCore import QThread, pyqtSignal, Qt, QRect, QTimer
+from PySide2 import QtGui, QtWidgets, QtCore#,# uic
+from PySide2.QtCore import QThread, Signal, Qt, QRect, QTimer
 
 # import pyqtgraph_copy.pyqtgraph as pg
 import pyqtgraph as pg
 
 from pyecog2.tree_model_and_nodes import FileTreeProxyModel, TreeModel
-from pyecog2.tree_model_and_nodes import FileNode, DirectoryNode, ChannelNode, HDF5FileNode, LieteNode, ProjectNode
+from pyecog2.tree_model_and_nodes import FileNode, DirectoryNode, ChannelNode, HDF5FileNode, LieteNode, ProjectNode,BuildingNode
 
 class FileTreeView(QtWidgets.QTreeView):
 
@@ -86,6 +86,7 @@ class FileTreeElement():
         # now it feels we are getting into pretty poor coding
         if self.mainwindow_parent is not None:
             self.model.plot_node_signal.connect(
+                # self.mainwindow_parent.paired_graphics_view.overview_plot.setRange)
                 self.mainwindow_parent.paired_graphics_view.set_scenes_plot_channel_data)
                 # ML: I don't like this, probably best is to have the parent have an update_graphics() method and maybe
                 # even an object containng all the info necessary to be comunicated between widgets like filenames,
@@ -169,10 +170,13 @@ class FileTreeElement():
     def set_rootnode_from_project(self, project):
         '''resets the tree self.model'''
         self.root_node = DirectoryNode('')
-        ProjectNode(project,parent=self.root_node)
         self.model = TreeModel(self.root_node, parent=None)
         self.tree_view.setModel(self.model)
+        # BuildingNode(parent = self.root_node)
+        # self.widget.show()
+        ProjectNode(project,parent=self.root_node)
         self.connect_model_to_parent_paired_graph()
+        self.tree_view.expandToDepth(0)
 
     def get_default_folder(self):
         # normally should have the pickle file here

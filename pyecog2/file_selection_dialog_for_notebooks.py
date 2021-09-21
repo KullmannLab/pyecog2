@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QFileDialog, QApplication
+from PySide2.QtWidgets import QFileDialog, QApplication
 
 '''
 You need to find what you wrote before in these things?

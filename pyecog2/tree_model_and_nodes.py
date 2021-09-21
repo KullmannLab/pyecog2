@@ -1,10 +1,11 @@
 import os
-from PyQt5 import QtGui, QtCore, QtWidgets
+from PySide2 import QtGui, QtCore, QtWidgets
 import numpy as np
 import json
 from pyecog2.ProjectClass import create_metafile_from_h5, load_metadata_file
 import pkg_resources
 
+from timeit import default_timer as timer
 
 # rename module to be filetree model?
 # maybe split file into one that has nodes seperately
@@ -13,8 +14,7 @@ class TreeModel(QtCore.QAbstractItemModel):
     # hmmm not sure best but lets roll with it
     # sends an array of data and their sampling freq in hz
     # maybe memmap is better?
-    plot_node_signal = QtCore.pyqtSignal(np.ndarray)
-    #plot_node_signal = QtCore.pyqtSignal()
+    plot_node_signal = QtCore.Signal(np.ndarray)
     '''
     Naming convention (not right at the moment)
     lowerUpper is overidded modules
@@ -325,14 +325,6 @@ class HDF5FileNode(Node):
         t0 = self.metadata['start_timestamp_unix']
         duration = self.metadata['duration']
         self.parent.parent.project.set_current_animal(self.parent.animal)
-        # self.h5_file = H5File(self.get_full_path())
-        # fs_dict = eval(self.h5_file.attributes['fs_dict'])
-        # fs = fs_dict[int(self.h5_file.attributes['t_ids'][0])]
-        # channels = []
-        # for tid in self.h5_file.attributes['t_ids']:
-        #     assert fs == int(fs_dict[tid])
-        #     channels.append(self.h5_file[tid]['data'])
-        # arr = np.vstack(channels).T
         return np.array([t0, t0+duration])
 
     def load_metadata(self):
@@ -387,6 +379,9 @@ class AnimalNode(Node):
 
     def prepare_for_plot(self):
         # plot the earliest file
+        print('Tree AnimalNode: Prepare for plot start **************************************************************')
+        if self.animal.id == self.parent.project.current_animal.id:
+            return
         children = self.children
         if children:
             child = min(children, key=lambda a: a.name)
@@ -403,6 +398,7 @@ class ProjectNode(Node):
         self.name = project.title
         for animal in self.project.animal_list:
             AnimalNode(animal, parent=self)
+        self.setExpanded(True)
 
     def set_name(self, value):
         self.name = str(value)
@@ -410,6 +406,18 @@ class ProjectNode(Node):
 
     def type_info(self):
         return 'Project: ' + self.name
+
+
+class BuildingNode(Node):
+    '''
+    A temporary note to use while building large trees
+    '''
+    def __init__(self, parent=None):
+        super(BuildingNode, self).__init__('Building Tree...', parent=parent, path='')
+
+    def type_info(self):
+        return 'please be patient for large projects'
+
 
 
 class FileTreeProxyModel(QtCore.QAbstractProxyModel):

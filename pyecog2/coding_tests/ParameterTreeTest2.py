@@ -1,11 +1,11 @@
 import sys
-from PyQt5 import QtCore
-from PyQt5.QtWidgets import QDialog, QWidget, QApplication, QPushButton, QTreeView, QHBoxLayout, QVBoxLayout, QAbstractItemView
-from PyQt5.QtGui import QStandardItem,QStandardItemModel
+from PySide2 import QtCore
+from PySide2.QtWidgets import QDialog, QWidget, QApplication, QPushButton, QTreeView, QHBoxLayout, QVBoxLayout, QAbstractItemView
+from PySide2.QtGui import QStandardItem,QStandardItemModel
 import sys
 import copy
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import Qt, QSettings, QByteArray
+from PySide2.QtGui import QIcon
+from PySide2.QtCore import Qt, QSettings, QByteArray
 
 import json
 import glob

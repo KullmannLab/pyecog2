@@ -1,7 +1,8 @@
 import sys, os, glob
 from datetime import datetime
-from PyQt5 import QtGui, QtCore
-from PyQt5.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog, QProgressBar
+from PySide2 import QtGui, QtCore
+from PySide2.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog, \
+    QProgressBar
 
 from pyqtgraph.parametertree import Parameter, ParameterTree
 from pyecog2.ndf_converter import NdfFile, DataHandler
@@ -12,9 +13,10 @@ from pyecog2.classifier import GaussianClassifier, ProjectClassifier
 from pyecog2.ProjectClass import Project
 from pyecog2.coding_tests.WaveletWidget import Worker
 from collections import OrderedDict
+from pyqtgraph.console import ConsoleWidget
 
 class OutputWrapper(QtCore.QObject):
-    outputWritten = QtCore.pyqtSignal(object, object)
+    outputWritten = QtCore.Signal(object, object)
 
     def __init__(self, parent, stdout=True):
         QtCore.QObject.__init__(self, parent)
@@ -72,10 +74,10 @@ class ClassifierWindow(QMainWindow):
         #     self.project = Project(main_model=MainModel())
         #     self.project.add_animal(Animal(id='0'))
         self.setCentralWidget(widget)
-        self.terminal = QTextBrowser(self)
+        self.terminal = ConsoleWidget(namespace={'self':self}) # QTextBrowser(self)
         self._err_color = QtCore.Qt.red
         self.button = QPushButton('Update', self)
-        # self.button.clicked.connect(self.update_project_settings)
+        self.button.clicked.connect(self.update_settings)
         self.threadpool = QtCore.QThreadPool()
 
         all_labels = self.project.get_all_labels()
@@ -84,14 +86,20 @@ class ClassifierWindow(QMainWindow):
             {'name': 'Global Settings','type':'group','children':[
                 {'name': 'Lablels to train',
                  'type': 'group',
-                 'children': [{'name': l, 'type': 'bool', 'value': True} for l in all_labels]
+                 'children': [{'name': l, 'type': 'bool', 'value': False} for l in all_labels]
                  },
                 {'name': 'Homogenize ticked labels across project', 'type': 'action'},
                 {'name': 'Lablels to annotate',
                  'type': 'group',
-                 'children': [{'name': l, 'type': 'bool', 'value': True} for l in all_labels]
+                 'children': [{'name': l, 'type': 'bool', 'value': False} for l in all_labels]
                  },
-                {'name': 'Assimilate global classifier from individual animals', 'type': 'action'},
+                {'name': 'Automatic annotation settings',
+                 'type': 'group',
+                 'children': [{'name': 'Annotation threshold probability', 'type': 'float', 'value': 0.5},
+                              {'name': 'Outlier threshold factor', 'type': 'float', 'value': 1},
+                              {'name': 'maximum number of annotations', 'type': 'int', 'value': 100} ]
+                 }
+                # {'name': 'Assimilate global classifier from individual animals', 'type': 'action'},
                 # {'name': 'Train global classifier','type': 'action', 'children':[
                 #     {'name': 'Training Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}
                 # ]},
@@ -101,7 +109,7 @@ class ClassifierWindow(QMainWindow):
             ]},
             {'name': 'Animal Settings', 'type': 'group', 'expanded': True, 'children': [
                 {'name': animal, 'type': 'group','children':[
-                    {'name': 'Use animal for global classifier', 'type': 'bool', 'value': True},
+                    {'name': 'Use animal for global classifier', 'type': 'bool', 'value': False},
                     {'name': 'Train animal-specific classifier', 'type': 'action','children':[
                         {'name': 'Training Progress', 'type': 'float', 'readonly': True, 'suffix':'%',
                          'value': 100*(self.classifier.animal_classifier_dict[animal].blank_npoints>0)}]},
@@ -116,9 +124,9 @@ class ClassifierWindow(QMainWindow):
 
         ## Create tree of Parameter objects
         self.p = Parameter.create(name='params', type='group', children=self.params)
-        self.p.param(
-            'Global Settings', 'Assimilate global classifier from individual animals'
-            ).sigActivated.connect(self.classifier.assimilate_global_classifier)
+        # self.p.param(
+        #     'Global Settings', 'Assimilate global classifier from individual animals'
+        #     ).sigActivated.connect(self.classifier.assimilate_global_classifier)
         self.p.param(
             'Global Settings', 'Homogenize ticked labels across project'
             ).sigActivated.connect(self.homogenize_labels)
@@ -138,7 +146,6 @@ class ClassifierWindow(QMainWindow):
             self.p.param(
                 'Animal Settings',animal_id,'Auto-generate Annotations with global classifier'
                         ).sigActivated.connect(self.runGlobalClassifierGenerator(animal_id,pbar))
-
 
         self.t = PyecogParameterTree()
         self.t.setParameters(self.p, showTop=False)
@@ -178,49 +185,60 @@ class ClassifierWindow(QMainWindow):
                 for animal2 in self.project.animal_list:
                     if label not in animal2.annotations.labels:
                         animal2.annotations.add_label(label,annotation_page.label_color_dict[label])
-
-
-
-
+                    else:
+                        animal2.annotations.label_color_dict[label] = annotation_page.label_color_dict[label] # if annotation exists copy color
 
     def handleOutput(self, text, stdout):
-        color = self.terminal.textColor()
-        self.terminal.setTextColor(color if stdout else self._err_color)
-        self.terminal.moveCursor(QtGui.QTextCursor.End)
-        self.terminal.insertPlainText(text)
-        self.terminal.setTextColor(color)
+        # color = self.terminal.textColor()
+        # self.terminal.setTextColor(color if stdout else self._err_color)
+        # self.terminal.moveCursor(QtGui.QTextCursor.End)
+        # self.terminal.insertPlainText(text)
+        # self.terminal.setTextColor(color)
+        self.terminal.write(text)
 
     def trainClassifierGenerator(self,animal_id,pbar=None):
         return lambda: self.trainClassifier(animal_id,pbar)
 
     def trainClassifier(self,animal_id,pbar=None):
         print('Training', animal_id)
+        if pbar is not None:
+            pbar.setValue(0.1)
         worker = Worker(self.classifier.train_animal,animal_id,pbar,self.getLables2train())
         self.threadpool.start(worker)
-        return (1,1)
+        return 1, 1
 
     def runAnimalClassifierGenerator(self,animal_id,pbar=None):
         return lambda: self.runAnimalClassifier(animal_id,pbar)
 
     def runAnimalClassifier(self,animal_id,pbar=None):
-        print('Training', animal_id)
         animal = self.project.get_animal(animal_id)
+        print('Classifying', animal_id)
+        prob_th = self.p.param('Global Settings','Automatic annotation settings', 'Annotation threshold probability').value()
+        outlier_th = self.p.param('Global Settings','Automatic annotation settings', 'Outlier threshold factor').value()
+        max_anno = self.p.param('Global Settings','Automatic annotation settings', 'maximum number of annotations').value()
         worker = Worker(self.classifier.animal_classifier_dict[animal_id].classify_animal,
-                        animal,pbar,max_annotations=100, labels2annotate = self.getLables2Annotate())
+                        animal,pbar,max_annotations=max_anno, prob_th=prob_th,outlier_th =outlier_th,
+                        labels2annotate = self.getLables2Annotate())
         self.threadpool.start(worker)
-        (1, 1)
+        return 1, 1
 
     def runGlobalClassifierGenerator(self, animal_id,pbar=None):
         return lambda: self.runGlobalClassifier(animal_id,pbar)
 
     def runGlobalClassifier(self, animal_id,pbar=None):
+        self.classifier.assimilate_global_classifier(labels2train=self.getLables2train())
         print('Labeling', animal_id)
         animal = self.project.get_animal(animal_id)
-        worker = Worker(self.classifier.classify_animal_with_global, animal, pbar, max_annotations=100,
-                        labels2annotate = self.getLables2Annotate())
+        prob_th = self.p.param('Global Settings','Automatic annotation settings', 'Annotation threshold probability').value()
+        outlier_th = self.p.param('Global Settings','Automatic annotation settings', 'Outlier threshold factor').value()
+        max_anno = self.p.param('Global Settings','Automatic annotation settings', 'maximum number of annotations').value()
+        worker = Worker(self.classifier.classify_animal_with_global, animal, pbar, max_annotations=max_anno,
+                        prob_th=prob_th,outlier_th =outlier_th, labels2annotate = self.getLables2Annotate())
         self.threadpool.start(worker)
-        (1, 1)
+        return 1, 1
 
+    def update_settings(self):
+        pass
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

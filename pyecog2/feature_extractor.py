@@ -34,8 +34,8 @@ def reg_entropy(fdata,fs):
 # The use of global variables means that only one feature extractor can be active at a time
 def my_worker_flist_init(time_flist,freq_flist):
     global _time_flist, _freq_flist
-    _freq_flist = freq_flist
-    _time_flist = time_flist
+    _freq_flist = [eval(f,module_dict) for f,module_dict in freq_flist]
+    _time_flist = [eval(f,module_dict) for f,module_dict in time_flist]
 
 # def my_worker_flist(x):
 #     return [f(x) for f in _flist]
@@ -97,9 +97,11 @@ class FeatureExtractor():
             if alias is None or alias == '':
                 alias = module
             module_dict[alias] = import_module(module)
-        self.feature_time_functions = [eval(f,module_dict) for f in self.settings['feature_time_functions']]
-        self.feature_freq_functions = [eval(f,module_dict) for f in self.settings['feature_freq_functions']]
-        my_worker_flist_init(self.feature_time_functions, self.feature_freq_functions) # Workaround for multiprocessing
+        # self.feature_time_functions = [eval(f,module_dict) for f in self.settings['feature_time_functions']]
+        # self.feature_freq_functions = [eval(f,module_dict) for f in self.settings['feature_freq_functions']]
+        feature_time_functions = [(f,module_dict) for f in self.settings['feature_time_functions']]
+        feature_freq_functions = [(f,module_dict) for f in self.settings['feature_freq_functions']]
+        my_worker_flist_init(feature_time_functions, feature_freq_functions) # Workaround for multiprocessing
 
     def load_settings(self,fname):
         with open(fname) as f:
@@ -114,50 +116,47 @@ class FeatureExtractor():
     def number_of_features(self):
         return len(self.settings['feature_time_functions']) + len(self.settings['feature_freq_functions'])
 
-    def extract_features_from_animal(self,animal, re_write = False, n_cores = -1, progress_bar = None):
+    def extract_features_from_animal(self, animal, re_write = False, n_cores = -1, progress_bar = None):
         # Create feature files for each eeg file
         if n_cores == -1:
             n_cores = multiprocessing.cpu_count()
         Nfiles = len(animal.eeg_files)
-        tuples = [(animal,i,re_write) for i in range(Nfiles)]
+        eeg_files = animal.eeg_files
+        eeg_init_time = animal.eeg_init_time
+        eeg_duration = animal.eeg_duration
+        animal_id = animal.id
+        print('Extracting features for animal', animal_id)
+        tuples = [(eeg_files,eeg_init_time,eeg_duration, animal_id, i,re_write) for i in range(Nfiles)]
         # The following is not working yet...
         # with multiprocessing.Pool(processes=n_cores,initializer=my_worker_flist_init,
-        #                           initargs = (self.feature_time_functions,self.feature_freq_functions)) as pool:
-        #     for i, _ in enumerate(pool.imap(self.extract_features_from_file, tuples)):
-        #         if progress_bar is not None:
-        #             progress_bar.setValue(i//Nfiles)
-        for i, _ in enumerate(map(self.extract_features_from_file, tuples)):
-            if progress_bar is not None:
-                progress_bar.setValue((100*(i+1))//Nfiles)
+        #                           initargs = (_time_flist,_freq_flist)) as pool:
+        with multiprocessing.Pool(processes=n_cores) as pool:
+            for i, _ in enumerate(pool.imap(self.extract_features_from_file, tuples)):
+                if progress_bar is not None:
+                    progress_bar.setValue(100*(i+1)//Nfiles)
 
-        # file_buffer = FileBuffer(animal,verbose=False)
-        # Identify the time intervals and filenames to extract features
-        # for i,eeg_fname in enumerate(animal.eeg_files):
-        #     feature_fname = '.'.join(eeg_fname.split('.')[:-1] + ['features'])
-        #     feature_metafname = '.'.join(eeg_fname.split('.')[:-1] + ['fmeta'])
-        #     time_range = [animal.eeg_init_time[i], animal.eeg_init_time[i]+animal.eeg_duration[i]]
-        #     if re_write or not os.path.isfile(feature_fname):
-        #         print('Extracting features for file',i+1,'of',len(animal.eeg_files),':',eeg_fname, end='\r')
-        #         self.extract_features_from_time_range(file_buffer, time_range, feature_fname, feature_metafname)
-        #     else:
-        #         # print(feature_fname,'already exists')
-        #         pass
+        # # Single core version
+        # for i, _ in enumerate(map(self.extract_features_from_file, tuples)):
+        #     if progress_bar is not None:
+        #         progress_bar.setValue((100*(i+1))//Nfiles)
 
     def extract_features_from_file(self,animal_fileIndex_rewrite_tuple):
-        animal, i, re_write = animal_fileIndex_rewrite_tuple
-        eeg_fname = animal.eeg_files[i]
+        if '_freq_flist' not in locals(): # initialize lambda functions in sub process
+            self.update_from_settings()
+        eeg_files, eeg_init_time, eeg_duration, animal_id, i, re_write = animal_fileIndex_rewrite_tuple
+        eeg_fname = eeg_files[i]
         feature_fname = '.'.join(eeg_fname.split('.')[:-1] + ['features'])
         feature_metafname = '.'.join(eeg_fname.split('.')[:-1] + ['fmeta'])
-        time_range = [animal.eeg_init_time[i], animal.eeg_init_time[i] + animal.eeg_duration[i]]
+        time_range = [eeg_init_time[i], eeg_init_time[i] + eeg_duration[i]]
         if re_write or not os.path.isfile(feature_fname):
-            print('Extracting features for file', i + 1, 'of', len(animal.eeg_files), ':', eeg_fname, end='\r')
-            file_buffer = FileBuffer(animal,verbose=False)
-            self.extract_features_from_time_range(file_buffer, time_range, feature_fname, feature_metafname)
+            print('Extracting features for file', i + 1, 'of', len(eeg_files), ':', eeg_fname, end='\r')
+            file_buffer = FileBuffer(None,False,[eeg_fname],[eeg_init_time[i]],[eeg_duration[i]])
+            self.extract_features_from_time_range(file_buffer, time_range, feature_fname, feature_metafname,animal_id)
         else:
             # print(feature_fname,'already exists')
             pass
 
-    def extract_features_from_time_range(self, file_buffer, time_range, feature_fname, feature_metafname):
+    def extract_features_from_time_range(self, file_buffer, time_range, feature_fname, feature_metafname, animal_id):
         # print('time_range:',time_range,feature_fname,feature_metafname)
         window_step = self.settings['window_length']*(1-self.settings['overlap'])
         window_starts = np.arange(time_range[0], time_range[1], window_step)
@@ -170,9 +169,9 @@ class FeatureExtractor():
             if len(data) != len(window):
                 window = get_window(self.settings['window'],len(data))
             window.shape = (data.shape[0],1)
-            data *= window
+            # data *= window
             fs = 1/(time[1]-time[0])
-            dataf = np.fft.rfft(data,axis=0)/len(data)
+            dataf = np.fft.rfft(data*window,axis=0)/len(data)
             # for j,func in enumerate(self.feature_time_functions):
             for j,func in enumerate(_time_flist):
                 features[i,j] = func(data)
@@ -185,7 +184,7 @@ class FeatureExtractor():
                                no_channels=int(self.number_of_features),
                                data_format=str(features.dtype),
                                volts_per_bit=0,
-                               transmitter_id=str(file_buffer.animal.id),
+                               transmitter_id=str(animal_id),
                                start_timestamp_unix=(time_range[0]),
                                duration=(time_range[1]-time_range[0]),
                                channel_labels=self.settings['feature_labels'])

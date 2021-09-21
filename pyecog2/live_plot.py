@@ -2,8 +2,8 @@ import sys
 import os
 import numpy as np
 
-from PyQt5 import QtGui, QtCore, QtWidgets, uic, Qt
-from PyQt5.QtGui import QPainter, QBrush, QPen
+from PySide2 import QtGui, QtCore, QtWidgets, uic, Qt
+from PySide2.QtGui import QPainter, QBrush, QPen
 
 #import pyqtgraph as pg
 #from .utils import Point, rect_to_range

@@ -10,8 +10,10 @@ import numpy as np
 import colorsys
 from pyecog2.annotations_module import i_spaced_nfold
 from pyqtgraph.parametertree import Parameter
-from PyQt5 import QtGui
+from PySide2 import QtGui
 from pyecog2.coding_tests.pyecogParameterTree import PyecogParameterTree, PyecogGroupParameter, PyecogGroupParameterItem
+from timeit import default_timer as timer
+from time import sleep
 
 ## this group includes a menu allowing the user to add new parameters into its child list
 # class ScalableGroup(pTypes.GroupParameter):
@@ -34,18 +36,25 @@ class ScalableGroup(PyecogGroupParameter):
                 }[typ]
 
         n = (len(self.childs) + 1)
-        if val == 'auto':
-            v = i_spaced_nfold(n,6)
-            val = tuple(np.array(colorsys.hls_to_rgb(v, .5, .9)) * 255)
-        self.addChild(
-            {'name': "Label %d" % n,
-             'type': 'group',
-             'children': [
-                 {'name':'shortcut key','type':'int','value': n},
-                 {'name': 'color', 'type': 'color', 'value':val},
-                 {'name': 'Channel range', 'type': 'str','value': str(None)}],
-             'renamable': True,
-             'removable': True})
+        while n<255:
+            try:
+                if val == 'auto':
+                    v = i_spaced_nfold(n,6)
+                    val = tuple(np.array(colorsys.hls_to_rgb(v, .5, .9)) * 255)
+                self.addChild(
+                    {'name': "Label %d" % n,
+                     'type': 'group',
+                     'children': [
+                         {'name':'shortcut key','type':'int','value': n},
+                         {'name': 'color', 'type': 'color', 'value':val},
+                         {'name': 'Channel range', 'type': 'str','value': str(None)}],
+                     'renamable': True,
+                     'removable': True})
+                break
+            except Exception:
+                print("Label %d" % n,'already exists')
+                n +=1
+
 
 class AnnotationParameterTee(PyecogParameterTree):
     def __init__(self,annotations):
@@ -80,11 +89,13 @@ class AnnotationParameterTee(PyecogParameterTree):
         #     print('re_init already ran for', label)
         #     return # skip re_init because it already ran
         # self.last_label_change = label
+        start_t = timer()
         print('AnnotationParameterTree Re_init Called ', label)
         self.p.sigTreeStateChanged.disconnect()
         labels = self.annotationPage.labels
         if set(labels) != set(self.shortcut_keys.keys()):  # restart shortcut keys in case labels change in annotationPage
             self.shortcut_keys = dict([(l, i + 1) for i, l in enumerate(labels)])
+        print('AnnotationParameterTree Re_init shortcuts redefined (', timer()-start_t, 'seconds )')
 
         Label_dict = [{'name': label,
                                'type': 'group',
@@ -96,14 +107,18 @@ class AnnotationParameterTee(PyecogParameterTree):
                                           ],
                                'renamable': True,
                                'removable': True} for i, label in enumerate(labels)]
+        print('AnnotationParameterTree Re_init label_dict generated (', timer()-start_t, 'seconds )')
         self.p.clearChildren()
+        print('AnnotationParameterTree Re_init children cleard (', timer()-start_t, 'seconds )')
         self.params = [ScalableGroup(name="Annotation Labels", children=Label_dict)]
+        print('AnnotationParameterTree Re_init params created (', timer()-start_t, 'seconds )')
         self.p.addChildren(self.params)
+        print('AnnotationParameterTree Re_init children added (', timer()-start_t, 'seconds )')
         # self.update_color_from_group_parameters()
-        self.p.sigTreeStateChanged.connect(self.change)
         self.setParameters(self.p, showTop=False)
         self.headerItem().setHidden(True)
-        print('AnnotationParameterTree Re_init finished ')
+        self.p.sigTreeStateChanged.connect(self.change)
+        print('AnnotationParameterTree Re_init finished (', timer()-start_t, 'seconds )')
 
 
     ## If anything changes in the tree, print a message
@@ -140,6 +155,7 @@ class AnnotationParameterTee(PyecogParameterTree):
             if change == 'childRemoved':
                 label = data.name()
                 del self.shortcut_keys[label]
+                print('Shortcut Keys:',self.shortcut_keys)
                 self.annotationPage.delete_label(label)
             if change == 'childAdded':
                 label = data[0].name()
@@ -159,8 +175,8 @@ class AnnotationParameterTee(PyecogParameterTree):
         #         label = p.name()
         # return label
         label = None
+        print('Shortcut Keys:', self.shortcut_keys)
         print('looking for key', shortcutkey)
-        for k in self.shortcut_keys.keys():
-            if self.shortcut_keys[k] == shortcutkey:
-                label = k
+        for label in self.shortcut_keys.keys():
+            if self.shortcut_keys[label] == shortcutkey:
                 return label

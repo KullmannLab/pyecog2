@@ -317,7 +317,7 @@ class NdfFile:
                               ' gaps of >1 second. Total Missing: '+str(seconds_missing)+ ' s.')
 
             # do linear interpolation between the points, where !nan
-            regularised_time = np.linspace(0, self.file_length, num= self.file_length * self.tid_to_fs_dict[tid])
+            regularised_time = np.linspace(0, self.file_length, num= int(self.file_length * self.tid_to_fs_dict[tid]),endpoint=False)
 
             not_nan = np.logical_not(np.isnan(self.tid_data_time_dict[tid]['data']))
             #print(sum(np.isnan(self.tid_data_time_dict[tid]['data'])))
@@ -657,7 +657,7 @@ class DataHandler:
             ndf.set_modified_time_to_old()
 
         except Exception:
-            print('Something unexpected went wrong loading '+str(tids)+' from '+filename+' :')
+            print('Something unexpected went wrong loading '+str(tids)+' from '+filename+':')
             #print('Valid ids are:'+str(ndf.tid_set))
             exc_type, exc_value, exc_traceback = sys.exc_info()
             print (traceback.print_exception(exc_type, exc_value,exc_traceback))
@@ -728,8 +728,8 @@ class DataHandler:
 
 
 import multiprocessing as mp
-from PyQt5 import QtCore
-from PyQt5.QtWidgets import QMenuBar, QGridLayout, QApplication, QWidget, QPlainTextEdit, QMainWindow
+from PySide2 import QtCore
+from PySide2.QtWidgets import QMenuBar, QGridLayout, QApplication, QWidget, QPlainTextEdit, QMainWindow
 import sys
 
 class GuiMain(QMainWindow):

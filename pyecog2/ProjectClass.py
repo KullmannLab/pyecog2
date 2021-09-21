@@ -6,9 +6,9 @@ import glob, os
 from datetime import datetime
 from pyecog2.annotations_module import AnnotationPage
 from scipy import signal
-from PyQt5 import QtCore
+from PySide2 import QtCore
 import pyqtgraph as pg
-
+from timeit import default_timer as timer
 
 
 def clip(x, a, b):  # utility funciton for file buffer
@@ -151,16 +151,28 @@ class Animal():
         dict['annotations'] = self.annotations.dict()
         return dict
 
+    def get_animal_time_range(self):
+        i = min(self.eeg_init_time)
+        e = max(np.array(self.eeg_init_time) + np.array(self.eeg_duration))
+        return np.array([i, e])
+
 
 class FileBuffer():  # Consider translating this to cython
-    def __init__(self, animal=None, verbose=True):
+    def __init__(self, animal=None, verbose=True, eeg_files=None, eeg_init_time=None, eeg_duration=None):
         self.files = []
         self.range = [np.Inf, -np.Inf]
         self.data = []
         self.data_ranges = []
         self.metadata = []
-        self.animal = animal
-        self.verbose =verbose
+        if animal is not None:  # avoid saving animal for uses in multiprocessing
+            eeg_files = animal.eeg_files
+            eeg_init_time = animal.eeg_init_time
+            eeg_duration = animal.eeg_duration
+
+        self.eeg_files = eeg_files
+        self.eeg_init_time = eeg_init_time
+        self.eeg_duration = eeg_duration
+        self.verbose = verbose
 
     def add_file_to_buffer(self, fname):
         if fname in self.files:  # skip if file is already buffered
@@ -171,12 +183,16 @@ class FileBuffer():  # Consider translating this to cython
         metadata = load_metadata_file(fname)
         self.metadata.append(metadata)
         if metadata['data_format'] == 'h5':
-            h5file = H5File(fname[:-4] + 'h5')
+            try:
+                h5file = H5File(fname[:-4] + 'h5')
+            except:
+                print('error trying to open',fname[:-4] + 'h5')
+                raise
             channels = []
             duration = metadata['duration']
             for tid in h5file.attributes['t_ids']:
                 if duration < 3600: # H5 file is screwed u, so will only grab the start of the data points
-                    channels.append(h5file[tid]['data'][:duration*metadata['fs']])
+                    channels.append(h5file[tid]['data'][:int(duration*metadata['fs'])])
                 else:
                     channels.append(h5file[tid]['data'])
             arr = np.vstack(channels).T
@@ -239,12 +255,12 @@ class FileBuffer():  # Consider translating this to cython
             pass
         else:
             # Now clear buffer if range is not contiguous to previous range
-            if trange[1] <= self.range[0] or trange[0] >= self.range[1]:
+            if trange[1] < self.range[0] or trange[0] > self.range[1]:
                 if self.verbose: print('Non-contiguous data: restarting buffer...')
                 self.clear_buffer()
             # fill buffer with the necessary files:
-            for i, file in enumerate(self.animal.eeg_files):
-                frange = [self.animal.eeg_init_time[i], self.animal.eeg_init_time[i] + self.animal.eeg_duration[i]]
+            for i, file in enumerate(self.eeg_files):
+                frange = [self.eeg_init_time[i], self.eeg_init_time[i] + self.eeg_duration[i]]
                 # if (frange[0] <= trange[0] < frange[1]) or (frange[0] <= trange[1] < frange[1]) or \
                 #         (trange[0] <= frange[0] < trange[1]) or (trange[0] <= frange[1] < trange[1]):
                 if intervals_overlap(frange,trange):
@@ -286,7 +302,7 @@ class FileBuffer():  # Consider translating this to cython
             start = sample_ranges[i][0]
             stop = sample_ranges[i][1]
             fs = self.metadata[i]['fs']
-
+            no_channels = self.metadata[i]['no_channels']
             # Decide by how much we should downsample
             ds = int((stop - start) / file_envlopes[i]) + 1
             # print('Downsampling ratio:', ds,file_envlopes,sample_ranges)
@@ -304,9 +320,13 @@ class FileBuffer():  # Consider translating this to cython
                 # Here convert data into a down-sampled array suitable for visualizing.
                 # Must do this piecewise to limit memory usage.
                 dss = 1
-                # if ds > 100: # so much downsampling that we might as well skip some samples
-                #     dss = ds//100  # we will only grab about 10 samples to compute min and max for envlope
-                #     ds = 100
+                originalds = ds
+                if ds > 10 and no_channels > 10: # so much downsampling that we might as well skip some samples if lots of channels
+                    dss = ds//10  # we will only grab about 10 samples to compute min and max for envelope
+                    originalds = ds
+                    ds = 10
+                # print('Decimating data in filebuffer by', dss, 'x factor. (original ds:', originalds, ')')
+
                 samples = (1 + (stop - start) // ds)
                 visible_data = np.zeros((samples * 2, 1), dtype=data.dtype)
                 sourcePtr = start
@@ -337,6 +357,8 @@ class FileBuffer():  # Consider translating this to cython
 
             enveloped_time.append(np.linspace(start / fs + self.data_ranges[i][0], (stop-1) / fs + self.data_ranges[i][0],
                                               len(enveloped_data[-1])).reshape(-1, 1))
+            # enveloped_time.append(np.linspace(start / fs + self.data_ranges[i][0], (stop-1) / fs + self.data_ranges[i][0],
+            #                                   len(enveloped_data[-1])).reshape(-1, 1))
             if len(enveloped_time[-1]) == 0:
                 del (enveloped_time[-1])
                 del (enveloped_data[-1])
@@ -360,24 +382,27 @@ class FileBuffer():  # Consider translating this to cython
         if len(enveloped_data) > 0:
             data = np.vstack(enveloped_data)
             time = np.vstack(enveloped_time)
-            if for_plot and filter_settings[0]: # apply LP filter only for plots
-                fs = 2/(time[2]-time[0])
-                nyq = 0.5 * fs[0]
-                hpcutoff = min(max(filter_settings[1] / nyq, 0.001), .5)
-                data = data - np.mean(data)
-                lpcutoff = min(max(filter_settings[2] / nyq, 0.001), 1)
-                # for some reason the bandpass butterworth filter is very unstable
-                if lpcutoff<.99:  # don't apply filter if LP cutoff freqquency is above nyquist freq.
-                    # if self.verbose: print('applying LP filter to display data:', filter_settings, fs, nyq, lpcutoff)
-                    b, a = signal.butter(2, lpcutoff, 'lowpass', analog=False)
-                    data = signal.filtfilt(b, a, data,axis =0,method='gust')
-                if hpcutoff > .001: # don't apply filter if HP cutoff frequency too low.
-                    # if self.verbose: print('applying HP filter to display data:', filter_settings, fs, nyq, hpcutoff)
-                    b, a = signal.butter(2, hpcutoff, 'highpass', analog=False)
-                    data = signal.filtfilt(b, a, data,axis =0,method='gust')
+            # if for_plot and filter_settings[0]: # apply LP filter only for plots
+            #     fs = 2/(time[2]-time[0])
+            #     nyq = 0.5 * fs[0]
+            #     hpcutoff = min(max(filter_settings[1] / nyq, 0.001), .5)
+            #     data = data - np.mean(data)
+            #     lpcutoff = min(max(filter_settings[2] / nyq, 0.001), 1)
+            #     # for some reason the bandpass butterworth filter is very unstable
+            #     if lpcutoff<.99:  # don't apply filter if LP cutoff freqquency is above nyquist freq.
+            #         # if self.verbose: print('applying LP filter to display data:', filter_settings, fs, nyq, lpcutoff)
+            #         b, a = signal.butter(2, lpcutoff, 'lowpass', analog=False)
+            #         data = signal.filtfilt(b, a, data,axis =0,method='gust')
+            #     if hpcutoff > .001: # don't apply filter if HP cutoff frequency too low.
+            #         # if self.verbose: print('applying HP filter to display data:', filter_settings, fs, nyq, hpcutoff)
+            #         b, a = signal.butter(2, hpcutoff, 'highpass', analog=False)
+            #         data = signal.filtfilt(b, a, data,axis =0,method='gust')
         else:
-            data = np.array([0, 0])
-            time = np.array(trange)
+            data = np.zeros((0,1))
+            time = np.zeros((0,1))
+            # data = np.array([0, 0])
+            # time = np.array(trange)
+
         return data, time
 
 
@@ -403,6 +428,7 @@ class Project():
         self.set_current_animal(Animal())  # start with empty animal
         self.filter_settings = (False,0,1e6) # initialize filter settings
         self.file_buffer = FileBuffer(self.current_animal)
+        self.ndf_converter_settings = None
         self.main_model.sigProjectChanged.emit()
 
     def setTitle(self,title):
@@ -410,27 +436,30 @@ class Project():
         self.main_model.sigProjectChanged.emit()
 
     def set_current_animal(self, animal):  # copy alterations made to annotations
-        if animal is None:
+        start_t = timer()
+        print('ProjectClass set_current_animal start')
+        if animal is None or animal is self.current_animal:
             return
-        self.current_animal.annotations.copy_from(self.main_model.annotations)
-        self.main_model.annotations.copy_from(animal.annotations)
+        self.current_animal.annotations.copy_from(self.main_model.annotations,connect_history=False,quiet=True)
+        self.main_model.annotations.copy_from(animal.annotations,quiet=True)
         self.current_animal = animal
         self.file_buffer = FileBuffer(self.current_animal)
         self.main_model.annotations.sigLabelsChanged.emit('')
+        print('ProjectClass set_current_animal ran in',timer()-start_t,'seconds')
 
     def save_to_json(self, fname):
         try:
-            self.main_model.annotations.copy_to(self.current_animal.annotations)
-            # self.current_animal.annotations.copy_from(
-            #     self.main_model.annotations)  # save alterations made to the current animal annotations
+            # save alterations made to the current animal annotations
+            # self.main_model.annotations.copy_to(self.current_animal.annotations)
+            self.current_animal.annotations.copy_from(self.main_model.annotations, connect_history=False, quiet=True)
         except Exception:
             print('no main model defined')
 
         dict = self.__dict__.copy()
+        print(dict.keys())
         del (dict['main_model'])
         dict['animal_list'] = [animal.dict() for animal in self.animal_list]  # make animals into dicts
-        dict[
-            'current_animal'] = self.current_animal.id  # Animal().dict() # self.current_animal.dict() # Otherwise when loading the current animal would not be in the animal_list
+        dict['current_animal'] = self.current_animal.id  # Animal().dict() # self.current_animal.dict() # Otherwise when loading the current animal would not be in the animal_list
         dict['file_buffer'] = None
         # print(dict)
         json.dump(dict, open(fname, 'w'), indent=2)
@@ -534,13 +563,39 @@ class Project():
         e = -np.Inf
         for animal in self.animal_list:
             if animal.eeg_init_time: # only consider animals with files
-                i = min(min(animal.eeg_init_time),i)
-                e = max(max(np.array(animal.eeg_init_time) + np.array(animal.eeg_duration)),e)
+                ai, ae = animal.get_animal_time_range()
+                i = min(ai,i)
+                e = max(ae,e)
         return np.array([i,e])
 
     def get_all_labels(self):
         return set([l for a in self.animal_list for l in a.annotations.labels if not l.startswith('(auto)')])
 
+    def set_temp_project_from_folder(self,eeg_folder):
+        eeg_folder = os.path.normpath(eeg_folder)
+        print('Looking for files:', eeg_folder, os.path.sep, '*.h5')
+        h5files = glob.glob(eeg_folder + os.path.sep + '*.h5')
+        h5files.sort()
+        for i, file in enumerate(h5files):
+            if os.path.isfile(file[:-2] + 'meta'):
+                # print(file[:-2] + 'meta already exists')
+                continue
+            start = int(os.path.split(file)[-1].split('_')[0][1:])
+            try:
+                next_start = int(os.path.split(h5files[i + 1])[-1].split('_')[0][1:])
+                duration = min(next_start - start, 3600)
+            except Exception:
+                duration = 3600
+            create_metafile_from_h5(file, duration)
+        eeg_files = glob.glob(eeg_folder + os.path.sep + '*.meta')
+        eeg_files.sort()
+        for fname in eeg_files:
+            animal = Animal(id=os.path.split(fname)[-1], eeg_folder='')
+            metadata = load_metadata_file(fname)
+            animal.eeg_files.append(fname)
+            animal.eeg_init_time.append(metadata['start_timestamp_unix'])
+            animal.eeg_duration.append(metadata['duration'])
+            self.add_animal(animal)
 
 class MainModel(QtCore.QObject):
     sigTimeChanged      = QtCore.Signal(object)

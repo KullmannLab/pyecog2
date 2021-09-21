@@ -1,10 +1,11 @@
-from PyQt5 import QtGui, QtWidgets, QtCore
-from PyQt5.QtCore import QThread, pyqtSignal, Qt, QRect, QTimer
+from PySide2 import QtGui, QtWidgets, QtCore
+from PySide2.QtCore import QThread, Signal, Qt, QRect, QTimer
 from scipy import signal, stats
 # import pyqtgraph_copy.pyqtgraph as pg
 import pyqtgraph as pg
 import numpy as np
-
+from scipy import signal
+from pyecog2.ProjectClass import intervals_overlap
 
 class PyecogPlotCurveItem(pg.PlotCurveItem):
     ''' Hmm seems like you need the graphics scene subcalss of pyqtgraph
@@ -37,7 +38,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
         super().__init__(*args, **kwds)
         self.resetTransform()
         self.setZValue(1)
-        self.previous_args = None
+        self.previous_args = [[[0,0],[0,0]],-1,0]
 
     def viewRangeChanged(self):
         # Re-compute data envlope and plot:
@@ -56,23 +57,89 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
         #check if arguments have changed since last call:
         # new_args = [self.parent_viewbox.viewRange()[0], self.channel, n]
         new_args = [self.parent_viewbox.viewRange(), self.channel, n]
-        if self.previous_args is None:
-            self.previous_args = new_args
-        else:
-            if new_args == self.previous_args:
-                # print('setData_with_envlope: arguments did not change since last call')
-                return
+        if new_args == self.previous_args:
+            # print('setData_with_envlope: arguments did not change since last call')
+            return
         # print('displaying n points', n)
+        # print('new n, previous n:',new_args[-1], self.previous_args[-1])
         if self.parent_viewbox.viewRange()[1][0]-2 < self.channel < self.parent_viewbox.viewRange()[1][1]+2: # Avoid plotting channels out of view
-            visible_data, visible_time = self.project.get_data_from_range(self.parent_viewbox.viewRange()[0], self.channel,
-                                                                          n_envelope=n, for_plot = True)
-        else:
-            visible_data = np.zeros(1)
-            visible_time = np.zeros(1)
+            newXRange = new_args[0][0]
+            previousXRange = self.previous_args[0][0]
+            if newXRange[1]-newXRange[0] != previousXRange[1]-previousXRange[0] or \
+                    new_args[-1] != self.previous_args[-1] or \
+                    not intervals_overlap(newXRange,previousXRange) or \
+                    True: # THIS CODE IS NOT WORKING YET, SO SKIPPING progresive grabs
+                # Grab completely new set of data if zoom changed or n_envelope changed or Xranges do not overlap
+                self.visible_data, self.visible_time = self.project.get_data_from_range(newXRange, self.channel,
+                                                                                        n_envelope=n, for_plot = True)
+            else: # NEVER REACHED - THIS CODE IS NOT WORKING YET, SO SKIPPING progresive grabs
+                # Grab only the data that changed
+                # ds = (newXRange[1]-newXRange[0])/n
+                previousXRange = [self.visible_time[0], self.visible_time[-1]]
+                ds = self.visible_time[1]-self.visible_time[0]
+                if ds==0:
+                    self.visible_time[2] - self.visible_time[0]
+
+                if newXRange[1]>previousXRange[1]:
+                    n_new_points = int(((newXRange[1]-self.visible_time[-1])*n)/(newXRange[1]-newXRange[0]))
+                    print('npoints', n_new_points)
+                    if n_new_points>0:
+                        # grab data to append
+                        visible_data, visible_time = self.project.get_data_from_range([previousXRange[1]+ds, newXRange[1]+ds],
+                                                                                      self.channel, n_envelope=n_new_points, for_plot=True)
+                        try:
+                            print(self.visible_data.shape,visible_data.shape)
+                            print('visible times',self.visible_time[-1],visible_time[0])
+                            print('delta visible times',visible_time[0]-self.visible_time[-1],ds)
+                        except:
+                            pass
+                        if len(visible_data):
+                            self.visible_data = np.concatenate((self.visible_data[len(visible_data):],visible_data))
+                            self.visible_time = np.concatenate((self.visible_time[len(visible_time):],visible_time))
+                else:
+                    # grab data to prepend
+                    n_new_points = int(((self.visible_time[0]-newXRange[0])*n)/(newXRange[1]-newXRange[0]))
+                    print('npoints', n_new_points)
+                    if n_new_points>0:
+                        visible_data, visible_time = self.project.get_data_from_range([newXRange[0], previousXRange[0]-ds],
+                                                                                      self.channel, n_envelope=n_new_points, for_plot=True)
+                        try:
+                            print(self.visible_data.shape,visible_data.shape)
+                            print('visible times',self.visible_time[0],visible_time[-1])
+                            print('delta visible times',visible_time[-1]-self.visible_time[0],ds)
+                        except:
+                            pass
+                        if len(visible_data):
+                            self.visible_data = np.concatenate((visible_data,self.visible_data[:-len(visible_data)]))
+                            self.visible_time = np.concatenate((visible_time,self.visible_time[:-len(visible_time)]))
+
+            if self.project.filter_settings[0]: # apply LP filter only for plots
+                fs = 2/(self.visible_time[2]-self.visible_time[0])
+                nyq = 0.5 * fs[0]
+                hpcutoff = min(max(self.project.filter_settings[1] / nyq, 0.001), .5)
+                visible_data = self.visible_data - np.mean(self.visible_data)
+                lpcutoff = min(max(self.project.filter_settings[2] / nyq, 0.001), 1)
+                # for some reason the bandpass butterworth filter is very unstable
+                if lpcutoff<.99:  # don't apply filter if LP cutoff freqquency is above nyquist freq.
+                    # if self.verbose: print('applying LP filter to display data:', filter_settings, fs, nyq, lpcutoff)
+                    b, a = signal.butter(2, lpcutoff, 'lowpass', analog=False)
+                    visible_data = signal.filtfilt(b, a, visible_data,axis =0,method='gust')
+                if hpcutoff > .001: # don't apply filter if HP cutoff frequency too low.
+                    # if self.verbose: print('applying HP filter to display data:', filter_settings, fs, nyq, hpcutoff)
+                    b, a = signal.butter(2, hpcutoff, 'highpass', analog=False)
+                    visible_data = signal.filtfilt(b, a, visible_data,axis =0,method='gust')
+            else:
+                visible_data = self.visible_data
+        else: # channel not visible
+            self.visible_data = np.zeros(2)
+            visible_data = self.visible_data
+            self.visible_time = np.zeros(2)
+            new_args[-1] = 0 # force reset on next plot
+
         # print('visible data shape:',visible_data.shape)
-        self.setData(y=visible_data.ravel(), x=visible_time.ravel(), pen=self.pen)  # update the plot
-        self.previous_args = new_args
+        self.setData(y=visible_data.ravel(), x=self.visible_time.ravel(), pen=self.pen)  # update the plot
         # self.resetTransform()
+        self.previous_args = new_args
 
     def itemChange(self, *args):
         # here we may try to match?/ pair
@@ -113,8 +180,8 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
     '''
     Class to be used to plot annotations and current window
     '''
-    sigRemoveRequested = QtCore.pyqtSignal(object)
-    sigClicked = QtCore.pyqtSignal(object)
+    sigRemoveRequested = QtCore.Signal(object)
+    sigClicked = QtCore.Signal(object)
 
     def __init__(self, values=(0, 1), orientation='vertical', brush=None, pen=None,
                  hoverBrush=None, hoverPen=None, movable=True, bounds=None,
@@ -169,11 +236,11 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
             c.setAlpha(min(c.alpha() * 2, 255))
             hoverBrush = pg.functions.mkBrush(c)
         self.setHoverBrush(hoverBrush)
-        self.label = label  # Label of the annotation
+        # self.label = label  # Label of the annotation
         self.id = id  # field to identify corresponding annotation in the annotations object
-        label_text = pg.TextItem(label, anchor=(0, 0), color=pen.color())
-        label_text.setParentItem(self.lines[0])
-        label_text.updateTextPos()
+        self.label_text = pg.TextItem(label, anchor=(0, 0), color=pen.color())
+        self.label_text.setParentItem(self.lines[0])
+        self.label_text.updateTextPos()
         self.menu = None
         self.setAcceptedMouseButtons(self.acceptedMouseButtons() | QtCore.Qt.RightButton)
         self.setZValue(0.1)
@@ -311,6 +378,16 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
             self.prepareGeometryChange()
 
         return br
+
+    def update_fields(self,pos,label,color_brush,color_pen):
+        self.setRegion(pos)
+        self.label_text.setText(label)
+        self.label_text.setColor(pg.functions.mkColor(color_pen))
+        self.brush.setColor(pg.functions.mkColor(color_brush))
+        self.lines[0].pen.setColor(pg.functions.mkColor(color_pen))
+        self.lines[1].pen.setColor(pg.functions.mkColor(color_pen))
+        self.update()
+
 
 class PyecogCursorItem(pg.InfiniteLine):
     def __init__(self, pos=None, angle=90, pen=None, movable=True, bounds=None,

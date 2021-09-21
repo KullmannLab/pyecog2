@@ -1,13 +1,15 @@
 import os
+
 os.environ['QT_MULTIMEDIA_PREFERRED_PLUGINS'] = 'windowsmediafoundation'
 import sys
 import webbrowser
 
 import numpy as np
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtGui import QPalette, QColor
-from PyQt5.QtCore import Qt, QSettings, QByteArray, QObject
-from PyQt5.QtWidgets import QApplication, QPlainTextEdit, QTextEdit,QTextBrowser, QDockWidget, QMainWindow, QFileDialog, QMessageBox
+from PySide2 import QtCore, QtGui
+from PySide2.QtGui import QPalette, QColor
+from PySide2.QtCore import Qt, QSettings, QByteArray, QObject
+from PySide2.QtWidgets import QApplication, QPlainTextEdit, QTextEdit, QTextBrowser, QDockWidget, QMainWindow, \
+    QFileDialog, QMessageBox
 
 from pyecog2.ProjectClass import Project, Animal, MainModel
 from pyecog2.annotation_table_widget import AnnotationTableWidget
@@ -21,7 +23,6 @@ from pyecog2.coding_tests.convert_ndf_folder_gui import NDFConverterWindow
 from pyecog2.coding_tests.FeatureExtractorGUI import FeatureExtractorWindow
 from pyecog2.coding_tests.ClassifierGUI import ClassifierWindow
 from pyecog2.paired_graphics_view import PairedGraphicsView
-from pyecog2.tree_model_and_nodes import TreeModel
 from pyecog2.tree_widget import FileTreeElement
 from pyecog2.coding_tests.plot_controls import PlotControls
 from datetime import datetime
@@ -37,14 +38,15 @@ class MainWindow(QMainWindow):
     Most of the code here is for setting up the geometry of the gui and the
     menu bar stuff
     '''
-    def __init__(self, app_handle = None):
+
+    def __init__(self, app_handle=None):
         super().__init__()
         self.app_handle = app_handle
         if os.name == 'posix':
             pyecog_string = '🇵 🇾 🇪 🇨 🇴 🇬'
         else:
             pyecog_string = 'PyEcog'
-        print('\n',pyecog_string,'\n')
+        print('\n', pyecog_string, '\n')
 
         # Initialize Main Window geometry
         # self.title = "ℙ𝕪𝔼𝕔𝕠𝕘"
@@ -61,7 +63,9 @@ class MainWindow(QMainWindow):
         # self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
         self.main_model = MainModel()
         self.autosave_timer = QtCore.QTimer()
+        self.autosave_timer.timeout.connect(self.auto_save)
         self.live_recording_timer = QtCore.QTimer()
+        self.live_recording_timer.timeout.connect(self.reload_plot)
 
         # Populate Main window with widgets
         # self.createDockWidget()
@@ -69,12 +73,14 @@ class MainWindow(QMainWindow):
         self.paired_graphics_view = PairedGraphicsView(parent=self)
 
         self.tree_element = FileTreeElement(parent=self)
-        self.main_model.sigProjectChanged.connect(lambda: self.tree_element.set_rootnode_from_project(self.main_model.project))
+        self.main_model.sigProjectChanged.connect(
+            lambda: self.tree_element.set_rootnode_from_project(self.main_model.project))
         self.dock_list['File Tree'] = QDockWidget("File Tree", self)
         self.dock_list['File Tree'].setWidget(self.tree_element.widget)
         self.dock_list['File Tree'].setFloating(False)
         self.dock_list['File Tree'].setObjectName("File Tree")
-        self.dock_list['File Tree'].setAllowedAreas(Qt.RightDockWidgetArea | Qt.LeftDockWidgetArea | Qt.TopDockWidgetArea | Qt.BottomDockWidgetArea)
+        self.dock_list['File Tree'].setAllowedAreas(
+            Qt.RightDockWidgetArea | Qt.LeftDockWidgetArea | Qt.TopDockWidgetArea | Qt.BottomDockWidgetArea)
         self.dock_list['File Tree'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
         self.plot_controls = PlotControls(self.main_model)
@@ -93,16 +99,18 @@ class MainWindow(QMainWindow):
         self.text_edit = QTextBrowser()
         hints_file = pkg_resources.resource_filename('pyecog2', 'HelperHints.md')
         # text = open('HelperHints.md').read()
-        print('hints file:',hints_file)
+        print('hints file:', hints_file)
         text = open(hints_file).read()
-        text = text.replace('icons/banner_small.png',pkg_resources.resource_filename('pyecog2', 'icons/banner_small.png'))
+        text = text.replace('icons/banner_small.png',
+                            pkg_resources.resource_filename('pyecog2', 'icons/banner_small.png'))
         self.text_edit.setMarkdown(text)
         self.dock_list['Hints'].setWidget(self.text_edit)
         self.dock_list['Hints'].setObjectName("Hints")
         # self.dock_list['Hints'].setFloating(False)
         # self.dock_list['Hints'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
-        self.annotation_table = AnnotationTableWidget(self.main_model.annotations,self) # passing self as parent in position 2
+        self.annotation_table = AnnotationTableWidget(self.main_model.annotations,
+                                                      self)  # passing self as parent in position 2
         self.dock_list['Annotations Table'] = QDockWidget("Annotations Table", self)
         self.dock_list['Annotations Table'].setWidget(self.annotation_table)
         self.dock_list['Annotations Table'].setObjectName("Annotations Table")
@@ -112,7 +120,8 @@ class MainWindow(QMainWindow):
         self.dock_list['Annotation Parameter Tree'] = QDockWidget("Annotation Parameter Tree", self)
         self.dock_list['Annotation Parameter Tree'].setWidget(self.annotation_parameter_tree)
         self.dock_list['Annotation Parameter Tree'].setObjectName("Annotation Parameter Tree")
-        self.dock_list['Annotation Parameter Tree'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
+        self.dock_list['Annotation Parameter Tree'].setFeatures(
+            QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
         self.video_element = VideoWindow(project=self.main_model.project)
         self.dock_list['Video'] = QDockWidget("Video", self)
@@ -120,7 +129,6 @@ class MainWindow(QMainWindow):
         self.dock_list['Video'].setObjectName("Video")
         # self.dock_list['Video'].setFloating(True)
         # self.dock_list['Video'].hide()
-        self.video_element.mediaPlayer.setNotifyInterval(40) # 25 fps
         # Video units are in miliseconds, pyecog units are in seconds
         self.video_element.sigTimeChanged.connect(self.main_model.set_time_position)
         self.main_model.sigTimeChanged.connect(self.video_element.setGlobalPosition)
@@ -136,7 +144,7 @@ class MainWindow(QMainWindow):
         # self.dock_list['Wavelet'].hide()
 
         self.dock_list['Console'] = QDockWidget("Console", self)
-        self.dock_list['Console'].setWidget(ConsoleWidget(namespace={'MainWindow':self}))
+        self.dock_list['Console'].setWidget(ConsoleWidget(namespace={'MainWindow': self}))
         self.dock_list['Console'].setObjectName("Console")
         self.dock_list['Console'].hide()
 
@@ -152,18 +160,19 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['Annotation Parameter Tree'])
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['Annotations Table'])
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock_list['FFT'])
-        self.setCorner(Qt.BottomLeftCorner,Qt.LeftDockWidgetArea)
-        self.setCorner(Qt.BottomRightCorner,Qt.RightDockWidgetArea)
+        self.setCorner(Qt.BottomLeftCorner, Qt.LeftDockWidgetArea)
+        self.setCorner(Qt.BottomRightCorner, Qt.RightDockWidgetArea)
         self.addDockWidget(Qt.BottomDockWidgetArea, self.dock_list['Wavelet'])
         # self.tabifyDockWidget(self.dock_list['Hints'], self.dock_list['File Tree'])
-        self.resizeDocks([self.dock_list['File Tree'], self.dock_list['Hints'], self.dock_list['Plot Controls'],self.dock_list['Video']],[350,100,100,300],Qt.Vertical)
-        self.resizeDocks([self.dock_list['Wavelet']],[400],Qt.Vertical)
-        self.resizeDocks([self.dock_list['Video']],[400],Qt.Vertical)
-        self.resizeDocks([self.dock_list['Video']],[400],Qt.Horizontal)
-        self.resizeDocks([self.dock_list['FFT']],[400],Qt.Vertical)
-        self.resizeDocks([self.dock_list['FFT']],[400],Qt.Horizontal)
+        self.resizeDocks([self.dock_list['File Tree'], self.dock_list['Hints'], self.dock_list['Plot Controls'],
+                          self.dock_list['Video']], [350, 100, 100, 300], Qt.Vertical)
+        self.resizeDocks([self.dock_list['Wavelet']], [400], Qt.Vertical)
+        self.resizeDocks([self.dock_list['Video']], [400], Qt.Vertical)
+        self.resizeDocks([self.dock_list['Video']], [400], Qt.Horizontal)
+        self.resizeDocks([self.dock_list['FFT']], [400], Qt.Vertical)
+        self.resizeDocks([self.dock_list['FFT']], [400], Qt.Horizontal)
 
-        settings = QSettings("PyEcog","PyEcog")
+        settings = QSettings("PyEcog", "PyEcog")
         settings.beginGroup("StandardMainWindow")
         settings.setValue("windowGeometry", self.saveGeometry())
         settings.setValue("windowState", self.saveState())
@@ -172,16 +181,24 @@ class MainWindow(QMainWindow):
         settings.endGroup()
 
         self.settings = QSettings("PyEcog", "PyEcog")
-        print("reading configurations from: " + self.settings.fileName())
+        print("Reading GUI configurations from: " + self.settings.fileName())
         self.settings.beginGroup("MainWindow")
         # print(self.settings.value("windowGeometry", type=QByteArray))
-        self.restoreGeometry(self.settings.value("windowGeometry", type=QByteArray))
-        self.restoreState(self.settings.value("windowState", type=QByteArray))
+        try:
+            self.restoreGeometry(self.settings.value("windowGeometry"))
+        except Exception as e:
+            print('Error restoring geometry')
+            print(e)
+        try:
+            self.restoreState(self.settings.value("windowState"))
+        except Exception as e:
+            print('Error restiring state')
+            print(e)
 
-        self.action_darkmode.setChecked(self.settings.value("darkMode",type=bool))
+        self.action_darkmode.setChecked(self.settings.value("darkMode", type=bool))
         self.toggle_darkmode()  # pre toggle darkmode to make sure project loading dialogs are made with the correct color pallete
         try:
-            settings = QSettings("PyEcog","PyEcog")
+            settings = QSettings("PyEcog", "PyEcog")
             settings.beginGroup("ProjectSettings")
             fname = settings.value("ProjectFileName")
             self.show()
@@ -195,9 +212,9 @@ class MainWindow(QMainWindow):
             print('ERROR in tree build')
             print(e)
 
-        self.action_darkmode.setChecked(self.settings.value("darkMode",type=bool))
-        self.toggle_darkmode() # toggle again darkmode just to make sure the wavelet window and FFT are updated as well
-        self.action_autosave.setChecked(self.settings.value("autoSave",type=bool))
+        self.action_darkmode.setChecked(self.settings.value("darkMode", type=bool))
+        self.toggle_darkmode()  # toggle again darkmode just to make sure the wavelet window and FFT are updated as well
+        self.action_autosave.setChecked(self.settings.value("autoSave", type=bool))
         self.toggle_auto_save()
 
     def get_available_screen(self):
@@ -208,34 +225,35 @@ class MainWindow(QMainWindow):
         print('Size: %d x %d' % (size.width(), size.height()))
         rect = screen.availableGeometry()
         print('Available: %d x %d' % (rect.width(), rect.height()))
-        return (size,rect)
+        return (size, rect)
 
     def reset_geometry(self):
         self.settings = QSettings("PyEcog", "PyEcog")
         # print("reading cofigurations from: " + self.settings.fileName())
         self.settings.beginGroup("StandardMainWindow")
-        print(self.settings.value("windowGeometry", type=QByteArray))
-        self.restoreGeometry(self.settings.value("windowGeometry", type=QByteArray))
-        self.restoreState(self.settings.value("windowState", type=QByteArray))
-        self.action_darkmode.setChecked(self.settings.value("darkMode",type=bool))
+        # print(self.settings.value("windowGeometry", type=QByteArray))
+        self.restoreGeometry(self.settings.value("windowGeometry"))
+        self.restoreState(self.settings.value("windowState"))
+        self.action_darkmode.setChecked(self.settings.value("darkMode", type=bool))
         self.toggle_darkmode()
         self.show()
 
-    def load_directory(self,dirname=None):
+    def load_directory(self, dirname=None):
         print('Openening folder')
         if type(dirname) != str:
             dirname = self.select_directory()
-        temp_animal = Animal(id='-', eeg_folder=dirname)
-        temp_project = Project(self.main_model,eeg_data_folder=dirname, title=dirname,project_file = dirname)
-        temp_project.add_animal(temp_animal)
+        # temp_animal = Animal(id='-', eeg_folder=dirname)
+        temp_project = Project(self.main_model, eeg_data_folder=dirname, title=dirname, project_file=dirname)
+        # temp_project.add_animal(temp_animal)
+        temp_project.set_temp_project_from_folder(dirname)
         self.tree_element.set_rootnode_from_project(temp_project)
         self.main_model.project = temp_project
 
     def new_project(self):
-        self.main_model.project.__init__(main_model=self.main_model)  #= Project(self.main_model)
+        self.main_model.project.__init__(main_model=self.main_model)  # = Project(self.main_model)
         self.tree_element.set_rootnode_from_project(self.main_model.project)
 
-    def load_project(self,fname = None):
+    def load_project(self, fname=None):
         if type(fname) is not str:
             dialog = QFileDialog(self)
             dialog.setWindowTitle('Load Project ...')
@@ -247,26 +265,26 @@ class MainWindow(QMainWindow):
                 fname = dialog.selectedFiles()[0]
 
         if type(fname) is str:
-            print('load_project:Loading:',fname)
-            if os.path.isfile(fname+'_autosave'):
+            print('load_project:Loading:', fname)
+            if os.path.isfile(fname + '_autosave'):
                 last_file_modification = os.path.getmtime(fname)
-                last_autosave_modification = os.path.getmtime(fname+'_autosave')
-                if last_autosave_modification>last_file_modification:
+                last_autosave_modification = os.path.getmtime(fname + '_autosave')
+                if last_autosave_modification > last_file_modification:
                     msg = QMessageBox()
                     msg.setIcon(QMessageBox.Information)
                     msg.setText("A more recently modified autosave file exists, do you want to load it instead?")
                     msg.setDetailedText("File name:" + fname +
                                         "\nLast autosave file modification: " +
-                                           datetime.fromtimestamp(last_autosave_modification).isoformat(sep=' ') +
-                                           "\nLast project file modification: " +
-                                           datetime.fromtimestamp(last_file_modification).isoformat(
-                                               sep=' ')
-                                           )
+                                        datetime.fromtimestamp(last_autosave_modification).isoformat(sep=' ') +
+                                        "\nLast project file modification: " +
+                                        datetime.fromtimestamp(last_file_modification).isoformat(
+                                            sep=' ')
+                                        )
                     msg.setWindowTitle("Load autosave")
                     msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
                     retval = msg.exec_()
                     if retval == QMessageBox.Yes:
-                        fname = fname+'_autosave'
+                        fname = fname + '_autosave'
 
             self.main_model.project.load_from_json(fname)
             self.tree_element.set_rootnode_from_project(self.main_model.project)
@@ -274,14 +292,13 @@ class MainWindow(QMainWindow):
                 init_time = np.min(self.main_model.project.current_animal.eeg_init_time)
             else:
                 init_time = 0
-            plot_range = np.array([init_time, init_time+3600])
+            plot_range = np.array([init_time, init_time + 3600])
             print('trying to plot ', plot_range)
-            self.paired_graphics_view.set_scenes_plot_channel_data(plot_range)
+            self.paired_graphics_view.set_scenes_plot_channel_data(plot_range,force_reset=True)
             self.main_model.set_time_position(init_time)
-            self.main_model.set_window_pos([init_time,init_time])
+            self.main_model.set_window_pos([init_time, init_time])
 
         self.toggle_auto_save()
-
 
     def save(self):
         print('save action triggered')
@@ -316,8 +333,8 @@ class MainWindow(QMainWindow):
         if not os.path.isfile(fname):
             print('warning - project file does not exist yet')
         elif fname.endswith('.pyecog'):
-            print('Auto saving project to:', fname+'_autosave')
-            self.main_model.project.save_to_json(fname+'_autosave')
+            print('Auto saving project to:', fname + '_autosave')
+            self.main_model.project.save_to_json(fname + '_autosave')
         else:
             print('project filename not in *.pyecog')
 
@@ -354,19 +371,17 @@ class MainWindow(QMainWindow):
             palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
             palette.setColor(QPalette.HighlightedText, Qt.black)
             self.app_handle.setPalette(palette)
-            self.main_model.color_settings['pen'].setColor(QColor(255,255,255,100))
-            self.main_model.color_settings['brush'].setColor(QColor(0,0,0,255))
-            self.paired_graphics_view.set_scenes_plot_channel_data()
-            self.main_model.sigWindowChanged.emit(self.main_model.window)
-
+            self.main_model.color_settings['pen'].setColor(QColor(255, 255, 255, 100))
+            self.main_model.color_settings['brush'].setColor(QColor(0, 0, 0, 255))
         else:
             print('Setting Light Mode')
             palette = QPalette()
             self.app_handle.setPalette(palette)
-            self.main_model.color_settings['pen'].setColor(QColor(0,0,0,100))
-            self.main_model.color_settings['brush'].setColor(QColor(255,255,255,255))
-            self.paired_graphics_view.set_scenes_plot_channel_data()
-            self.main_model.sigWindowChanged.emit(self.main_model.window)
+            self.main_model.color_settings['pen'].setColor(QColor(0, 0, 0, 100))
+            self.main_model.color_settings['brush'].setColor(QColor(255, 255, 255, 255))
+
+        self.paired_graphics_view.set_scenes_plot_channel_data(force_reset=True)
+        self.main_model.sigWindowChanged.emit(self.main_model.window)
 
     def select_directory(self, label_text='Select a directory'):
         '''
@@ -388,23 +403,21 @@ class MainWindow(QMainWindow):
             return ''
 
     def reload_plot(self):
-        #print('reload')
-        xmin,xmax = self.paired_graphics_view.insetview_plot.vb.viewRange()[0]
-        x_range = xmax-xmin
+        # print('reload')
+        xmin, xmax = self.paired_graphics_view.insetview_plot.vb.viewRange()[0]
+        x_range = xmax - xmin
         # index = self.tree_element.tree_view.currentIndex()
         # self.tree_element.model.data(index, TreeModel.prepare_for_plot_role)
         self.main_model.project.file_buffer.clear_buffer()
-        self.main_model.project.file_buffer.get_data_from_range([xmin,xmax],n_envelope=10,channel=0)
+        self.main_model.project.file_buffer.get_data_from_range([xmin, xmax], n_envelope=10, channel=0)
         buffer_x_max = self.main_model.project.file_buffer.get_t_max_for_live_plot()
-        #print(full_xrange)
-        print('reload_plot',buffer_x_max,xmax)
+        # print(full_xrange)
+        print('reload_plot', buffer_x_max, xmax)
         if buffer_x_max > xmax:
-            #print('called set xrange')
-            self.paired_graphics_view.insetview_plot.vb.setXRange(buffer_x_max-x_range,buffer_x_max, padding=0)
-
+            # print('called set xrange')
+            self.paired_graphics_view.insetview_plot.vb.setXRange(buffer_x_max - x_range, buffer_x_max, padding=0)
 
     def load_live_recording(self):
-        self.timer.timeout.connect(self.reload_plot)
         if self.actionLiveUpdate.isChecked():
             self.live_recording_timer.start(100)
         else:
@@ -441,20 +454,21 @@ class MainWindow(QMainWindow):
 
     def openProjectEditor(self):
         print('opening Project Editor')
-        self.projectEditor = ProjectEditWindow(self.main_model.project,parent=self)
+        self.projectEditor = ProjectEditWindow(self.main_model.project, parent=self)
         self.projectEditor.show()
 
     def openFeatureExtractor(self):
-        self.featureExtractorWindow = FeatureExtractorWindow(self.main_model.project,parent=self)
+        self.featureExtractorWindow = FeatureExtractorWindow(self.main_model.project, parent=self)
         self.featureExtractorWindow.show()
 
     def openClassifier(self):
-        if hasattr(self,'ClassifierWindow'):
-            self.ClassifierWindow.setWindowState((self.ClassifierWindow.windowState() & ~Qt.WindowMinimized)|Qt.WindowActive)
+        if hasattr(self, 'ClassifierWindow'):
+            self.ClassifierWindow.setWindowState(
+                (self.ClassifierWindow.windowState() & ~Qt.WindowMinimized) | Qt.WindowActive)
             self.ClassifierWindow.raise_()
             self.ClassifierWindow.show()
             return
-        self.ClassifierWindow = ClassifierWindow(self.main_model.project,parent=self)
+        self.ClassifierWindow = ClassifierWindow(self.main_model.project, parent=self)
         geometry = self.ClassifierWindow.geometry()
         geometry.setHeight(self.geometry().height())
         self.ClassifierWindow.setGeometry(geometry)
@@ -473,23 +487,28 @@ class MainWindow(QMainWindow):
             print('Exporting annotations to:', fname)
             self.main_model.project.export_annotations(fname)
 
+    # def reset_video(self):
+    #     self.video_element.reset()
+    #     self.video_element.sigTimeChanged.connect(self.main_model.set_time_position)
+    #     self.main_model.sigTimeChanged.connect(self.video_element.setGlobalPosition)
+
     def build_menubar(self):
         self.menu_bar = self.menuBar()
 
         # FILE section
         self.menu_file = self.menu_bar.addMenu("File")
-        self.action_NDF_converter     = self.menu_file.addAction("Open NDF converter")
+        self.action_NDF_converter = self.menu_file.addAction("Open NDF converter")
         self.menu_file.addSeparator()
-        self.action_load_directory    = self.menu_file.addAction("Load directory")
+        self.action_load_directory = self.menu_file.addAction("Load directory")
         self.menu_file.addSeparator()
-        self.actionLiveUpdate  = self.menu_file.addAction("Live Recording")
+        self.actionLiveUpdate = self.menu_file.addAction("Live Recording")
         self.actionLiveUpdate.setCheckable(True)
         self.actionLiveUpdate.toggled.connect(self.load_live_recording)
         self.actionLiveUpdate.setChecked(False)
-        self.actionLiveUpdate.setShortcut('Ctrl+L')
+        self.actionLiveUpdate.setShortcut('Ctrl+R')
 
         self.menu_file.addSeparator()
-        self.action_quit       = self.menu_file.addAction("Quit")
+        self.action_quit = self.menu_file.addAction("Quit")
         self.action_NDF_converter.triggered.connect(self.openNDFconverter)
         self.action_load_directory.triggered.connect(self.load_directory)
         self.action_quit.triggered.connect(self.close)
@@ -503,6 +522,7 @@ class MainWindow(QMainWindow):
         self.menu_project.addSeparator()
         self.action_new_project = self.menu_project.addAction("New Project")
         self.action_load_project = self.menu_project.addAction("Load Project")
+        self.action_load_project.setShortcut('Ctrl+L')
         self.action_save = self.menu_project.addAction("Save Project")
         self.action_save.setShortcut('Ctrl+S')
         self.action_save_as = self.menu_project.addAction("Save Project as...")
@@ -512,12 +532,10 @@ class MainWindow(QMainWindow):
         self.action_save.triggered.connect(self.save)
         self.action_save_as.triggered.connect(self.save_as)
         self.menu_project.addSeparator()
-        self.action_autosave  = self.menu_project.addAction("Enable autosave")
+        self.action_autosave = self.menu_project.addAction("Enable autosave")
         self.action_autosave.setCheckable(True)
         self.action_autosave.toggled.connect(self.toggle_auto_save)
         self.action_autosave.setChecked(True)
-        self.autosave_timer.timeout.connect(self.auto_save)
-
 
         # ANNOTATIONS section
         self.menu_annotations = self.menu_bar.addMenu("Annotations")
@@ -558,22 +576,25 @@ class MainWindow(QMainWindow):
 
         # HELP section
         self.menu_help = self.menu_bar.addMenu("Help")
-        self.action_show_hints    = self.menu_help.addAction("Show Hints")
+        self.action_show_hints = self.menu_help.addAction("Show Hints")
         self.action_show_hints.triggered.connect(self.dock_list['Hints'].show)
 
-        self.action_reset_geometry    = self.menu_help.addAction("Reset Main Window layout")
+        self.action_reset_geometry = self.menu_help.addAction("Reset Main Window layout")
         self.action_reset_geometry.triggered.connect(self.reset_geometry)
 
         self.action_fullscreen = self.menu_help.addAction("Full Screen")
+        self.action_fullscreen.setShortcut('F11')
         self.action_fullscreen.setCheckable(True)
         self.action_fullscreen.toggled.connect(self.toggle_fullscreen)
         self.action_fullscreen.setChecked(False)
+
+        # self.action_reset_video    = self.menu_help.addAction("Reset Video Widget")
+        # self.action_reset_video.triggered.connect(self.reset_video)
 
         self.action_darkmode = self.menu_help.addAction("Dark mode")
         self.action_darkmode.setCheckable(True)
         self.action_darkmode.toggled.connect(self.toggle_darkmode)
         self.action_darkmode.setChecked(False)
-
 
         self.menu_help.addSeparator()
         self.action_go_to_git = self.menu_help.addAction("Go to Git Repository")
@@ -584,31 +605,32 @@ class MainWindow(QMainWindow):
 
         self.menu_bar.setNativeMenuBar(False)
 
-        #self.menubar.addMenu("Edit")
-        #self.menubar.addMenu("View")
+        # self.menubar.addMenu("Edit")
+        # self.menubar.addMenu("View")
 
     def closeEvent(self, event):
         self.auto_save()
         print('closing')
-        settings = QSettings("PyEcog","PyEcog")
+        settings = QSettings("PyEcog", "PyEcog")
         settings.beginGroup("MainWindow")
         settings.setValue("windowGeometry", self.saveGeometry())
         settings.setValue("windowState", self.saveState())
-        settings.setValue("darkMode",self.action_darkmode.isChecked())
-        settings.setValue("autoSave",self.action_autosave.isChecked())
+        settings.setValue("darkMode", self.action_darkmode.isChecked())
+        settings.setValue("autoSave", self.action_autosave.isChecked())
         settings.endGroup()
 
         settings.beginGroup("ProjectSettings")
         settings.setValue("ProjectFileName", self.main_model.project.project_file)
         settings.endGroup()
-        print('current project filename:',self.main_model.project.project_file)
+        print('current project filename:', self.main_model.project.project_file)
         # for dock_name in self.dock_list.keys():
         #     settings.beginGroup(dock_name)
         #     settings.setValue("windowGeometry", self.dock_list[dock_name].saveGeometry())
         #     # settings.setValue("windowState", self.dock_list[dock_name].saveState())
         #     settings.endGroup()
         self.saveState()
-        print('Finished closeEvent')
+        print(self.title)
+        print('all finished - all data saved successfully - farewell!')
 
     def keyPressEvent(self, evt):
         print('Key press captured by Main', evt.key())
@@ -637,20 +659,20 @@ class MainWindow(QMainWindow):
             self.annotation_table.removeSelection()
             return
 
-        numbered_keys = [QtCore.Qt.Key_1,QtCore.Qt.Key_2,QtCore.Qt.Key_3,QtCore.Qt.Key_4,QtCore.Qt.Key_5,
-                         QtCore.Qt.Key_6,QtCore.Qt.Key_7,QtCore.Qt.Key_8,QtCore.Qt.Key_9,QtCore.Qt.Key_0]
+        numbered_keys = [QtCore.Qt.Key_1, QtCore.Qt.Key_2, QtCore.Qt.Key_3, QtCore.Qt.Key_4, QtCore.Qt.Key_5,
+                         QtCore.Qt.Key_6, QtCore.Qt.Key_7, QtCore.Qt.Key_8, QtCore.Qt.Key_9, QtCore.Qt.Key_0]
 
         for i in range(len(numbered_keys)):
             if evt.key() == numbered_keys[i]:
-                print(i+1,'pressed')
+                print(i + 1, 'pressed')
                 label = self.annotation_parameter_tree.get_label_from_shortcut(i + 1)
                 if label is not None:
                     if self.main_model.annotations.focused_annotation is None:
                         print('Adding new annotation')
-                        new_annotation = AnnotationElement(label = label,
-                                                           start = self.main_model.window[0],
-                                                           end = self.main_model.window[1],
-                                                           notes = '')
+                        new_annotation = AnnotationElement(label=label,
+                                                           start=self.main_model.window[0],
+                                                           end=self.main_model.window[1],
+                                                           notes='')
                         self.main_model.annotations.add_annotation(new_annotation)
                         self.main_model.annotations.focusOnAnnotation(new_annotation)
                     else:
@@ -661,10 +683,13 @@ class MainWindow(QMainWindow):
                         # self.main_model.annotations.focusOnAnnotation(annotation)
                     return
 
+
 def execute():
     os.environ['QT_MULTIMEDIA_PREFERRED_PLUGINS'] = 'windowsmediafoundation'
     app = QApplication(sys.argv)
     app.setApplicationName('PyEcog')
+    app.setOrganizationDomain('PyEcog')
+    app.setOrganizationName('PyEcog')
     app.setStyle("fusion")
     # Mikail feel free to play about if you feel so inclined :P
     # Now use a palette to switch to dark colors:
@@ -690,14 +715,14 @@ def execute():
     # pg.setConfigOption('foreground', 'k')
     pg.setConfigOption('antialias', True)
 
-    pg.setConfigOption('useWeave',True)
+    pg.setConfigOption('useWeave', True)
     # pg.setConfigOption('useOpenGL', True)
 
-    screen = MainWindow(app_handle =app)
+    screen = MainWindow(app_handle=app)
     screen.get_available_screen()
     screen.show()
     sys.exit(app.exec_())
 
+
 if __name__ == '__main__':
     execute()
-

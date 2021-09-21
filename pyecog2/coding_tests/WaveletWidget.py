@@ -4,9 +4,9 @@ Wavelet widget for EEG signals in pyecog
 """
 
 import pyqtgraph as pg
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtWidgets import QApplication, QWidget
-from PyQt5.QtCore import QRunnable, pyqtSlot, QThreadPool
+from PySide2 import QtCore, QtGui
+from PySide2.QtWidgets import QApplication, QWidget
+from PySide2.QtCore import QRunnable, Slot, QThreadPool
 import numpy as np
 import scipy.signal as sg
 from timeit import default_timer as timer
@@ -134,7 +134,7 @@ class Worker(QRunnable):
         if 'progress_signal' in s.parameters.keys():
             self.kwargs['progress_signal'] = self.signals.progress
 
-    @pyqtSlot()
+    @Slot()
     def run(self):
         '''
         Initialise the runner function with passed args, kwargs.
@@ -193,7 +193,10 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         self.hist.axis.setLabel( text = 'Amplitude', units = 'Log<sub>10</sub> a.u.')
         self.hist.gradient.loadPreset('viridis')
         self.hist_levels = None
-
+        self.hist_levels_cross = None
+        self.last_plot_was_cross = False
+        self.last_plot_was_wave = False
+        self.hist.vb.enableAutoRange(self.hist.vb.XYAxes,enable=.99)
         # Multithread controls
         self.threadpool = QThreadPool()
         self.thread_killswitch_list = []
@@ -228,8 +231,7 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             # print('Killswitch list:',self.thread_killswitch_list)
         self.data = np.array([[1, 0], [0, 1]])
         self.start_t = timer()
-        if self.hist_levels is not None:
-            self.hist_levels = self.hist.getLevels()
+
         if self.isVisible():
             self.setBackground(self.main_model.color_settings['brush'])
             if self.main_model is None:
@@ -244,17 +246,33 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
                     return
                 # print('window' , self.main_model.window)
                 data, time = self.main_model.project.get_data_from_range(self.main_model.window,channel = self.channel)
+                if len(data) <= 10:
+                    return
                 if self.cross_channel!=-1 and self.cross_channel != self.channel:
                     cross_data,_ = self.main_model.project.get_data_from_range(self.main_model.window,channel = self.cross_channel)
                     cross_data = cross_data.ravel()
+                    if len(cross_data) != len(data):
+                        return
                 else:
                     cross_data = None
-            if len(data) <= 10 :
-                return
+
+            # save levels from colorbar
+            if self.last_plot_was_wave:
+                if self.hist_levels is not None:
+                    # print('updating hist_levels',self.hist_levels )
+                    self.hist_levels = self.hist.getLevels()
+                    # print('updataed hist_levels',self.hist_levels )
+            elif self.last_plot_was_cross:
+                if self.hist_levels_cross is not None:
+                    # print('updating hist_levels_cross',self.hist_levels_cross )
+                    self.hist_levels_cross = self.hist.getLevels()
+                    # print('updataed hist_levels_cross',self.hist_levels_cross)
             # print('Wavelet data shape:',data.shape)
+            self.last_plot_was_wave = False
+            self.last_plot_was_cross = False
             self.img.setImage(self.data*0)
-            if self.hist_levels is not None: # Mantain levels from previous view if they exist
-                self.hist.setLevels(*self.hist_levels)
+            # if self.hist_levels is not None: # Mantain levels from previous view if they exist
+            #     self.hist.setLevels(*self.hist_levels)
             self.p1.setLabel('bottom', 'Computing Wavelet tranform...', units='')
             self.show()
             # print('Computing Wavelet...')
@@ -291,9 +309,10 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             # print('Killswitch list:', self.thread_killswitch_list)
             return
         if self.cross_wav is not None: # plotting cross wavelet
+            self.last_plot_was_cross = True
             cross_wav = self.wav*np.conj(self.cross_wav)
             # self.value = np.log(np.abs(cross_wav)+1)/2
-            self.value = np.sqrt(np.abs(cross_wav))
+            self.value = np.log(np.sqrt(np.abs(cross_wav))+1.001)
             maxvalue = np.max(self.value)
             self.data = hsvcolormap.map((np.angle(cross_wav)/(2*np.pi))%1)/256
             # self.data = np.apply_along_axis(lambda x:colorsys.hsv_to_rgb(*x), 0,  #apply function over 0th axis
@@ -302,22 +321,22 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             #               value-minvalue]))  # temporary value
             # self.data = np.moveaxis(self.data,0,-1) +minvalue
             print('data shape',self.data.shape)
-            self.img.setImage(self.data*((self.value - self.coi)[:,:,np.newaxis]), # *(value[:,:,np.newaxis]),
+            self.img.setImage(self.data*((self.value + self.coi)[:,:,np.newaxis]), # *(value[:,:,np.newaxis]),
                               autoLevels=False)
             # hsvim = plt.cm.hsv(np.angle(result) / 2 / np.pi + .5)
             # intensity = np.abs(result)[:, :, np.newaxis]
 
             self.hist.gradient.loadPreset('spectrum')
-            # self.hist_levels = None
-            self.hist.axis.setLabel( text = 'Phase (0 - 360<sup>o</sup>)', units = '')
-            if self.hist_levels is None:
-                self.hist.setLevels(0,maxvalue)
+            self.hist.axis.setLabel( text = 'Hue: Phase (0 - 360<sup>o</sup>) <br> Saturation: Log Coherence', units = '')
+            if self.hist_levels_cross is None:
+                self.hist_levels_cross = [0,maxvalue]
+                # self.hist.setLevels(*self.hist_levels_cross)
 
         else:  # plotting normal wavelet
+            self.last_plot_was_wave = True
             self.data = np.log(np.abs(self.wav)+1e-6)  # +1e-3
-            self.img.setImage(self.data*(1-self.coi))
+            self.img.setImage(self.data + self.coi)
             self.hist.gradient.loadPreset('viridis')
-            # self.hist_levels = None
             self.hist.axis.setLabel(text='Amplitude', units='Log<sub>10</sub> a.u.')
 
         self.img.resetTransform()
@@ -328,10 +347,19 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         self.vb.setLimits(xMin=0, xMax=self.data.shape[1]*self.dt, yMin=ymin, yMax=ymax)
         self.vb.setRange(xRange=[0,self.data.shape[1]*self.dt])
         self.p1.setLabel('bottom', 'Time', units='s')
-        if self.hist_levels is not None:  # Mantain levels from previous view if they exist
-            self.hist.setLevels(*self.hist_levels)
+        if self.cross_wav is None:
+            if self.hist_levels is not None:  # Mantain levels from previous standard wavelet view if they exist
+                self.hist.setLevels(*self.hist_levels)
+            else:
+                self.hist.autoHistogramRange()
+                self.hist_levels = self.hist.getLevels()
         else:
-            self.hist_levels = self.hist.getLevels()
+            if self.hist_levels_cross is not None:  # Mantain levels from previous cross-wavelet view if they exist
+                self.hist.setLevels(*self.hist_levels_cross)
+            else:
+                self.hist.autoHistogramRange()
+                self.hist_levels_cross = self.hist.getLevels()
+
         self.cursor.setPos(self.main_model.time_position - self.main_model.window[0])
         self.show()
         end_t = timer()

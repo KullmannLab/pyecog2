@@ -370,7 +370,8 @@ class GaussianClassifier():
             LL = LL + bias_v.T
         return LL
 
-    def classify_animal(self, animal, progress_bar=None, max_annotations=-1, labels2annotate=None, prob_th=0.5, outlier_th = 1):
+    def classify_animal(self, animal, progress_bar=None, max_annotations=-1, labels2annotate=None, prob_th=0.5,
+                        outlier_th = 1, viterbi=False):
         if self.blank_npoints == 0:
             print('Classifier needs to be trained first')
             return None,None,None,None
@@ -427,7 +428,8 @@ class GaussianClassifier():
         log_not_posterior = np.log(np.exp(ab) @ (np.ones((ab.shape[1], ab.shape[1])) - np.eye(ab.shape[1]))) \
                             - np.log(np.exp(ab) @ (np.ones((ab.shape[1], ab.shape[1]))))
 
-        MLpath,_,_ = hmm.viterbi(LLv_reg.T)
+        if viterbi:
+            MLpath,_,_ = hmm.viterbi(LLv_reg.T)
 
         if progress_bar is not None:
             progress_bar.setValue(99)   # Almost done...
@@ -441,11 +443,13 @@ class GaussianClassifier():
                 continue
             i = i2+1
             print(i,label)
-            # starts = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > prob_th).astype('int')) > 0)[0] + 1
-            # ends = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > prob_th).astype('int')) < 0)[0] + 1
 
-            starts = np.nonzero(np.diff((MLpath==i).astype('int')) > 0)[1] + 1
-            ends   = np.nonzero(np.diff((MLpath==i).astype('int')) < 0)[1] + 1
+            if viterbi:
+                starts = np.nonzero(np.diff((MLpath == i).astype('int')) > 0)[1] + 1
+                ends = np.nonzero(np.diff((MLpath == i).astype('int')) < 0)[1] + 1
+            else:
+                starts = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > prob_th).astype('int')) > 0)[0] + 1
+                ends = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > prob_th).astype('int')) < 0)[0] + 1
 
             alist = []
             print('len starts',len(starts))

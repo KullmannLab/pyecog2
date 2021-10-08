@@ -30,6 +30,7 @@ setuptools.setup(
                     'numba==0.52.0',
                     'pyopengl==3.1.1a1',
                     'pyopengl-accelerate==3.1.3b1',
+                    'rsa',
                     'jupyter'
                     ],
    include_package_data = True

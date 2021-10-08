@@ -69,7 +69,7 @@ class PlotControls(QWidget):
         self.lp_spin.valueChanged.connect(self.update_filter)
 
         self.filter_controls_layout.addWidget(self.filter_check,0,0)
-        self.filter_controls_layout.addWidget(QtGui.QLabel('High pass freuency'),1,0)
+        self.filter_controls_layout.addWidget(QtGui.QLabel('High pass frequency'),1,0)
         self.filter_controls_layout.addWidget(self.hp_spin,1,1)
         self.filter_controls_layout.addWidget(QtGui.QLabel('Low pass frequency'),2,0)
         self.filter_controls_layout.addWidget(self.lp_spin,2,1)

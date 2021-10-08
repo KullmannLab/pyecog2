@@ -46,7 +46,8 @@ def LL2prob(LL):
 
 
 def reg_invcov(M,n):
-    # return np.linalg.inv(M*n/(n+1) + np.eye(len(M))*M.diagonal()/(n+1))
+    # return np.linalg.inv(M*n/(n+1) + np.eye(len(M))*M.diagonal()/(n+1))  # regularize with 1/n
+    # np.linalg.inv(M*np.sqrt(n)/(np.sqrt(n)+1) + np.eye(len(M))*M.diagonal()/(np.sqrt(n)+1))  # regularize with sqrt(1/n)
     return np.linalg.inv(M*np.sqrt(n)/(np.sqrt(n)+1) + np.eye(len(M))*M.diagonal()/(np.sqrt(n)+1))
 
 
@@ -369,7 +370,8 @@ class GaussianClassifier():
             LL = LL + bias_v.T
         return LL
 
-    def classify_animal(self, animal, progress_bar=None, max_annotations=-1, labels2annotate=None, prob_th=0.5, outlier_th = 1):
+    def classify_animal(self, animal, progress_bar=None, max_annotations=-1, labels2annotate=None, prob_th=0.5,
+                        outlier_th = 1, viterbi=False):
         if self.blank_npoints == 0:
             print('Classifier needs to be trained first')
             return None,None,None,None
@@ -410,7 +412,7 @@ class GaussianClassifier():
         th = chi2.isf(1/total_npoints,self.Ndim,scale=0.5)
         LLth = np.diag(self.log_likelyhoods(np.vstack((self.blank_means, self.class_means)), bias=False)) - th
         # Now will regularize LLv for extreme values and compensate HMMfor repeated observations because of overlap of Feature extractor
-        LLv_reg = np.maximum(LLth, LLv)*(1-self.overlap) # TEMPORARY 0.5 FACTOR!
+        LLv_reg = np.maximum(LLth, LLv)*(1-self.overlap)*.5 # TEMPORARY 0.5 FACTOR!
         R2v = np.vstack(R2v)
         timev = np.hstack(timev)
         print('\nRunning HMM...')
@@ -426,6 +428,9 @@ class GaussianClassifier():
         log_not_posterior = np.log(np.exp(ab) @ (np.ones((ab.shape[1], ab.shape[1])) - np.eye(ab.shape[1]))) \
                             - np.log(np.exp(ab) @ (np.ones((ab.shape[1], ab.shape[1]))))
 
+        if viterbi:
+            MLpath,_,_ = hmm.viterbi(LLv_reg.T)
+
         if progress_bar is not None:
             progress_bar.setValue(99)   # Almost done...
         print('Combining results and generating annotations...')
@@ -438,8 +443,14 @@ class GaussianClassifier():
                 continue
             i = i2+1
             print(i,label)
-            starts = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > prob_th).astype('int')) > 0)[0] + 1
-            ends = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > prob_th).astype('int')) < 0)[0] + 1
+
+            if viterbi:
+                starts = np.nonzero(np.diff((MLpath == i).astype('int')) > 0)[1] + 1
+                ends = np.nonzero(np.diff((MLpath == i).astype('int')) < 0)[1] + 1
+            else:
+                starts = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > prob_th).astype('int')) > 0)[0] + 1
+                ends = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > prob_th).astype('int')) < 0)[0] + 1
+
             alist = []
             print('len starts',len(starts))
             manual_label_positions = [a.getPos() for a in animal.annotations.get_all_with_label(label)]

@@ -302,3 +302,32 @@ class HMM_LL():
         print('HMM:backward')
         self.beta, self.posterior = self.backward(x, k, N, self.A, self.phi, self.stationary_dist, self.alpha)
         return self.posterior
+
+
+    @staticmethod
+    @numba.jit(nopython=True)
+    def viterbi_jit(x, k, N, A, log_phi, stationary_dist):
+        logA = np.log(A)
+        T1 = np.zeros((k, N))  # log probability of the most likely path up to time t
+        T1[:, 0] = log_phi[:, 0] + np.log(stationary_dist)
+        T2 = np.zeros((k,N),dtype='uint8')  # most probable sequence of states that end up at state k at time t
+        most_likely_path = np.zeros((1,N), dtype ='uint8')
+
+        for t in np.arange(1, N):
+            for k1 in range(k):
+                T1[k1,t] = np.max(T1[:,t-1] + logA[:,k1]) + log_phi[k1,t]
+                T2[k1,t] = np.argmax(T1[:,t-1] + logA[:,k1])
+
+        most_likely_path[0, -1] = np.argmax(T1[:,t])
+        for t in np.arange(N-1, 0-1, -1):
+            most_likely_path[0,t-1] = T2[most_likely_path[0,t],t]
+
+        return most_likely_path, T1, T2
+
+    def viterbi(self, x):
+        self.phi = x  # self.calc_phi(x, self.stationary_dist)
+        k = x.shape[0]
+        N = x.shape[1]
+        print('Viterbi (jit)',k,N)
+        self.ML_path, T1, T2 = self.viterbi_jit(x, k, N, self.A, self.phi, self.stationary_dist)
+        return self.ML_path, T1, T2

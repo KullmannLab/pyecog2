@@ -339,10 +339,11 @@ class AnnotationPage(QObject):
 
     def export_to_csv(self, fname, label): # Currently not in use
         with open(fname, 'w') as f:
-            f.write(label + ',' + 'start,stop\n')
+            f.write(label + ',' + 'start,stop,confidence,notes\n')
             for i, a in enumerate(self.annotations_list):
                 if a.getLabel() == label:
-                    f.write(str(i) + ',' + str(a.getStart()) + ',' + str(a.getEnd()) + '\n')
+                    f.write(str(i) + ',' + str(a.getStart()) + ',' + str(a.getEnd()) + ',' + str(a.getConfidence()) +
+                            ',' + str(a.getNotes()) + '\n')
 
     def __repr__(self):
         return repr([json.loads(repr(a).replace('\'','\"')) for a in self.annotations_list])

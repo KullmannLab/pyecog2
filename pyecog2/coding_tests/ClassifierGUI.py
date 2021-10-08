@@ -95,9 +95,10 @@ class ClassifierWindow(QMainWindow):
                  },
                 {'name': 'Automatic annotation settings',
                  'type': 'group',
-                 'children': [{'name': 'Annotation threshold probability', 'type': 'float', 'value': 0.5},
+                 'children': [{'name': 'Annotation threshold probability', 'type': 'float', 'value': 0.5,'bounds':[0,1],'dec': True},
                               {'name': 'Outlier threshold factor', 'type': 'float', 'value': 1},
-                              {'name': 'maximum number of annotations', 'type': 'int', 'value': 100} ]
+                              {'name': 'maximum number of annotations', 'type': 'int', 'value': 100},
+                              {'name': 'Use Viterbi (only allows observed transitions)', 'type': 'bool', 'value': False} ]
                  }
                 # {'name': 'Assimilate global classifier from individual animals', 'type': 'action'},
                 # {'name': 'Train global classifier','type': 'action', 'children':[
@@ -216,9 +217,11 @@ class ClassifierWindow(QMainWindow):
         prob_th = self.p.param('Global Settings','Automatic annotation settings', 'Annotation threshold probability').value()
         outlier_th = self.p.param('Global Settings','Automatic annotation settings', 'Outlier threshold factor').value()
         max_anno = self.p.param('Global Settings','Automatic annotation settings', 'maximum number of annotations').value()
+        viterbi = self.p.param('Global Settings','Automatic annotation settings', 'Use Viterbi (only allows observed transitions)').value()
         worker = Worker(self.classifier.animal_classifier_dict[animal_id].classify_animal,
                         animal,pbar,max_annotations=max_anno, prob_th=prob_th,outlier_th =outlier_th,
-                        labels2annotate = self.getLables2Annotate())
+                        labels2annotate = self.getLables2Annotate(),viterbi=viterbi)
+        worker.signals.finished.connect(self.updateAnnotationTables)
         self.threadpool.start(worker)
         return 1, 1
 
@@ -232,10 +235,16 @@ class ClassifierWindow(QMainWindow):
         prob_th = self.p.param('Global Settings','Automatic annotation settings', 'Annotation threshold probability').value()
         outlier_th = self.p.param('Global Settings','Automatic annotation settings', 'Outlier threshold factor').value()
         max_anno = self.p.param('Global Settings','Automatic annotation settings', 'maximum number of annotations').value()
+        viterbi = self.p.param('Global Settings','Automatic annotation settings', 'Use Viterbi (only allows observed transitions)').value()
         worker = Worker(self.classifier.classify_animal_with_global, animal, pbar, max_annotations=max_anno,
-                        prob_th=prob_th,outlier_th =outlier_th, labels2annotate = self.getLables2Annotate())
+                        prob_th=prob_th,outlier_th =outlier_th, labels2annotate = self.getLables2Annotate(),viterbi=viterbi)
+        worker.signals.finished.connect(self.updateAnnotationTables)
         self.threadpool.start(worker)
         return 1, 1
+
+    def updateAnnotationTables(self):
+        print('Worker Finished, emitting LabelsChanged signal')
+        self.project.main_model.annotations.sigLabelsChanged.emit('')
 
     def update_settings(self):
         pass

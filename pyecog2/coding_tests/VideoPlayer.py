@@ -20,9 +20,9 @@ pause_icon_file = pkg_resources.resource_filename('pyecog2', 'icons/pause.png')
 class VideoWindow(QWidget):
     sigTimeChanged = Signal(object)
 
-    def __init__(self, project=None, parent=None):
+    def __init__(self, main_model=None, parent=None):
         super(VideoWindow, self).__init__(parent)
-        self.project = project
+        self.main_model = main_model
         self.setWindowTitle("Video")
         self.mediaPlayer = QMediaPlayer() #None, QMediaPlayer.VideoSurface)
         self.last_position = 0
@@ -77,16 +77,22 @@ class VideoWindow(QWidget):
         self.mediaPlayer.error.connect(self.handleError)
         self.mediaPlayer.setNotifyInterval(40) # 25 fps
 
-        if self.project is None:
+        # Connect main model time changes to videa seek
+        if self.main_model is not None:
+            self.sigTimeChanged.connect(self.main_model.set_time_position)
+            self.main_model.sigTimeChanged.connect(self.setGlobalPosition)
+
+
+        if self.main_model is None:
             self.current_time_range = [0,0]
             self.current_file = ''
             # self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(self.current_file)))
             # self.playButton.setEnabled(True)
             # self.mediaPlayer.play()
-        elif self.project.current_animal.video_files:
-            self.current_file = self.project.current_animal.video_files[0]
-            self.current_time_range = [self.project.current_animal.video_init_time[0],
-                                   self.project.current_animal.video_init_time[0] + self.project.current_animal.video_duration[0]]
+        elif self.main_model.project.current_animal.video_files:
+            self.current_file = self.main_model.project.current_animal.video_files[0]
+            self.current_time_range = [self.main_model.project.current_animal.video_init_time[0],
+                                   self.main_model.project.current_animal.video_init_time[0] + self.main_model.project.current_animal.video_duration[0]]
             self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(self.current_file)))
             self.playButton.setEnabled(True)
         else:
@@ -166,6 +172,7 @@ class VideoWindow(QWidget):
     def setGlobalPosition(self, pos):
         # Connected to project main model sigTimeChanged
         # open the right media
+        print('VideoPlayer setGlobalPosition')
         if self.current_time_range[0] <= pos <= self.current_time_range[1]: # correct file opened
             position = int((pos-self.current_time_range[0])*1000)
             if self.mediaPlayer.state() == QMediaPlayer.PlayingState and abs(position-self.last_position)<200:
@@ -175,9 +182,10 @@ class VideoWindow(QWidget):
             self.mediaPlayer.setPosition(position)  # UNIX time
             return
         else:
-            for i, file in enumerate(self.project.current_animal.video_files): # search for file to open
-                arange = [self.project.current_animal.video_init_time[i] + self.video_time_offset,
-                          self.project.current_animal.video_init_time[i] + self.project.current_animal.video_duration[i]
+            print('searching for video file', self.main_model.project.current_animal.id, len(self.main_model.project.current_animal.video_files))
+            for i, file in enumerate(self.main_model.project.current_animal.video_files): # search for file to open
+                arange = [self.main_model.project.current_animal.video_init_time[i] + self.video_time_offset,
+                          self.main_model.project.current_animal.video_init_time[i] + self.main_model.project.current_animal.video_duration[i]
                           + self.video_time_offset]
                 print((arange[0], pos, arange[1]),(arange[0] <= pos <= arange[1]))
                 if (arange[0] <= pos <= arange[1]):

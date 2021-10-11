@@ -123,15 +123,12 @@ class MainWindow(QMainWindow):
         self.dock_list['Annotation Parameter Tree'].setFeatures(
             QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
-        self.video_element = VideoWindow(project=self.main_model.project)
+        self.video_element = VideoWindow(main_model=self.main_model)
         self.dock_list['Video'] = QDockWidget("Video", self)
         self.dock_list['Video'].setWidget(self.video_element)
         self.dock_list['Video'].setObjectName("Video")
         # self.dock_list['Video'].setFloating(True)
         # self.dock_list['Video'].hide()
-        # Video units are in miliseconds, pyecog units are in seconds
-        self.video_element.sigTimeChanged.connect(self.main_model.set_time_position)
-        self.main_model.sigTimeChanged.connect(self.video_element.setGlobalPosition)
 
         self.dock_list['FFT'] = QDockWidget("FFT", self)
         self.dock_list['FFT'].setWidget(FFTwindow(self.main_model))

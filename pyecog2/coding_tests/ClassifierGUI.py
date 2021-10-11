@@ -217,7 +217,7 @@ class ClassifierWindow(QMainWindow):
         prob_th = self.p.param('Global Settings','Automatic annotation settings', 'Annotation threshold probability').value()
         outlier_th = self.p.param('Global Settings','Automatic annotation settings', 'Outlier threshold factor').value()
         max_anno = self.p.param('Global Settings','Automatic annotation settings', 'maximum number of annotations').value()
-        viterbi = self.p.param('Global Settings','Automatic annotation settings', 'Use Viterbi (only allows observed transitions)').value()
+        viterbi = self.p.param('Global Settings','Automatic annotation settings', 'Use Viterbi (only allows observed transitions - EXPERIMENTAL)').value()
         worker = Worker(self.classifier.animal_classifier_dict[animal_id].classify_animal,
                         animal,pbar,max_annotations=max_anno, prob_th=prob_th,outlier_th =outlier_th,
                         labels2annotate = self.getLables2Annotate(),viterbi=viterbi)

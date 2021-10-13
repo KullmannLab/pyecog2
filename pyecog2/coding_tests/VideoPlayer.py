@@ -187,7 +187,7 @@ class VideoWindow(QWidget):
                 arange = [self.main_model.project.current_animal.video_init_time[i] + self.video_time_offset,
                           self.main_model.project.current_animal.video_init_time[i] + self.main_model.project.current_animal.video_duration[i]
                           + self.video_time_offset]
-                print((arange[0], pos, arange[1]),(arange[0] <= pos <= arange[1]))
+                # print((arange[0], pos, arange[1]),(arange[0] <= pos <= arange[1]))
                 if (arange[0] <= pos <= arange[1]):
                     print('Changing video file: ', file)
                     self.current_file = file
@@ -234,68 +234,6 @@ class VideoWindow(QWidget):
         self.errorLabel.setText("Error: " + self.mediaPlayer.errorString())
         print("Video - Error: " + self.mediaPlayer.errorString())
 
-
-    # def reset(self):
-    #     self.mediaPlayer = QMediaPlayer() #None, QMediaPlayer.VideoSurface)
-    #     self.last_position = 0
-    #     self.position_on_new_file = 0
-    #     self.duration = -1
-    #     self.waiting_for_file = False
-    #     self.media_state_before_file_transition = self.mediaPlayer.state()
-    #
-    #     videoWidget = QVideoWidget()
-    #     self.videoWidget = videoWidget
-    #     self.playButton = QPushButton()
-    #     self.playButton.setEnabled(False)
-    #     self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
-    #     self.playButton.clicked.connect(self.play)
-    #
-    #     self.positionSlider = QSlider(Qt.Horizontal)
-    #     self.positionSlider.setRange(0, 0)
-    #     self.positionSlider.sliderMoved.connect(self.setPosition)
-    #
-    #     self.errorLabel = QLabel()
-    #     self.errorLabel.setSizePolicy(QSizePolicy.Preferred,
-    #             QSizePolicy.Maximum)
-    #
-    #     # Create layouts to place inside widget
-    #     controlLayout = QHBoxLayout()
-    #     controlLayout.setContentsMargins(0, 0, 0, 0)
-    #     controlLayout.addWidget(self.playButton)
-    #     controlLayout.addWidget(self.positionSlider)
-    #
-    #     layout = QVBoxLayout()
-    #     layout.addWidget(videoWidget)
-    #     layout.addLayout(controlLayout)
-    #     layout.addWidget(self.errorLabel)   # Hide error Label
-    #
-    #     # Set widget to contain window contents
-    #     self.setLayout(layout)
-    #
-    #     self.mediaPlayer.setVideoOutput(videoWidget)
-    #     self.mediaPlayer.stateChanged.connect(self.mediaStateChanged)
-    #     self.mediaPlayer.positionChanged.connect(self.positionChanged)
-    #     self.mediaPlayer.durationChanged.connect(self.durationChanged)
-    #     self.mediaPlayer.mediaStatusChanged.connect(self.mediaStatusChanged)
-    #     self.mediaPlayer.error.connect(self.handleError)
-    #
-    #     if self.project is None:
-    #         self.current_time_range = [0,0]
-    #         self.current_file = ''
-    #         # self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(self.current_file)))
-    #         # self.playButton.setEnabled(True)
-    #         # self.mediaPlayer.play()
-    #     elif self.project.current_animal.video_files:
-    #         self.current_file = self.project.current_animal.video_files[0]
-    #         self.current_time_range = [self.project.current_animal.video_init_time[0],
-    #                                self.project.current_animal.video_init_time[0] + self.project.current_animal.video_duration[0]]
-    #         self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(self.current_file)))
-    #         self.playButton.setEnabled(True)
-    #     else:
-    #         self.current_file = ''
-    #         self.current_time_range = [0,0]
-    #
-    #     self.show()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

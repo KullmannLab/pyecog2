@@ -1,10 +1,11 @@
 import rsa
-from base64 import b64encode
+from base64 import b64encode, b64decode
 import uuid
 import json
 from datetime import datetime
 import os
 import pkg_resources
+from shutil import copyfile
 
 
 # Public key to verify license file signature
@@ -30,18 +31,23 @@ def get_filepath_ID(fname):
         return os.popen(fr"fsutil file queryfileid {fname}").read().split(' ')[-1]
 
 
-def verify_license_file(fname=''):
+def verify_license_file():
+    fname = pkg_resources.resource_filename('pyecog2', 'license/PyEcogLicense.txt')
     with open(fname, 'r') as f:
         license_dict = json.load(f)
 
     # Verify signature:
     keys = ['user ID', 'expiry date', 'computer ID', 'license reg path', 'license reg ID']
     licensestring = ''.join([license_dict[k] for k in keys]).encode('utf-8')
-    signature = license_dict['signature']
-    if rsa.verify(licensestring, signature, pubkey):
-        print('Valid license file: ', fname)
-    else:
+    signature = b64decode(license_dict['signature'])
+    try:
+       rsa.verify(licensestring, signature, pubkey)
+       print('Valid license file: ', fname)
+    except rsa.VerificationError:
         print('Invalid license file signature: ',fname)
+        return False
+    else:
+        print(f'Error checking:{fname} signature')
         return False
 
     if license_dict['user ID'] == 'KullmannLab': # Consider asking to register computer IDs in the future if software spreads so to avoid "master Key" type of insecurities
@@ -77,35 +83,70 @@ def verify_license_reg_file(filepath,fileid):
         license_reg_dict = json.load(f)
         # Verify signature:
         licenseregstring = license_reg_dict['last date'].encode('utf-8')
-        signature = license_reg_dict['signature']
-        if not rsa.verify(licenseregstring, signature, pubkey_soft):
+        signature = b64decode(license_reg_dict['signature'])
+        try:
+            rsa.verify(licenseregstring, signature, pubkey_soft)
+            print('Valid license file: ', filepath)
+        except rsa.VerificationError:
+            print('Invalid license file signature: ', filepath)
             return False
+        else:
+            print(f'Error checking:{filepath} signature')
+            return False
+
     return True
 
 
-def update_license_reg_file(filepath):
-    with open(filepath, 'w') as f:
+def update_license_reg_file():
+    filepath = pkg_resources.resource_filename('pyecog2', 'license/license_reg.txt')
+    with open(filepath, 'r') as f:
         license_reg_dict = json.load(f)
-        now = int(datetime.now().timestamp())
-        if now >=  int(license_reg_dict['last date']):
-            license_reg_dict['last date'] = str(now)
-            licenseregstring = license_reg_dict['last date'].encode('utf-8')
-            signature =  rsa.sign(licenseregstring, privkey_soft, 'SHA-1')
-            license_reg_dict['signature'] = b64encode(signature).decode('ascii')
-        else:
-            license_reg_dict['last date'] = 'Invalid: ' + str(now) + ' < ' + license_reg_dict['last date']
-            license_reg_dict['signature'] = 'Invalid'
 
-        json.dump(license_reg_dict,f)
+    licenseregstring = license_reg_dict['last date'].encode('utf-8')
+    signature = b64decode(license_reg_dict['signature'])
+
+    try:
+        rsa.verify(licenseregstring, signature, pubkey_soft)
+        print('Valid license file: ', filepath)
+        signature_is_valid = True
+    except rsa.VerificationError:
+        print('Invalid license file signature: ', filepath)
+        return False
+    else:
+        print(f'Error checking:{filepath} signature')
+        return False
+
+    now = int(datetime.now().timestamp())
+    if now >=  int(license_reg_dict['last date']) and signature_is_valid:
+        license_reg_dict['last date'] = str(now)
+        licenseregstring = license_reg_dict['last date'].encode('utf-8')
+        signature =  rsa.sign(licenseregstring, privkey_soft, 'SHA-1')
+        license_reg_dict['signature'] = b64encode(signature).decode('ascii')
+    else:
+        license_reg_dict['last date'] = 'Invalid: ' + str(now) + ' < ' + license_reg_dict['last date']
+        license_reg_dict['signature'] = 'Invalid'
+
+    with open(filepath, 'w') as f:
+            json.dump(license_reg_dict,f)
 
 
 def update_license_file():
-    license_file_path = pkg_resources.resource_filename('pyecog2', 'license/license.txt')
+    license_file_path = pkg_resources.resource_filename('pyecog2', 'license/PyEcogLicense.txt')
     with open(license_file_path, 'r') as f:
         license_dict = json.load(f)
     license_dict['license reg path'] = pkg_resources.resource_filename('pyecog2', 'license/license_reg.txt')
     license_dict['license reg ID'] = get_filepath_ID(license_dict['license reg path'])
-    update_license_reg_file(license_dict['license reg path'])
+    update_license_reg_file()
     license_dict['computer ID'] = str(hex(uuid.getnode()))
     with open(license_file_path, 'w') as f:
         json.dump(license_dict, f)
+
+def copy_license_to_folder(filename):
+    update_license_file()
+    copyfile(pkg_resources.resource_filename('pyecog2', 'license/PyEcogLicense.txt'), filename)
+    return filename
+
+def copy_activated_license(fname):
+    update_license_file()
+    copyfile(fname, pkg_resources.resource_filename('pyecog2', 'license/PyEcogLicense.txt'))
+    return fname + 'PyEcogLicense.txt'

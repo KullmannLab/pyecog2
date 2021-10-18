@@ -29,7 +29,7 @@ from datetime import datetime
 import pyqtgraph as pg
 from pyqtgraph.console import ConsoleWidget
 import pkg_resources
-
+from pyecog2 import license
 
 class MainWindow(QMainWindow):
     '''
@@ -214,6 +214,61 @@ class MainWindow(QMainWindow):
         self.action_autosave.setChecked(self.settings.value("autoSave", type=bool))
         self.toggle_auto_save()
 
+        # Check if license is valid
+        try:
+            if license.verify_license_file():
+                return
+            else:
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Information)
+                msg.setText("Your license seems to be invalid. Do you have an activated PyEcogLicense.txt file?")
+                msg.setWindowTitle("Invalid License")
+                msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+                retval = msg.exec_()
+                if retval == QMessageBox.No:
+                    msg2 = QMessageBox()
+                    msg2.setIcon(QMessageBox.Information)
+                    msg2.setText("Would you like to create a new PyEcog License file?")
+                    msg2.setWindowTitle("Generate new License")
+                    msg2.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+                    retval = msg2.exec_()
+                    if retval == QMessageBox.Yes:
+                        dialog2 = QFileDialog(self)
+                        dialog2.setWindowTitle('Choose a directory to ssave PyEcogLicense.txt...')
+                        # dialog2.setFileMode(QFileDialog.DirectoryOnly)
+                        dialog2.setAcceptMode(QFileDialog.AcceptSave)
+                        dialog2.selectFile(('PyEcogLicense.txt'))
+                        if dialog2.exec():
+                            file_name = dialog2.selectedFiles()[0]
+                            if not file_name.endswith('.txt'):
+                                file_name = file_name + '.txt'
+                            location = license.copy_license_to_folder(file_name)
+                            msg3 = QMessageBox()
+                            msg3.setIcon(QMessageBox.Information)
+                            msg3.setText("Please email this file to marco.leite.11@ucl.ac.uk for activation")
+                            msg3.setDetailedText("File location:" + location)
+                            msg3.setWindowTitle("Generate new License")
+                            msg3.setStandardButtons(QMessageBox.Ok)
+                            msg3.exec_()
+                else:
+                    dialog = QFileDialog(self)
+                    dialog.setWindowTitle('Load License ...')
+                    dialog.setFileMode(QFileDialog.ExistingFile)
+                    # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+                    dialog.setAcceptMode(QFileDialog.AcceptOpen)
+                    dialog.setNameFilter('PyEcogLicense.txt')
+                    if dialog.exec():
+                        fname = dialog.selectedFiles()[0]
+                    license.copy_activated_license(fname)
+                    if license.verify_license_file():
+                        return
+        finally:
+            # If license is not yet validated close
+            self.close()
+            sys.exit()
+
+
+
     def get_available_screen(self):
         app = QApplication.instance()
         screen = app.primaryScreen()
@@ -236,6 +291,7 @@ class MainWindow(QMainWindow):
         self.show()
 
     def load_directory(self, dirname=None):
+        license.update_license_reg_file()
         print('Openening folder')
         if type(dirname) != str:
             dirname = self.select_directory()
@@ -247,10 +303,12 @@ class MainWindow(QMainWindow):
         self.main_model.project = temp_project
 
     def new_project(self):
+        license.update_license_reg_file()
         self.main_model.project.__init__(main_model=self.main_model)  # = Project(self.main_model)
         self.tree_element.set_rootnode_from_project(self.main_model.project)
 
     def load_project(self, fname=None):
+        license.update_license_reg_file()
         if type(fname) is not str:
             dialog = QFileDialog(self)
             dialog.setWindowTitle('Load Project ...')
@@ -299,6 +357,7 @@ class MainWindow(QMainWindow):
 
     def save(self):
         print('save action triggered')
+        license.update_license_reg_file()
         fname = self.main_model.project.project_file
         if not os.path.isfile(fname):
             self.save_as()
@@ -308,6 +367,7 @@ class MainWindow(QMainWindow):
         self.toggle_auto_save()
 
     def save_as(self):
+        license.update_license_reg_file()
         dialog = QFileDialog(self)
         dialog.setWindowTitle('Save Project as ...')
         dialog.setFileMode(QFileDialog.AnyFile)
@@ -325,6 +385,7 @@ class MainWindow(QMainWindow):
         self.toggle_auto_save()
 
     def auto_save(self):
+        license.update_license_reg_file()
         print('autosave_save action triggered')
         fname = self.main_model.project.project_file
         if not os.path.isfile(fname):

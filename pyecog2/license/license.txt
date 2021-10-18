@@ -1,1 +1,0 @@
-{"user ID": "", "expiry date": "", "computer ID": "", "license reg path": "", "license reg ID": "", "signature": ""}

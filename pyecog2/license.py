@@ -3,7 +3,7 @@ from base64 import b64encode, b64decode
 import uuid
 import json
 from datetime import datetime
-import os
+import os, sys
 import pkg_resources
 from shutil import copyfile
 
@@ -39,14 +39,17 @@ def verify_license_file():
     # Verify signature:
     keys = ['user ID', 'expiry date', 'computer ID', 'license reg path', 'license reg ID']
     licensestring = ''.join([license_dict[k] for k in keys]).encode('utf-8')
-    signature = b64decode(license_dict['signature'])
+    signature = license_dict['signature']
     try:
-       rsa.verify(licensestring, signature, pubkey)
+       rsa.verify(licensestring, b64decode(signature), pubkey)
        print('Valid license file: ', fname)
     except rsa.VerificationError:
         print('Invalid license file signature: ',fname)
+        print(licensestring)
+        print(signature)
         return False
-    else:
+    except:
+        print(sys.exc_info())
         print(f'Error checking:{fname} signature')
         return False
 
@@ -60,7 +63,7 @@ def verify_license_file():
         return False
 
     # Check clock has not been tampered with by verifying license reg file
-    update_license_reg_file(license_dict['license reg path'])
+    update_license_reg_file()
     if not verify_license_reg_file(license_dict['license reg path'], license_dict['license reg ID']):
         print('License reg file not valid:',license_dict['license reg path'])
         return False
@@ -90,7 +93,8 @@ def verify_license_reg_file(filepath,fileid):
         except rsa.VerificationError:
             print('Invalid license file signature: ', filepath)
             return False
-        else:
+        except: # everything else needs to be captured an returned false
+            print(sys.exc_info())
             print(f'Error checking:{filepath} signature')
             return False
 
@@ -112,7 +116,8 @@ def update_license_reg_file():
     except rsa.VerificationError:
         print('Invalid license file signature: ', filepath)
         return False
-    else:
+    except:
+        print(sys.exc_info())
         print(f'Error checking:{filepath} signature')
         return False
 

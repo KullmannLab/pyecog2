@@ -459,7 +459,10 @@ class Project():
         print(dict.keys())
         del (dict['main_model'])
         dict['animal_list'] = [animal.dict() for animal in self.animal_list]  # make animals into dicts
-        dict['current_animal'] = self.current_animal.id  # Animal().dict() # self.current_animal.dict() # Otherwise when loading the current animal would not be in the animal_list
+        if self.current_animal is not None:
+            dict['current_animal'] = self.current_animal.id  # Animal().dict() # self.current_animal.dict() # Otherwise when loading the current animal would not be in the animal_list
+        else:
+            dict['current_animal'] = None
         dict['file_buffer'] = None
         # print(dict)
         json.dump(dict, open(fname, 'w'), indent=2)

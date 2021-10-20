@@ -531,6 +531,7 @@ class MainWindow(QMainWindow):
             self.ClassifierWindow.setWindowState(
                 (self.ClassifierWindow.windowState() & ~Qt.WindowMinimized) | Qt.WindowActive)
             self.ClassifierWindow.raise_()
+            # self.ClassifierWindow.update_fields()
             self.ClassifierWindow.show()
             return
         self.ClassifierWindow = ClassifierWindow(self.main_model.project, parent=self)

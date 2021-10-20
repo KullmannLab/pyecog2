@@ -98,7 +98,7 @@ class ClassifierWindow(QMainWindow):
                  'children': [{'name': 'Annotation threshold probability', 'type': 'float', 'value': 0.5,'bounds':[0,1],'dec': True},
                               {'name': 'Outlier threshold factor', 'type': 'float', 'value': 1},
                               {'name': 'maximum number of annotations', 'type': 'int', 'value': 100},
-                              {'name': 'Use Viterbi (only allows observed transitions)', 'type': 'bool', 'value': False} ]
+                              {'name': 'Use Viterbi (only allows observed transitions - EXPERIMENTAL)', 'type': 'bool', 'value': False} ]
                  }
                 # {'name': 'Assimilate global classifier from individual animals', 'type': 'action'},
                 # {'name': 'Train global classifier','type': 'action', 'children':[
@@ -164,9 +164,11 @@ class ClassifierWindow(QMainWindow):
         stderr = OutputWrapper(self, False)
         stderr.outputWritten.connect(self.handleOutput)
 
+        self.project.current_animal.annotations.sigLabelsChanged.connect(self.updateLabels)
+        self.project.main_model.sigProjectChanged.connect(self.update_settings)
         self.threadpool = QtCore.QThreadPool()
-
         self.dfrmt = '%Y-%m-%d %H:%M:%S'  # Format to use in date elements
+
 
     def getLables2Annotate(self):
         all_labels = self.project.get_all_labels()
@@ -175,6 +177,62 @@ class ClassifierWindow(QMainWindow):
     def getLables2train(self):
         all_labels = self.project.get_all_labels()
         return [label for label in all_labels if self.p.param('Global Settings', 'Lablels to train', label).value()]
+
+    def updateLabels(self):
+        self.classifier = ProjectClassifier(self.project)
+        all_labels = self.project.get_all_labels()
+        previous_lables = [p.name() for p in self.p.param('Global Settings', 'Lablels to train').children()]
+        for label in all_labels:
+            if label not in previous_lables:
+                self.p.param('Global Settings', 'Lablels to train').addChild({'name': label, 'type': 'bool', 'value': False})
+                self.p.param('Global Settings', 'Lablels to annotate').addChild({'name': label, 'type': 'bool', 'value': False})
+        for label in previous_lables:
+            if label not in all_labels:
+                self.p.param('Global Settings', 'Lablels to train').removeChild(self.p.param('Global Settings', 'Lablels to train',label))
+                self.p.param('Global Settings', 'Lablels to annotate').removeChild(self.p.param('Global Settings', 'Lablels to annotate',label))
+
+    def updateAnimals(self):
+        all_animals = [a.id for a in self.project.animal_list]
+        previous_animals = [p.name() for p in self.p.param('Animal Settings').children()]
+        for a in all_animals:
+            if a not in previous_animals:
+                self.p.param('Animal Settings').addChild({'name': a, 'type': 'group', 'children': [
+                {'name': 'Use animal for global classifier', 'type': 'bool', 'value': False},
+                {'name': 'Train animal-specific classifier', 'type': 'action', 'children': [
+                    {'name': 'Training Progress', 'type': 'float', 'readonly': True, 'suffix': '%',
+                     'value': 100 * (self.classifier.animal_classifier_dict[a].blank_npoints > 0)}]},
+                {'name': 'Auto-generate Annotations with animal-specific classifier', 'type': 'action', 'children': [
+                    {'name': 'Annotation Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}]},
+                {'name': 'Auto-generate Annotations with global classifier', 'type': 'action', 'children': [
+                    {'name': 'Annotation Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}]},
+                ]})
+
+                pbar = self.p.param('Animal Settings', a, 'Train animal-specific classifier',
+                                    'Training Progress')
+                self.p.param(
+                    'Animal Settings', a, 'Train animal-specific classifier'
+                ).sigActivated.connect(self.trainClassifierGenerator(a, pbar))
+
+                pbar = self.p.param('Animal Settings', a,
+                                    'Auto-generate Annotations with animal-specific classifier', 'Annotation Progress')
+                self.p.param(
+                    'Animal Settings', a, 'Auto-generate Annotations with animal-specific classifier'
+                ).sigActivated.connect(self.runAnimalClassifierGenerator(a, pbar))
+
+                pbar = self.p.param('Animal Settings', a, 'Auto-generate Annotations with global classifier',
+                                    'Annotation Progress')
+                self.p.param(
+                    'Animal Settings', a, 'Auto-generate Annotations with global classifier'
+                ).sigActivated.connect(self.runGlobalClassifierGenerator(a, pbar))
+
+        for a in previous_animals:
+            if a not in all_animals:
+                self.p.param('Animal Settings').removeChild(a)
+
+    def update_settings(self):
+        self.updateLabels()
+        self.updateAnimals()
+
 
     def homogenize_labels(self):
         labels = self.getLables2train()
@@ -235,7 +293,7 @@ class ClassifierWindow(QMainWindow):
         prob_th = self.p.param('Global Settings','Automatic annotation settings', 'Annotation threshold probability').value()
         outlier_th = self.p.param('Global Settings','Automatic annotation settings', 'Outlier threshold factor').value()
         max_anno = self.p.param('Global Settings','Automatic annotation settings', 'maximum number of annotations').value()
-        viterbi = self.p.param('Global Settings','Automatic annotation settings', 'Use Viterbi (only allows observed transitions)').value()
+        viterbi = self.p.param('Global Settings','Automatic annotation settings', 'Use Viterbi (only allows observed transitions - EXPERIMENTAL)').value()
         worker = Worker(self.classifier.classify_animal_with_global, animal, pbar, max_annotations=max_anno,
                         prob_th=prob_th,outlier_th =outlier_th, labels2annotate = self.getLables2Annotate(),viterbi=viterbi)
         worker.signals.finished.connect(self.updateAnnotationTables)
@@ -246,8 +304,6 @@ class ClassifierWindow(QMainWindow):
         print('Worker Finished, emitting LabelsChanged signal')
         self.project.main_model.annotations.sigLabelsChanged.emit('')
 
-    def update_settings(self):
-        pass
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

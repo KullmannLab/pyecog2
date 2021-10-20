@@ -223,13 +223,15 @@ class FeatureExtractorWindow(QMainWindow):
         if not os.path.isdir(classifier_dir):
             os.mkdir(classifier_dir)
         self.feature_extractor.save_settings(os.path.join(classifier_dir, '_feature_extractor.json'))
+        print('Starting FE worker')
         worker = Worker(self.extractFeatures)
+        self.progressBar0.setValue(0)
+        self.progressBar1.setValue(0)
         self.threadpool.start(worker)
 
     def extractFeatures(self):
-        self.progressBar0.setValue(0)
-        self.progressBar1.setValue(0)
         for i,animal in enumerate(self.project.animal_list):
+            print(' calling feature_extractor.extract_features_from_animal')
             self.feature_extractor.extract_features_from_animal(animal, re_write = self.re_write.isChecked(), n_cores = -1,
                                                                 progress_bar = self.progressBar1)
             self.progressBar0.setValue((100*(i+1))//len(self.project.animal_list))

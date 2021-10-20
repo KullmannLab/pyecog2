@@ -44,7 +44,7 @@ def verify_license_file():
        rsa.verify(licensestring, b64decode(signature), pubkey)
        print('Valid license file: ', fname)
     except rsa.VerificationError:
-        print('Invalid license file signature: ',fname)
+        print('Invalid license file signature: ', fname)
         print(licensestring)
         print(signature)
         return False
@@ -79,7 +79,7 @@ def verify_license_file():
 
 def verify_license_reg_file(filepath,fileid):
     if not check_filepath_ID(filepath,fileid):
-        print('license registry file ID does not match licensed ID')
+        print('license_reg file ID does not match licensed ID')
         return False
 
     with open(filepath, 'r') as f:
@@ -111,10 +111,10 @@ def update_license_reg_file():
 
     try:
         rsa.verify(licenseregstring, signature, pubkey_soft)
-        print('Valid license file: ', filepath)
+        print('Valid license_reg file: ', filepath)
         signature_is_valid = True
     except rsa.VerificationError:
-        print('Invalid license file signature: ', filepath)
+        print('Invalid license_reg file signature: ', filepath)
         return False
     except:
         print(sys.exc_info())
@@ -129,10 +129,12 @@ def update_license_reg_file():
         license_reg_dict['signature'] = b64encode(signature).decode('ascii')
     else:
         license_reg_dict['last date'] = 'Invalid: ' + str(now) + ' < ' + license_reg_dict['last date']
-        license_reg_dict['signature'] = 'Invalid'
+        license_reg_dict['signature'] = ''
+        signature_is_valid = False
 
     with open(filepath, 'w') as f:
             json.dump(license_reg_dict,f)
+    return signature_is_valid
 
 
 def update_license_file():

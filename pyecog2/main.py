@@ -30,6 +30,7 @@ import pyqtgraph as pg
 from pyqtgraph.console import ConsoleWidget
 import pkg_resources
 from pyecog2 import license
+from multiprocessing import freeze_support
 
 class MainWindow(QMainWindow):
     '''
@@ -47,7 +48,7 @@ class MainWindow(QMainWindow):
         else:
             pyecog_string = 'PyEcog'
         print('\n', pyecog_string, '\n')
-
+        print(os.getcwd())
         # Initialize Main Window geometry
         # self.title = "ℙ𝕪𝔼𝕔𝕠𝕘"
         self.title = pyecog_string
@@ -252,7 +253,7 @@ class MainWindow(QMainWindow):
                             msg3 = QMessageBox(parent=self)
                             msg3.setIcon(QMessageBox.Information)
                             msg3.setText(
-                                "Please email this file to marco.leite.11@ucl.ac.uk for activation and restart the application")
+                                "Please email this file to marco.leite.11@ucl.ac.uk for activation and restart the application once you have the activated license file")
                             msg3.setDetailedText("File location:" + location)
                             msg3.setWindowTitle("Generate new License")
                             msg3.setStandardButtons(QMessageBox.Ok)
@@ -789,4 +790,5 @@ def execute():
 
 
 if __name__ == '__main__':
+    freeze_support()
     execute()

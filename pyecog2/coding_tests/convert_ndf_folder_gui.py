@@ -66,8 +66,8 @@ class NDFConverterWindow(QMainWindow):
         if self.settings is None:
             self.settings = {'NDFdir': os.getcwd(),
                              'H5dir': os.getcwd(),
-                             'start': '0001-01-01 00:00:00',
-                             'end': '9999-01-01 00:00:00',
+                             'start': '1971-01-01 00:00:00',
+                             'end': '2999-01-01 00:00:00',
                              'AnimalDictList':[{'id': 'Animal 1',
                                                 'tidfs': '[0],auto'}]
                              }
@@ -213,9 +213,9 @@ class NDFConverterWindow(QMainWindow):
 
     def convertFiles(self):
         start_string = self.p.param('Date Range', 'Start').value()
-        start_file_name = 'M' + str(int(datetime.strptime(start_string, self.dfrmt).timestamp())) + '.ndf'
+        start_time = int(datetime.strptime(start_string, self.dfrmt).timestamp())
         end_string = self.p.param('Date Range', 'End').value()
-        end_file_name = 'M' + str(int(datetime.strptime(end_string, self.dfrmt).timestamp())) + '.ndf'
+        end_time = int(datetime.strptime(end_string, self.dfrmt).timestamp())
 
         self.folder2convert = os.path.normpath(self.folder2convert)
         self.destination_folder = os.path.normpath(self.destination_folder)
@@ -227,8 +227,8 @@ class NDFConverterWindow(QMainWindow):
                                              'tidfs': a.value()} for a in self.p.param('Animal id: [TID1,TID2,...],fs').children()]
 
         self.files2convert = [os.path.join(self.folder2convert, f) for f in os.listdir(self.folder2convert)
-                              if (start_file_name <= f <= end_file_name)]
-        print(len(self.files2convert), 'files between:', start_file_name, 'and', end_file_name)
+                              if (start_time <= int(f[1:-4]) <= end_time)]
+        print(len(self.files2convert), 'files between:', start_time, 'and', end_time)
         for a in self.p.param('Animal id: [TID1,TID2,...],fs').children():
             dh = DataHandler()
             print('***\n Starting to convert', a.name(), a.value(),'\n***')

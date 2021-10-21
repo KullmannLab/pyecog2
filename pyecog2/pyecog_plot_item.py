@@ -55,7 +55,6 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
     def setData_with_envelope(self):
         n = self.n_display_points()*2
         #check if arguments have changed since last call:
-        # new_args = [self.parent_viewbox.viewRange()[0], self.channel, n]
         new_args = [self.parent_viewbox.viewRange(), self.channel, n]
         if new_args == self.previous_args:
             # print('setData_with_envlope: arguments did not change since last call')
@@ -112,6 +111,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
                         if len(visible_data):
                             self.visible_data = np.concatenate((visible_data,self.visible_data[:-len(visible_data)]))
                             self.visible_time = np.concatenate((visible_time,self.visible_time[:-len(visible_time)]))
+            # end of NEVER REACHED code
 
             if self.project.filter_settings[0]: # apply LP filter only for plots
                 fs = 2/(self.visible_time[2]-self.visible_time[0])

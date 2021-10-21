@@ -586,6 +586,10 @@ class PairedGraphicsView():
             # self.main_model.annotations.focusOnAnnotation(None)
             self.main_model.set_time_position(pos.x())
 
+        if modifiers == QtCore.Qt.AltModifier:
+            self.show
+
+
     def overview_range_changed(self, mask=None):
         x_range, _ = self.overview_plot.viewRange()
         self.set_scenes_plot_annotations_data(self.main_model.annotations, reset=False, pos=x_range)

@@ -28,7 +28,7 @@ def create_metafile_from_h5(file,duration = 3600):
     metadata = OrderedDict(fs=fs,
                            no_channels=len(h5_file.attributes['t_ids']),
                            data_format='h5',
-                           volts_per_bit=0,
+                           volts_per_bit=4e-7,
                            transmitter_id=str(h5_file.attributes['t_ids']),
                            start_timestamp_unix=int(os.path.split(file)[-1].split('_')[0][1:]),
                            duration=duration,  # assume all h5 files have 1hr duration
@@ -54,7 +54,7 @@ def read_neuropixels_metadata(fname):
          'start_timestamp_unix': datetime.timestamp(datetime.strptime(d['fileCreateTime'],'%Y-%m-%dT%H:%M:%S')),
          'duration':float(d['fileTimeSecs']),
          'data_format':'int16',
-         'volts_per_bit': 0}
+         'volts_per_bit': 0}  # this is probably somewhere...
     return m
 
 
@@ -303,18 +303,19 @@ class FileBuffer():  # Consider translating this to cython
             stop = sample_ranges[i][1]
             fs = self.metadata[i]['fs']
             no_channels = self.metadata[i]['no_channels']
+            dV = self.metadata[i]['volts_per_bit']
             # Decide by how much we should downsample
             ds = int((stop - start) / file_envlopes[i]) + 1
             # print('Downsampling ratio:', ds,file_envlopes,sample_ranges)
             if channel is None:
                 # poor coding here, we are not computing proper envelopes, but it'll do for now because this is only
                 # used for coputing channel scallings so far
-                enveloped_data.append(data[start:stop:ds, :])
+                enveloped_data.append(dV*data[start:stop:ds, :])
                 if ds != 0:
                     no_downsampling = False
             elif ds == 1:
                 # Small enough to display with no intervention.
-                enveloped_data.append(data[start:stop, channel].reshape(-1, 1))
+                enveloped_data.append(dV*data[start:stop, channel].reshape(-1, 1))
             else:
                 no_downsampling = False
                 # Here convert data into a down-sampled array suitable for visualizing.
@@ -348,7 +349,7 @@ class FileBuffer():  # Consider translating this to cython
                         visible_data[1 + targetPtr:1 + targetPtr + chunk_data.shape[0] * 2:2] = chunkMax_x
                         targetPtr += chunk_data.shape[0] * 2
 
-                    enveloped_data.append(visible_data[:targetPtr, :].reshape((-1, 1)))
+                    enveloped_data.append(dV*visible_data[:targetPtr, :].reshape((-1, 1)))
                 except Exception:
                     print('ERROR in downsampling')
                     raise

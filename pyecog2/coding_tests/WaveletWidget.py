@@ -51,7 +51,7 @@ def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), progress_signal = 
         if kill_switch[0]:
             break
         N = int(2 * R / vf[k] / dt)  # Compute size of the wavelet: 2 standard deviations
-        wave = sg.morlet(N, w=R, s=1, complete=0) / N * np.pi * 2  # Normalize de amplitude returned by sg.morlet
+        wave = sg.morlet(N, w=R, s=1, complete=0) / N * np.pi * 2   # Normalize de amplitude returned by sg.morlet
         # result[k, :] = sg.fftconvolve(input_signal, wave, mode='same')
         result[k, :] = sg.oaconvolve(input_signal, wave, mode='same')
         if progress_signal is not None:
@@ -101,7 +101,7 @@ def morlet_wavelet_fft(input_signal, dt=1, R=7, freq_interval=(), progress_signa
     for k in range(Nf):
         if kill_switch[0]:
             break
-        env = 2 * np.exp(-(np.arange(Ni)/Ni/dt - vf[k]) ** 2 / (2 * (vf[k] / R) ** 2)) / np.pi
+        env = 2 * np.exp(-(np.arange(Ni)/Ni/dt - vf[k]) ** 2 / (2 * (vf[k] / R) ** 2)) #/ np.pi
         result[k, :] = np.fft.ifft(input_signalf * env)
         if cross_data is not None:
             result_cross[k, :] = np.fft.ifft(cross_dataf * env)

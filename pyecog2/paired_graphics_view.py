@@ -587,7 +587,17 @@ class PairedGraphicsView():
             self.main_model.set_time_position(pos.x())
 
         if modifiers == QtCore.Qt.AltModifier:
-            self.show
+            for child in self.insetview_plot.childGroup.childItems()[:]:
+                if hasattr(child, 'accept_mousewheel_transformations'):
+                    m_old = child.transform()
+                    m = QtGui.QTransform()
+                    if round(child.y()) == round(pos.y()):
+                        print(f'paired graphics view: setting scale bar on channel{pos.y()}')
+                        self.set_scale_bar(child)
+                        return
+
+    def set_scale_bar(self,child):
+        pass
 
 
     def overview_range_changed(self, mask=None):

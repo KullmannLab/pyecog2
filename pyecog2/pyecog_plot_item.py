@@ -199,7 +199,8 @@ class PyecogScaleBar():
         self.bar_length = 0
         self.bar = PyecogInfiniteLine(QtCore.QPointF(10, 10), angle=90, yrange=[0, 0], pen=self.pen)
         self.bar.setParentItem(curve_item)
-        self.label_text = pg.TextItem('',anchor=(-.2,0), color=self.pen.color())
+        # self.label_text = pg.TextItem('',anchor=(-.2,0), color=self.pen.color())
+        self.label_text = pg.TextItem('',anchor=(0,0), color=self.pen.color())
         self.label_text.setParentItem(self.bar)
 
     def update_from_curve_item(self):
@@ -218,7 +219,7 @@ class PyecogScaleBar():
         self.bar._computeBoundingRect()
         label = f'{int(self.bar_length*p)}{pref}V'
         self.label_text.setText(label)
-        self.label_text.setPos(-data_range/2,0)
+        self.label_text.setPos(dmin,0)
         # print(f'Scale bar:{data_range},{p},{self.bar_length},{label}')
 
 

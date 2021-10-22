@@ -415,7 +415,7 @@ class PairedGraphicsView():
         # Add annotation plots
         for annotation in annotations.annotations_list:
             if intervals_overlap(annotation.getPos(), pos) and annotation not in self.plotted_annotations:
-                print('annotation.getpos , pos:', (annotation.getPos(), pos))
+                # print('annotation.getpos , pos:', (annotation.getPos(), pos))
                 self.add_annotaion_plot(annotation)
 
     def set_focus_on_annotation(self, annotation):
@@ -516,9 +516,9 @@ class PairedGraphicsView():
     def set_overview_center_position(self, pos):
         xmin, xmax = self.overview_plot.viewRange()[0]
         x_range = xmax - xmin
-        print(x_range, pos)
+        # print(x_range, pos)
         new_xrange = (pos - x_range / 2, pos + x_range / 2)
-        print(new_xrange)
+        # print(new_xrange)
         self.overview_plot.setRange(xRange=new_xrange,
                                     padding=0, )
 
@@ -538,7 +538,7 @@ class PairedGraphicsView():
                 pos0 = self.is_setting_ROI_position
                 new_xrange = (min(pos0.x(), pos.x()), max(pos0.x(), pos.x()))
                 new_yrange = (min(pos0.y(), pos.y()), max(pos0.y(), pos.y()))
-                print('old range:', self.insetview_plot.viewRange()[0], 'new range:', new_xrange)
+                # print('old range:', self.insetview_plot.viewRange()[0], 'new range:', new_xrange)
                 self.is_setting_ROI_position = False  # clear position of first shift+click
                 self.overviewROI.setPos((new_xrange[0], new_yrange[0]))
                 self.overviewROI.setSize((new_xrange[1] - new_xrange[0], new_yrange[1] - new_yrange[0]))
@@ -557,7 +557,7 @@ class PairedGraphicsView():
         # new_xrange = new_xrange - new_xrange
         new_yrange = (center.y() - y_range / 2, center.y() + y_range / 2)
 
-        print(new_xrange)
+        # print(new_xrange)
         self.insetview_plot.setRange(xRange=new_xrange,
                                      yRange=new_yrange,
                                      padding=0, )
@@ -586,6 +586,20 @@ class PairedGraphicsView():
             # self.main_model.annotations.focusOnAnnotation(None)
             self.main_model.set_time_position(pos.x())
 
+        # if modifiers == QtCore.Qt.AltModifier:
+        #     for child in self.insetview_plot.childGroup.childItems()[:]:
+        #         if hasattr(child, 'accept_mousewheel_transformations'):
+        #             m_old = child.transform()
+        #             m = QtGui.QTransform()
+        #             if round(child.y()) == round(pos.y()):
+        #                 print(f'paired graphics view: setting scale bar on channel{pos.y()}')
+        #                 self.set_scale_bar(child)
+        #                 return
+
+    # def set_scale_bar(self,child):
+    #     pass
+
+
     def overview_range_changed(self, mask=None):
         x_range, _ = self.overview_plot.viewRange()
         self.set_scenes_plot_annotations_data(self.main_model.annotations, reset=False, pos=x_range)
@@ -608,42 +622,42 @@ class PairedGraphicsView():
         xmin, xmax = self.insetview_plot.viewRange()[0]
         x_range = xmax - xmin
         new_xrange = (xmin - x_range, xmin)
-        print(new_xrange)
+        # print(new_xrange)
         self.insetview_plot.setRange(xRange=new_xrange, padding=0)
 
     def insetview_page_right(self):
         xmin, xmax = self.insetview_plot.viewRange()[0]
         x_range = xmax - xmin
         new_xrange = (xmax, xmax + x_range)
-        print(new_xrange)
+        # print(new_xrange)
         self.insetview_plot.setRange(xRange=new_xrange, padding=0)
 
     def insetview_set_xrange(self, x_range):
         xmin, xmax = self.insetview_plot.viewRange()[0]
         centre = (xmax + xmin) / 2
         new_xrange = (centre - x_range / 2, centre + x_range / 2)
-        print(new_xrange)
+        # print(new_xrange)
         self.insetview_plot.setRange(xRange=new_xrange, padding=0)
 
     def overview_set_xrange(self, x_range):
         xmin, xmax = self.overview_plot.viewRange()[0]
         centre = (xmax + xmin) / 2
         new_xrange = (centre - x_range / 2, centre + x_range / 2)
-        print(new_xrange)
+        # print(new_xrange)
         self.overview_plot.setRange(xRange=new_xrange, padding=0)
 
     def overview_page_left(self):
         xmin, xmax = self.overview_plot.viewRange()[0]
         x_range = xmax - xmin
         new_xrange = (xmin - x_range, xmin)
-        print(new_xrange)
+        # print(new_xrange)
         self.overview_plot.setRange(xRange=new_xrange, padding=0)
 
     def overview_page_right(self):
         xmin, xmax = self.overview_plot.viewRange()[0]
         x_range = xmax - xmin
         new_xrange = (xmax, xmax + x_range)
-        print(new_xrange)
+        # print(new_xrange)
         self.overview_plot.setRange(xRange=new_xrange, padding=0)
 
     def updateFilterSettings(self, settings=(False, 0, 1e6)):

@@ -1,2 +1,3 @@
 include pyecog2/icons/*.png
 include pyecog2/HelperHints.md
+include pyecog2/license/*

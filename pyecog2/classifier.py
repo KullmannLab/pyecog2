@@ -174,7 +174,7 @@ class ProjectClassifier():
         gc.train([a],progress_bar=pbar)
         gc.save(os.path.join(self.project.project_file + '_classifier',animal_id+'.npz'))
 
-    def classify_animal_with_global(self, animal, progress_bar=None,max_annotations=-1,labels2annotate=None, prob_th=0.5, outlier_th = 1):
+    def classify_animal_with_global(self, animal, progress_bar=None,max_annotations=-1,labels2annotate=None, prob_th=0.5, outlier_th = 1, viterbi=False):
         gc = GaussianClassifier(self.project,self.feature_extractor,self.global_classifier.labels2classify)
         gc.copy_from(self.animal_classifier_dict[animal.id])
         if gc.blank_npoints == 0:
@@ -182,7 +182,7 @@ class ProjectClassifier():
             print('Training animal specific classifier first...')
             gc.train([animal])
         gc.copy_re_normalized_classifier(self.global_classifier)
-        gc.classify_animal(animal,progress_bar,max_annotations,labels2annotate, prob_th=prob_th, outlier_th = outlier_th)
+        gc.classify_animal(animal,progress_bar,max_annotations,labels2annotate, prob_th=prob_th, outlier_th = outlier_th,viterbi=viterbi)
 
 
 

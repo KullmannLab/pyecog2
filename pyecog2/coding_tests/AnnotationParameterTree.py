@@ -112,10 +112,14 @@ class AnnotationParameterTee(PyecogParameterTree):
         print('AnnotationParameterTree Re_init children cleard (', timer()-start_t, 'seconds )')
         self.params = [ScalableGroup(name="Annotation Labels", children=Label_dict)]
         print('AnnotationParameterTree Re_init params created (', timer()-start_t, 'seconds )')
-        self.p.addChildren(self.params)
+
+        # self.p.addChildren(self.params) # this line  was taking increasingly long at each run, so reinstantiating self.p altogether
+        self.p = Parameter.create(name='params', type='group', children=self.params)
+
         print('AnnotationParameterTree Re_init children added (', timer()-start_t, 'seconds )')
         # self.update_color_from_group_parameters()
         self.setParameters(self.p, showTop=False)
+        print('AnnotationParameterTree Parameters set(', timer()-start_t, 'seconds )')
         self.headerItem().setHidden(True)
         self.p.sigTreeStateChanged.connect(self.change)
         print('AnnotationParameterTree Re_init finished (', timer()-start_t, 'seconds )')

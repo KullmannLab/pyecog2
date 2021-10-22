@@ -29,7 +29,8 @@ from datetime import datetime
 import pyqtgraph as pg
 from pyqtgraph.console import ConsoleWidget
 import pkg_resources
-
+from pyecog2 import license
+from multiprocessing import freeze_support
 
 class MainWindow(QMainWindow):
     '''
@@ -47,7 +48,7 @@ class MainWindow(QMainWindow):
         else:
             pyecog_string = 'PyEcog'
         print('\n', pyecog_string, '\n')
-
+        print(os.getcwd())
         # Initialize Main Window geometry
         # self.title = "ℙ𝕪𝔼𝕔𝕠𝕘"
         self.title = pyecog_string
@@ -61,11 +62,14 @@ class MainWindow(QMainWindow):
         # self.setWindowFlags(QtCore.Qt.FramelessWindowHint) # fooling around
         # self.setWindowFlags(QtCore.Qt.CustomizeWindowHint| QtCore.Qt.Tool)
         # self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+
         self.main_model = MainModel()
         self.autosave_timer = QtCore.QTimer()
         self.autosave_timer.timeout.connect(self.auto_save)
         self.live_recording_timer = QtCore.QTimer()
         self.live_recording_timer.timeout.connect(self.reload_plot)
+
+        self.check_license()
 
         # Populate Main window with widgets
         # self.createDockWidget()
@@ -123,15 +127,12 @@ class MainWindow(QMainWindow):
         self.dock_list['Annotation Parameter Tree'].setFeatures(
             QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
-        self.video_element = VideoWindow(project=self.main_model.project)
+        self.video_element = VideoWindow(main_model=self.main_model)
         self.dock_list['Video'] = QDockWidget("Video", self)
         self.dock_list['Video'].setWidget(self.video_element)
         self.dock_list['Video'].setObjectName("Video")
         # self.dock_list['Video'].setFloating(True)
         # self.dock_list['Video'].hide()
-        # Video units are in miliseconds, pyecog units are in seconds
-        self.video_element.sigTimeChanged.connect(self.main_model.set_time_position)
-        self.main_model.sigTimeChanged.connect(self.video_element.setGlobalPosition)
 
         self.dock_list['FFT'] = QDockWidget("FFT", self)
         self.dock_list['FFT'].setWidget(FFTwindow(self.main_model))
@@ -217,6 +218,64 @@ class MainWindow(QMainWindow):
         self.action_autosave.setChecked(self.settings.value("autoSave", type=bool))
         self.toggle_auto_save()
 
+
+    def check_license(self):
+        # Check if license is valid
+        license_is_valid = False
+        try:
+            if license.verify_license_file():
+                license_is_valid = True
+            else:
+                msg = QMessageBox(parent=self)
+                msg.setIcon(QMessageBox.Information)
+                msg.setText("Your license seems to be invalid. Do you have an activated PyEcogLicense.txt file?")
+                msg.setWindowTitle("Invalid License")
+                msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+                retval = msg.exec_()
+                if retval == QMessageBox.No:
+                    msg2 = QMessageBox(parent=self)
+                    msg2.setIcon(QMessageBox.Information)
+                    msg2.setText("Would you like to create a new PyEcog License file?")
+                    msg2.setWindowTitle("Generate new License")
+                    msg2.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+                    retval = msg2.exec_()
+                    if retval == QMessageBox.Yes:
+                        dialog2 = QFileDialog(parent=self)
+                        dialog2.setWindowTitle('Choose a directory to ssave PyEcogLicense.txt...')
+                        # dialog2.setFileMode(QFileDialog.DirectoryOnly)
+                        dialog2.setAcceptMode(QFileDialog.AcceptSave)
+                        dialog2.selectFile(('PyEcogLicense.txt'))
+                        if dialog2.exec():
+                            file_name = dialog2.selectedFiles()[0]
+                            if not file_name.endswith('.txt'):
+                                file_name = file_name + '.txt'
+                            location = license.copy_license_to_folder(file_name)
+                            msg3 = QMessageBox(parent=self)
+                            msg3.setIcon(QMessageBox.Information)
+                            msg3.setText(
+                                "Please email this file to marco.leite.11@ucl.ac.uk for activation and restart the application once you have the activated license file")
+                            msg3.setDetailedText("File location:" + location)
+                            msg3.setWindowTitle("Generate new License")
+                            msg3.setStandardButtons(QMessageBox.Ok)
+                            msg3.exec_()
+                else: # there is a valid license somewhere
+                    dialog = QFileDialog(parent=self)
+                    dialog.setWindowTitle('Load License ...')
+                    dialog.setFileMode(QFileDialog.ExistingFile)
+                    # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+                    dialog.setAcceptMode(QFileDialog.AcceptOpen)
+                    dialog.setNameFilter('*.txt')
+                    if dialog.exec():
+                        fname = dialog.selectedFiles()[0]
+                    license.copy_activated_license(fname)
+                    if license.verify_license_file():
+                        license_is_valid = True
+        finally:
+            # If license is not yet validated close
+            if not license_is_valid:
+                self.close()
+                sys.exit()
+
     def get_available_screen(self):
         app = QApplication.instance()
         screen = app.primaryScreen()
@@ -239,6 +298,7 @@ class MainWindow(QMainWindow):
         self.show()
 
     def load_directory(self, dirname=None):
+        license.update_license_reg_file()
         print('Openening folder')
         if type(dirname) != str:
             dirname = self.select_directory()
@@ -250,12 +310,14 @@ class MainWindow(QMainWindow):
         self.main_model.project = temp_project
 
     def new_project(self):
+        license.update_license_reg_file()
         self.main_model.project.__init__(main_model=self.main_model)  # = Project(self.main_model)
         self.tree_element.set_rootnode_from_project(self.main_model.project)
 
     def load_project(self, fname=None):
+        license.update_license_reg_file()
         if type(fname) is not str:
-            dialog = QFileDialog(self)
+            dialog = QFileDialog(parent=self)
             dialog.setWindowTitle('Load Project ...')
             dialog.setFileMode(QFileDialog.ExistingFile)
             # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
@@ -270,7 +332,7 @@ class MainWindow(QMainWindow):
                 last_file_modification = os.path.getmtime(fname)
                 last_autosave_modification = os.path.getmtime(fname + '_autosave')
                 if last_autosave_modification > last_file_modification:
-                    msg = QMessageBox()
+                    msg = QMessageBox(parent=self)
                     msg.setIcon(QMessageBox.Information)
                     msg.setText("A more recently modified autosave file exists, do you want to load it instead?")
                     msg.setDetailedText("File name:" + fname +
@@ -302,6 +364,7 @@ class MainWindow(QMainWindow):
 
     def save(self):
         print('save action triggered')
+        license.update_license_reg_file()
         fname = self.main_model.project.project_file
         if not os.path.isfile(fname):
             self.save_as()
@@ -311,7 +374,8 @@ class MainWindow(QMainWindow):
         self.toggle_auto_save()
 
     def save_as(self):
-        dialog = QFileDialog(self)
+        license.update_license_reg_file()
+        dialog = QFileDialog(parent=self)
         dialog.setWindowTitle('Save Project as ...')
         dialog.setFileMode(QFileDialog.AnyFile)
         # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
@@ -328,6 +392,7 @@ class MainWindow(QMainWindow):
         self.toggle_auto_save()
 
     def auto_save(self):
+        license.update_license_reg_file()
         print('autosave_save action triggered')
         fname = self.main_model.project.project_file
         if not os.path.isfile(fname):
@@ -387,7 +452,7 @@ class MainWindow(QMainWindow):
         '''
         Method launches a dialog allow user to select a directory
         '''
-        dialog = QFileDialog(self)
+        dialog = QFileDialog(parent=self)
         dialog.setWindowTitle(label_text)
         dialog.setFileMode(QFileDialog.DirectoryOnly)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
@@ -466,6 +531,7 @@ class MainWindow(QMainWindow):
             self.ClassifierWindow.setWindowState(
                 (self.ClassifierWindow.windowState() & ~Qt.WindowMinimized) | Qt.WindowActive)
             self.ClassifierWindow.raise_()
+            # self.ClassifierWindow.update_fields()
             self.ClassifierWindow.show()
             return
         self.ClassifierWindow = ClassifierWindow(self.main_model.project, parent=self)
@@ -475,7 +541,7 @@ class MainWindow(QMainWindow):
         self.ClassifierWindow.show()
 
     def export_annotations(self):
-        dialog = QFileDialog(self)
+        dialog = QFileDialog(parent=self)
         dialog.setWindowTitle('Export annotations as ...')
         dialog.setFileMode(QFileDialog.AnyFile)
         # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
@@ -725,4 +791,5 @@ def execute():
 
 
 if __name__ == '__main__':
+    freeze_support()
     execute()

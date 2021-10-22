@@ -51,7 +51,7 @@ def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), progress_signal = 
         if kill_switch[0]:
             break
         N = int(2 * R / vf[k] / dt)  # Compute size of the wavelet: 2 standard deviations
-        wave = sg.morlet(N, w=R, s=1, complete=0) / N * np.pi * 2  # Normalize de amplitude returned by sg.morlet
+        wave = sg.morlet(N, w=R, s=1, complete=0) / N * np.pi * 2   # Normalize de amplitude returned by sg.morlet
         # result[k, :] = sg.fftconvolve(input_signal, wave, mode='same')
         result[k, :] = sg.oaconvolve(input_signal, wave, mode='same')
         if progress_signal is not None:
@@ -101,7 +101,7 @@ def morlet_wavelet_fft(input_signal, dt=1, R=7, freq_interval=(), progress_signa
     for k in range(Nf):
         if kill_switch[0]:
             break
-        env = 2 * np.exp(-(np.arange(Ni)/Ni/dt - vf[k]) ** 2 / (2 * (vf[k] / R) ** 2)) / np.pi
+        env = 2 * np.exp(-(np.arange(Ni)/Ni/dt - vf[k]) ** 2 / (2 * (vf[k] / R) ** 2)) #/ np.pi
         result[k, :] = np.fft.ifft(input_signalf * env)
         if cross_data is not None:
             result_cross[k, :] = np.fft.ifft(cross_dataf * env)
@@ -311,8 +311,8 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         if self.cross_wav is not None: # plotting cross wavelet
             self.last_plot_was_cross = True
             cross_wav = self.wav*np.conj(self.cross_wav)
-            # self.value = np.log(np.abs(cross_wav)+1)/2
-            self.value = np.log(np.sqrt(np.abs(cross_wav))+1.001)
+            # self.value = np.log10(np.abs(cross_wav)+1)/2
+            self.value = np.log10(np.sqrt(np.abs(cross_wav))+1.001)
             maxvalue = np.max(self.value)
             self.data = hsvcolormap.map((np.angle(cross_wav)/(2*np.pi))%1)/256
             # self.data = np.apply_along_axis(lambda x:colorsys.hsv_to_rgb(*x), 0,  #apply function over 0th axis
@@ -327,17 +327,17 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             # intensity = np.abs(result)[:, :, np.newaxis]
 
             self.hist.gradient.loadPreset('spectrum')
-            self.hist.axis.setLabel( text = 'Hue: Phase (0 - 360<sup>o</sup>) <br> Saturation: Log Coherence', units = '')
+            self.hist.axis.setLabel( text = 'Hue: Phase (0 - 360<sup>o</sup>) <br> Saturation: Log Coherence', units = 'V')
             if self.hist_levels_cross is None:
                 self.hist_levels_cross = [0,maxvalue]
                 # self.hist.setLevels(*self.hist_levels_cross)
 
         else:  # plotting normal wavelet
             self.last_plot_was_wave = True
-            self.data = np.log(np.abs(self.wav)+1e-6)  # +1e-3
+            self.data = np.log10(np.abs(self.wav)+1e-9)  # +1e-3
             self.img.setImage(self.data + self.coi)
             self.hist.gradient.loadPreset('viridis')
-            self.hist.axis.setLabel(text='Amplitude', units='Log<sub>10</sub> a.u.')
+            self.hist.axis.setLabel(text='Amplitude', units='Log<sub>10</sub> V')
 
         self.img.resetTransform()
         ymin = np.log10(vf[0])

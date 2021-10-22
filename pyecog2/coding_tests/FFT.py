@@ -27,7 +27,7 @@ class FFTWindowItem(pg.PlotWidget):
         self.p1.setPen(self.main_model.color_settings['pen'])
         self.setBackground(self.main_model.color_settings['brush'])
         self.setXRange(0,100)
-        self.setLabel('left', 'Amplitude', units = 'a.u.')
+        self.setLabel('left', 'Amplitude', units = 'V')
         self.setLabel('bottom', 'Frequency', units = 'Hz')
         self.showGrid(x=True, y=True, alpha=0.15)
         self.channel = 0
@@ -49,11 +49,11 @@ class FFTWindowItem(pg.PlotWidget):
             # N = int(2**np.ceil(np.log2(len(data))))
             # dataf = np.fft.rfft(data.T,N)/N
             # vf = np.fft.rfftfreq(N)*1/(time[1]-time[0])
-            vf,t,z = stft(data.T,fs = 1/(time[10]-time[9]),nperseg=self.nfft/4,nfft=self.nfft) # avoid time edge values
+            vf,t,z = stft(data.T,fs = 1/(time[10]-time[9]),nperseg=self.nfft/4,nfft=self.nfft,detrend='linear') # avoid time edge values
             dataf = np.mean(np.abs(z),axis=-1).ravel()
             # print('FFT: data shape:',data.shape,'FFT: dataf shape:',dataf.shape,'vf shape:',vf.shape,'z shape:',z.shape)
             # self.p1.setData(x = vf, y = np.abs(dataf[0]))
-            self.p1.setData(x = vf+vf[1], y = np.abs(dataf))
+            self.p1.setData(x = vf+vf[1], y = 2*np.abs(dataf))
             self.setLabel('bottom', 'Frequency', units = 'Hz')
             # self.setLimits(xMin=vf[0],xMax=vf[-1],yMin=min(0,min(np.abs(dataf))),yMax = 1.1*max(dataf))
             print('Updated FFT')

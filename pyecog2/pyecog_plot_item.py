@@ -3,6 +3,7 @@ from PySide2.QtCore import QThread, Signal, Qt, QRect, QTimer
 from scipy import signal, stats
 # import pyqtgraph_copy.pyqtgraph as pg
 import pyqtgraph as pg
+from pyqtgraph.functions import siScale, siFormat
 import numpy as np
 from scipy import signal
 from pyecog2.ProjectClass import intervals_overlap
@@ -39,6 +40,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
         self.resetTransform()
         self.setZValue(1)
         self.previous_args = [[[0,0],[0,0]],-1,0]
+        self.scale_Bar = PyecogScaleBar(self, self.pen)
 
     def viewRangeChanged(self):
         # Re-compute data envlope and plot:
@@ -140,6 +142,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
         self.setData(y=visible_data.ravel(), x=self.visible_time.ravel(), pen=self.pen)  # update the plot
         # self.resetTransform()
         self.previous_args = new_args
+        self.scale_Bar.update_from_curve_item()
 
     def itemChange(self, *args):
         # here we may try to match?/ pair
@@ -174,6 +177,49 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
             # print(dragfocus)
             # print('change colour!')
             # print('is this focus?')
+
+class PyecogScaleBar():
+    def __init__(self, curve_item, pen=None, *args, **kwds):
+        # self.accept_mousewheel_transformations = False
+        self.curve_item = curve_item
+        if pen is None:
+            self.pen = pg.mkPen(pg.getConfigOption('foreground'))  # (1, 1, 1, 100)
+            color = self.pen.color()
+            rgb = color.getRgb()
+            color.setRgb(int(rgb[0] * 255 / 100), int(rgb[1] * 255 / 100), int(rgb[2] * 255 / 100), 200)
+            self.pen.setColor(color)
+        else:
+            self.pen = pg.mkPen(pen.color())  # (1, 1, 1, 100)
+            color = self.pen.color()
+            rgb = color.getRgb()
+            color.setRgb(int(rgb[0] * 255 / 100), int(rgb[1] * 255 / 100), int(rgb[2] * 255 / 100), 200)
+
+        self.pen.setWidth(5)
+        super().__init__(*args, **kwds)
+        self.bar_length = 0
+        self.bar = PyecogInfiniteLine(QtCore.QPointF(10, 10), angle=90, yrange=[0, 0], pen=self.pen)
+        self.bar.setParentItem(curve_item)
+        self.label_text = pg.TextItem('',anchor=(-.2,0), color=self.pen.color())
+        self.label_text.setParentItem(self.bar)
+
+    def update_from_curve_item(self):
+        if len(self.curve_item.visible_data):
+            dmax, dmin = (max(self.curve_item.visible_data) + 1e-12,  min(self.curve_item.visible_data)) # add a pico volt to avoid underflows
+        else:
+            return
+        data_range = dmax-min(self.curve_item.visible_data)
+        data_range10 = 10**np.floor(np.log10(data_range))
+        data_range = int(data_range/(data_range10))*data_range10
+        dmax, dmin = (dmax*data_range/(dmax-dmin) ,  dmin*data_range/(dmax-dmin))
+        (p, pref) = siScale(data_range)
+        self.bar.setPos((self.curve_item.visible_time[0]*.975 + 0.025*self.curve_item.visible_time[-1]))
+        self.bar_length = data_range
+        self.bar.yrange = [dmin, dmax]
+        self.bar._computeBoundingRect()
+        label = f'{int(self.bar_length*p)}{pref}V'
+        self.label_text.setText(label)
+        self.label_text.setPos(-data_range/2,0)
+        # print(f'Scale bar:{data_range},{p},{self.bar_length},{label}')
 
 
 class PyecogLinearRegionItem(pg.LinearRegionItem):

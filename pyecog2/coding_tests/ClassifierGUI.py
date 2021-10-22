@@ -14,6 +14,7 @@ from pyecog2.ProjectClass import Project
 from pyecog2.coding_tests.WaveletWidget import Worker
 from collections import OrderedDict
 from pyqtgraph.console import ConsoleWidget
+import numpy as np
 
 class OutputWrapper(QtCore.QObject):
     outputWritten = QtCore.Signal(object, object)
@@ -96,7 +97,7 @@ class ClassifierWindow(QMainWindow):
                 {'name': 'Automatic annotation settings',
                  'type': 'group',
                  'children': [{'name': 'Annotation threshold probability', 'type': 'float', 'value': 0.5,'bounds':[0,1],'dec': True},
-                              {'name': 'Outlier threshold factor', 'type': 'float', 'value': 1},
+                              {'name': 'Outlier threshold factor', 'type': 'float', 'value': 1,'bounds':[0,np.inf],'dec': True, 'min_step':1},
                               {'name': 'maximum number of annotations', 'type': 'int', 'value': 100},
                               {'name': 'Use Viterbi (only allows observed transitions - EXPERIMENTAL)', 'type': 'bool', 'value': False} ]
                  }
@@ -177,6 +178,10 @@ class ClassifierWindow(QMainWindow):
     def getLables2train(self):
         all_labels = self.project.get_all_labels()
         return [label for label in all_labels if self.p.param('Global Settings', 'Lablels to train', label).value()]
+
+    def getAnimals2use(self):
+        all_ids = self.project.get_all_animal_ids()
+        return [a for a in all_ids if self.p.param('Animal Settings', a, 'Use animal for global classifier').value()]
 
     def updateLabels(self):
         self.classifier = ProjectClassifier(self.project)
@@ -287,7 +292,7 @@ class ClassifierWindow(QMainWindow):
         return lambda: self.runGlobalClassifier(animal_id,pbar)
 
     def runGlobalClassifier(self, animal_id,pbar=None):
-        self.classifier.assimilate_global_classifier(labels2train=self.getLables2train())
+        self.classifier.assimilate_global_classifier(labels2train=self.getLables2train(), animals2use=self.getAnimals2use())
         print('Labeling', animal_id)
         animal = self.project.get_animal(animal_id)
         prob_th = self.p.param('Global Settings','Automatic annotation settings', 'Annotation threshold probability').value()

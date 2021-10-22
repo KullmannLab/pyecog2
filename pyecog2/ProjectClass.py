@@ -178,10 +178,12 @@ class FileBuffer():  # Consider translating this to cython
         if fname in self.files:  # skip if file is already buffered
             return
         else:
+            metadata = load_metadata_file(fname)
+            if metadata is None: # file probably does not exist, error in project file settings
+                return
+            self.metadata.append(metadata)
             self.files.append(fname)
 
-        metadata = load_metadata_file(fname)
-        self.metadata.append(metadata)
         if metadata['data_format'] == 'h5':
             try:
                 h5file = H5File(fname[:-4] + 'h5')
@@ -575,6 +577,9 @@ class Project():
 
     def get_all_labels(self):
         return set([l for a in self.animal_list for l in a.annotations.labels if not l.startswith('(auto)')])
+
+    def get_all_animal_ids(self):
+        return [a.id for a in self.animal_list]
 
     def set_temp_project_from_folder(self,eeg_folder):
         eeg_folder = os.path.normpath(eeg_folder)

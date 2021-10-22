@@ -153,15 +153,16 @@ class ProjectClassifier():
     def import_classifier(self,fname):
         self.imported_classifier.load(fname)
 
-    def assimilate_global_classifier(self,labels2train=None):
+    def assimilate_global_classifier(self,labels2train=None, animals2use=None ):
         _,_,npoints = self.imported_classifier.all_mu_and_cov()
         if npoints:
             self.global_classifier.copy_from(self.imported_classifier) # start with either blank classifier or something imported
         else:
             self.global_classifier = GaussianClassifier(self.project, self.feature_extractor,labels = labels2train)
         for k, gc in self.animal_classifier_dict.items():
-            print('assimilating',k)
-            self.global_classifier.assimilate_classifier(gc)
+            if animals2use is None or k in animals2use:
+                print('assimilating',k)
+                self.global_classifier.assimilate_classifier(gc)
         self.global_classifier.save(os.path.join(self.project.project_file + '_classifier','_global.npz'))
 
     def train_animal(self,animal_id,pbar=None,labels2train=None):

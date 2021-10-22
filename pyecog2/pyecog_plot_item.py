@@ -208,7 +208,7 @@ class PyecogScaleBar():
             dmax, dmin = (max(self.curve_item.visible_data) + 1e-12,  min(self.curve_item.visible_data)) # add a pico volt to avoid underflows
         else:
             return
-        data_range = dmax-min(self.curve_item.visible_data)
+        data_range  = min(dmax-dmin, 6*np.std(self.curve_item.visible_data)) #
         data_range10 = 10**np.floor(np.log10(data_range))
         data_range = int(data_range/(data_range10))*data_range10
         dmax, dmin = (dmax*data_range/(dmax-dmin) ,  dmin*data_range/(dmax-dmin))

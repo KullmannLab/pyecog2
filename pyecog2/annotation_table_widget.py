@@ -13,6 +13,8 @@ asUnicode = str
 def date_fmt(item):
     return datetime.utcfromtimestamp(item.value).strftime('%Y-%m-%d %H:%M:%S')
 
+def confidence_fromat(item):
+    return str(item.value)
 
 def _defersort(fn):
     def defersort(self, *args, **kwds):
@@ -74,10 +76,11 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
 
         self._sorting = None  # used when temporarily disabling sorting
 
-        self._formats = {None: None}  # stores per-column formats and entire table format
+        # self._formats = {None: None}  # stores per-column formats and entire table format
         self._formats = {None: None,
                          1: date_fmt,
-                         2: date_fmt}  # stores per-column formats and entire table format
+                         2: date_fmt,
+                         3: confidence_fromat}  # stores per-column formats and entire table format
 
         self.sortModes = {}  # stores per-column sort mode
         self.table_paused = False  # to use when doing batch updates e.g. deleting all annotation with a given label

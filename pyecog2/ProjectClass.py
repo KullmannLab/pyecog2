@@ -459,7 +459,7 @@ class Project():
             print('no main model defined')
 
         dict = self.__dict__.copy()
-        print(dict.keys())
+        # print(dict.keys())
         del (dict['main_model'])
         dict['animal_list'] = [animal.dict() for animal in self.animal_list]  # make animals into dicts
         if self.current_animal is not None:

@@ -393,7 +393,7 @@ class MainWindow(QMainWindow):
 
     def auto_save(self):
         license.update_license_reg_file()
-        print('autosave_save action triggered')
+        # print('autosave_save action triggered')
         fname = self.main_model.project.project_file
         if not os.path.isfile(fname):
             print('warning - project file does not exist yet')

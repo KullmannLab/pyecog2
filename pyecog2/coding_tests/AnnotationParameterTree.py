@@ -95,7 +95,7 @@ class AnnotationParameterTee(PyecogParameterTree):
         labels = self.annotationPage.labels
         if set(labels) != set(self.shortcut_keys.keys()):  # restart shortcut keys in case labels change in annotationPage
             self.shortcut_keys = dict([(l, i + 1) for i, l in enumerate(labels)])
-        print('AnnotationParameterTree Re_init shortcuts redefined (', timer()-start_t, 'seconds )')
+        # print('AnnotationParameterTree Re_init shortcuts redefined (', timer()-start_t, 'seconds )')
 
         Label_dict = [{'name': label,
                                'type': 'group',
@@ -107,50 +107,50 @@ class AnnotationParameterTee(PyecogParameterTree):
                                           ],
                                'renamable': True,
                                'removable': True} for i, label in enumerate(labels)]
-        print('AnnotationParameterTree Re_init label_dict generated (', timer()-start_t, 'seconds )')
+        # print('AnnotationParameterTree Re_init label_dict generated (', timer()-start_t, 'seconds )')
         self.p.clearChildren()
-        print('AnnotationParameterTree Re_init children cleard (', timer()-start_t, 'seconds )')
+        # print('AnnotationParameterTree Re_init children cleard (', timer()-start_t, 'seconds )')
         self.params = [ScalableGroup(name="Annotation Labels", children=Label_dict)]
-        print('AnnotationParameterTree Re_init params created (', timer()-start_t, 'seconds )')
+        # print('AnnotationParameterTree Re_init params created (', timer()-start_t, 'seconds )')
 
         # self.p.addChildren(self.params) # this line  was taking increasingly long at each run, so reinstantiating self.p altogether
         self.p = Parameter.create(name='params', type='group', children=self.params)
 
-        print('AnnotationParameterTree Re_init children added (', timer()-start_t, 'seconds )')
+        # print('AnnotationParameterTree Re_init children added (', timer()-start_t, 'seconds )')
         # self.update_color_from_group_parameters()
         self.setParameters(self.p, showTop=False)
-        print('AnnotationParameterTree Parameters set(', timer()-start_t, 'seconds )')
+        # print('AnnotationParameterTree Parameters set(', timer()-start_t, 'seconds )')
         self.headerItem().setHidden(True)
         self.p.sigTreeStateChanged.connect(self.change)
-        print('AnnotationParameterTree Re_init finished (', timer()-start_t, 'seconds )')
+        # print('AnnotationParameterTree Re_init finished (', timer()-start_t, 'seconds )')
 
 
     ## If anything changes in the tree, print a message
     def change(self, param, changes):
-        print("tree changes:")
+        # print("tree changes:")
         for param, change, data in changes:
             path = self.p.childPath(param)
             if path is not None:
                 childName = '.'.join(path)
             else:
                 childName = param.name()
-            print('  parameter: %s' % childName)
-            print('  change:    %s' % change)
-            print('  data:      %s' % str(data))
-            print('  ----------')
+            # print('  parameter: %s' % childName)
+            # print('  change:    %s' % change)
+            # print('  data:      %s' % str(data))
+            # print('  ----------')
             if change == 'value':  # check for changes in colors, rangesand shrotcurs
                 label = path[-2]
                 if path[-1] == 'color':
                     color = (data.red(), data.green(), data.blue())
                     self.annotationPage.change_label_color(label,color)
                 elif path[-1] == 'Channel range':
-                    print('setting new channel range',data,'for label',label)
+                    # print('setting new channel range',data,'for label',label)
                     self.annotationPage.change_label_channel_range(label,str(data))
                 elif path[-1] == 'shortcut key':
                     self.shortcut_keys[label] = data
             if change == 'name':  # check for changes in labels
                 new_labels = [c.name() for c in self.p.child('Annotation Labels').children()]
-                print('new labels:', new_labels)
+                # print('new labels:', new_labels)
                 for old_label in self.annotationPage.labels:
                     if old_label not in new_labels:
                         self.shortcut_keys[data] = self.shortcut_keys[old_label]
@@ -159,13 +159,13 @@ class AnnotationParameterTee(PyecogParameterTree):
             if change == 'childRemoved':
                 label = data.name()
                 del self.shortcut_keys[label]
-                print('Shortcut Keys:',self.shortcut_keys)
+                # print('Shortcut Keys:',self.shortcut_keys)
                 self.annotationPage.delete_label(label)
             if change == 'childAdded':
                 label = data[0].name()
                 qcolor = data[0].children()[1].value()
                 color = (qcolor.red(), qcolor.green(), qcolor.blue())
-                print('adding label', label, color)
+                # print('adding label', label, color)
                 self.shortcut_keys[label] = len(self.shortcut_keys) +1
                 self.annotationPage.add_label(label, color)
 
@@ -179,8 +179,8 @@ class AnnotationParameterTee(PyecogParameterTree):
         #         label = p.name()
         # return label
         label = None
-        print('Shortcut Keys:', self.shortcut_keys)
-        print('looking for key', shortcutkey)
+        # print('Shortcut Keys:', self.shortcut_keys)
+        # print('looking for key', shortcutkey)
         for label in self.shortcut_keys.keys():
             if self.shortcut_keys[label] == shortcutkey:
                 return label

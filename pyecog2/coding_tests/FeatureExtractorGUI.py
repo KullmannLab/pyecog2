@@ -141,7 +141,9 @@ class FeatureExtractorWindow(QMainWindow):
         self.button3 = QPushButton('Export Settings File', self)
         self.button3.clicked.connect(self.exportSettingsFile)
         self.progressBar0 = QProgressBar()
+        self.progressBar0.setFormat('Animals: %p%')
         self.progressBar1 = QProgressBar()
+        self.progressBar1.setFormat('Files: %p%')
         self.t = PyecogParameterTree()
         self.updateTreeFromSettings()
 
@@ -229,8 +231,8 @@ class FeatureExtractorWindow(QMainWindow):
         self.feature_extractor.save_settings(os.path.join(classifier_dir, '_feature_extractor.json'))
         print('Starting FE worker')
         worker = Worker(self.extractFeatures)
-        self.progressBar0.setValue(0)
-        self.progressBar1.setValue(0)
+        self.progressBar0.setValue(0.1)
+        self.progressBar1.setValue(0.1)
         self.threadpool.start(worker)
 
     def extractFeatures(self):

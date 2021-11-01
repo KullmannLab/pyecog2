@@ -54,7 +54,7 @@ def read_neuropixels_metadata(fname):
          'start_timestamp_unix': datetime.timestamp(datetime.strptime(d['fileCreateTime'],'%Y-%m-%dT%H:%M:%S')),
          'duration':float(d['fileTimeSecs']),
          'data_format':'int16',
-         'volts_per_bit': 0}  # this is probably somewhere...
+         'volts_per_bit': 1.170e-3/float(eval('[' + (d['~imroTbl'].replace('(', ',(').replace(' ', ',')[1:] + ']') )[1][3])}
     return m
 
 
@@ -305,7 +305,7 @@ class FileBuffer():  # Consider translating this to cython
             stop = sample_ranges[i][1]
             fs = self.metadata[i]['fs']
             no_channels = self.metadata[i]['no_channels']
-            dV = self.metadata[i]['volts_per_bit']
+            dV = self.metadata[i]['volts_per_bit'] if self.metadata[i]['volts_per_bit'] != 0 else 1
             # Decide by how much we should downsample
             ds = int((stop - start) / file_envlopes[i]) + 1
             # print('Downsampling ratio:', ds,file_envlopes,sample_ranges)

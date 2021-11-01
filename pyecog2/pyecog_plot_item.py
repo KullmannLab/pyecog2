@@ -205,13 +205,14 @@ class PyecogScaleBar():
 
     def update_from_curve_item(self):
         if len(self.curve_item.visible_data):
-            dmax, dmin = (max(self.curve_item.visible_data) + 1e-12,  min(self.curve_item.visible_data)) # add a pico volt to avoid underflows
+            dmax, dmin = (max(self.curve_item.visible_data),  min(self.curve_item.visible_data)) # add a pico volt to avoid underflows
+            drange0 = (dmax-dmin) + 1e-12
         else:
             return
-        data_range  = min(dmax-dmin, 6*np.std(self.curve_item.visible_data)) #
+        data_range = min(drange0, 6*np.std(self.curve_item.visible_data) + 1e-12)
         data_range10 = 10**np.floor(np.log10(data_range))
-        data_range = int(data_range/(data_range10))*data_range10
-        dmax, dmin = (dmax*data_range/(dmax-dmin) ,  dmin*data_range/(dmax-dmin))
+        data_range = int(drange0/data_range10)*data_range10  # keep just one significant digit
+        dmax, dmin = (dmax*data_range/drange0,  dmin*data_range/drange0)
         (p, pref) = siScale(data_range)
         self.bar.setPos((self.curve_item.visible_time[0]*.975 + 0.025*self.curve_item.visible_time[-1]))
         self.bar_length = data_range

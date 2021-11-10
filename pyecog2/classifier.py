@@ -153,23 +153,24 @@ class ProjectClassifier():
     def import_classifier(self,fname):
         self.imported_classifier.load(fname)
 
-    def assimilate_global_classifier(self,labels2train=None):
+    def assimilate_global_classifier(self,labels2train=None, animals2use=None,features2use=None):
         _,_,npoints = self.imported_classifier.all_mu_and_cov()
         if npoints:
             self.global_classifier.copy_from(self.imported_classifier) # start with either blank classifier or something imported
         else:
-            self.global_classifier = GaussianClassifier(self.project, self.feature_extractor,labels = labels2train)
+            self.global_classifier = GaussianClassifier(self.project, self.feature_extractor,labels = labels2train, features=features2use)
         for k, gc in self.animal_classifier_dict.items():
-            print('assimilating',k)
-            self.global_classifier.assimilate_classifier(gc)
+            if animals2use is None or k in animals2use:
+                print('assimilating',k)
+                self.global_classifier.assimilate_classifier(gc)
         self.global_classifier.save(os.path.join(self.project.project_file + '_classifier','_global.npz'))
 
-    def train_animal(self,animal_id,pbar=None,labels2train=None):
+    def train_animal(self,animal_id,pbar=None,labels2train=None,features2use=None):
         a = self.project.get_animal(animal_id)
         if False:  # animal_id in self.animal_classifier_dict.keys(): # At this point there is no point on keping the previous classifier
             gc = self.animal_classifier_dict[animal_id]
         else:
-            gc = GaussianClassifier(self.project,self.feature_extractor,labels = labels2train)
+            gc = GaussianClassifier(self.project,self.feature_extractor,labels = labels2train, features=features2use)
             self.animal_classifier_dict[animal_id] = gc
         gc.train([a],progress_bar=pbar)
         gc.save(os.path.join(self.project.project_file + '_classifier',animal_id+'.npz'))
@@ -191,12 +192,19 @@ class GaussianClassifier():
     Class to setup, train and run the classifier on feature files from animal
     '''
 
-    def __init__(self,project,feature_extractor,labels=None):
+    def __init__(self,project,feature_extractor, labels=None,features=None):
         self.project = project
-        if labels is None:
+        if labels is None: # which labels to classify
             labels = self.project.get_all_labels()
-        self.labels2classify = np.array(list(labels)) # Populate this with the annotation labels to classify
-        self.Ndim = np.array(feature_extractor.number_of_features)
+        self.labels2classify = np.array(list(labels))  # Populate this with the annotation labels to classify
+
+        if features is None:  # which features to use in classifier
+            self.features = np.ones(feature_extractor.number_of_features)
+        else:
+            self.features = features
+        self.Ndim = int(np.sum(self.features))
+        self.FeatureExtractorNdim = feature_extractor.number_of_features
+
         self.overlap = np.array(feature_extractor.settings['overlap'])
         self.class_means   = np.zeros((len(self.labels2classify),self.Ndim))
         self.class_cov     = np.tile(np.eye(self.Ndim),(len(self.labels2classify),1,1))
@@ -297,14 +305,14 @@ class GaussianClassifier():
                 with open(fmeta_file) as f:
                     fmeta_dict = json.load(f)
                 f_vec = np.fromfile(feature_file, dtype=fmeta_dict['data_format'])
-                f_vec_d = f_vec.reshape((-1, self.Ndim))
-                # if sum(np.isfinite(f_vec)) != len(f_vec):
-                #     print('\nNaNs found in:',feature_file,'\n')
+                # condition fvec
+                f_vec_d = f_vec.reshape((-1, self.FeatureExtractorNdim))
+                f_vec_d = f_vec_d[:, self.features]
                 np.nan_to_num(f_vec_d,copy=False)
                 f_label = np.zeros(f_vec_d.shape[0])
 
                 for i, label in enumerate(self.labels2classify):
-                    lp = (labeled_positions[label]-fmeta_dict['start_timestamp_unix'])*fmeta_dict['fs'] # annotation positions in units of samples
+                    lp = (labeled_positions[label]-fmeta_dict['start_timestamp_unix'])*fmeta_dict['fs'] #  annotation positions in units of samples
                     if len(lp)>0:
                         lp[:,0] = np.floor(lp[:,0])
                         lp[:, 1] = np.ceil(lp[:, 1])
@@ -357,7 +365,7 @@ class GaussianClassifier():
             progress_bar.setValue(100)
         # self.hmm.A = tansitions2rates(T, self.blank_npoints, self.class_npoints)
         # print('HMM.A:\n',self.hmm.A)
-                
+
     def log_likelyhoods(self, f_vec, bias=True, no_scale = False):
         LL = np.zeros((f_vec.shape[0], self.class_means.shape[0]+1))
         LL[:,0] = MVGD_LL(f_vec,self.blank_means,reg_invcov(self.blank_cov,self.blank_npoints),no_scale)
@@ -387,7 +395,8 @@ class GaussianClassifier():
         for i,eegfname in enumerate(eegfiles):
             fname = '.'.join(eegfname.split('.')[:-1] + ['features'])
             f_vec = np.fromfile(fname, dtype='float64')
-            f_vec = f_vec.reshape((-1, self.Ndim))
+            f_vec = f_vec.reshape((-1, self.FeatureExtractorNdim))
+            f_vec = f_vec[:, self.features]
             np.nan_to_num(f_vec, copy=False)
             fmeta_file = '.'.join(eegfname.split('.')[:-1] + ['fmeta'])
             with open(fmeta_file) as f:
@@ -510,5 +519,5 @@ class GaussianClassifier():
         for key in self.__dict__.keys():
             if key != 'project':
                 self.__dict__[key] = gaussian_classifier.__dict__[key].copy()
-                
+
 

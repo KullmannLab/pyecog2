@@ -54,7 +54,7 @@ def read_neuropixels_metadata(fname):
          'start_timestamp_unix': datetime.timestamp(datetime.strptime(d['fileCreateTime'],'%Y-%m-%dT%H:%M:%S')),
          'duration':float(d['fileTimeSecs']),
          'data_format':'int16',
-         'volts_per_bit': 0}  # this is probably somewhere...
+         'volts_per_bit': 1.170e-3/float(eval('[' + (d['~imroTbl'].replace('(', ',(').replace(' ', ',')[1:] + ']') )[1][3])}
     return m
 
 
@@ -178,10 +178,12 @@ class FileBuffer():  # Consider translating this to cython
         if fname in self.files:  # skip if file is already buffered
             return
         else:
+            metadata = load_metadata_file(fname)
+            if metadata is None: # file probably does not exist, error in project file settings
+                return
+            self.metadata.append(metadata)
             self.files.append(fname)
 
-        metadata = load_metadata_file(fname)
-        self.metadata.append(metadata)
         if metadata['data_format'] == 'h5':
             try:
                 h5file = H5File(fname[:-4] + 'h5')
@@ -303,7 +305,7 @@ class FileBuffer():  # Consider translating this to cython
             stop = sample_ranges[i][1]
             fs = self.metadata[i]['fs']
             no_channels = self.metadata[i]['no_channels']
-            dV = self.metadata[i]['volts_per_bit']
+            dV = self.metadata[i]['volts_per_bit'] if self.metadata[i]['volts_per_bit'] != 0 else 1
             # Decide by how much we should downsample
             ds = int((stop - start) / file_envlopes[i]) + 1
             # print('Downsampling ratio:', ds,file_envlopes,sample_ranges)
@@ -457,7 +459,7 @@ class Project():
             print('no main model defined')
 
         dict = self.__dict__.copy()
-        print(dict.keys())
+        # print(dict.keys())
         del (dict['main_model'])
         dict['animal_list'] = [animal.dict() for animal in self.animal_list]  # make animals into dicts
         if self.current_animal is not None:
@@ -575,6 +577,9 @@ class Project():
 
     def get_all_labels(self):
         return set([l for a in self.animal_list for l in a.annotations.labels if not l.startswith('(auto)')])
+
+    def get_all_animal_ids(self):
+        return [a.id for a in self.animal_list]
 
     def set_temp_project_from_folder(self,eeg_folder):
         eeg_folder = os.path.normpath(eeg_folder)

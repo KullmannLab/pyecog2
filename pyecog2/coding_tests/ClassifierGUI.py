@@ -8,12 +8,15 @@ from pyqtgraph.parametertree import Parameter, ParameterTree
 from pyecog2.ndf_converter import NdfFile, DataHandler
 from pyecog2.coding_tests.WaveletWidget import Worker
 from pyecog2.coding_tests.pyecogParameterTree import PyecogParameterTree,PyecogGroupParameter
-from pyecog2.feature_extractor import FeatureExtractor
 from pyecog2.classifier import GaussianClassifier, ProjectClassifier
+from pyecog2.feature_extractor import FeatureExtractor
 from pyecog2.ProjectClass import Project
 from pyecog2.coding_tests.WaveletWidget import Worker
 from collections import OrderedDict
 from pyqtgraph.console import ConsoleWidget
+import numpy as np
+import json
+
 
 class OutputWrapper(QtCore.QObject):
     outputWritten = QtCore.Signal(object, object)
@@ -59,6 +62,12 @@ def Animal2Parameter(animal):
 def Parameter2Animal(parameter):
     pass
 
+def FeatureExtractor2Parameter(feature_extractor):
+    return {'name': 'Features to use', 'type': 'group', 'expanded': False, 'children': [
+             {'name': feature_label, 'type': 'bool', 'value':True}
+             for feature_label in feature_extractor.settings['feature_labels']]
+           }
+
 class ClassifierWindow(QMainWindow):
     def __init__(self,project = None,parent = None):
         QMainWindow.__init__(self,parent = parent)
@@ -70,6 +79,11 @@ class ClassifierWindow(QMainWindow):
             project = Project()
         self.project = project
         self.classifier = ProjectClassifier(project)
+        self.feature_extractor = FeatureExtractor()
+        classifier_dir = self.project.project_file + '_classifier' if project is not None else ''
+        if os.path.isfile(os.path.join(classifier_dir, '_feature_extractor.json')):
+            self.feature_extractor.load_settings(os.path.join(classifier_dir, '_feature_extractor.json'))
+
         # if self.project is None:
         #     self.project = Project(main_model=MainModel())
         #     self.project.add_animal(Animal(id='0'))
@@ -96,10 +110,11 @@ class ClassifierWindow(QMainWindow):
                 {'name': 'Automatic annotation settings',
                  'type': 'group',
                  'children': [{'name': 'Annotation threshold probability', 'type': 'float', 'value': 0.5,'bounds':[0,1],'dec': True},
-                              {'name': 'Outlier threshold factor', 'type': 'float', 'value': 1},
+                              {'name': 'Outlier threshold factor', 'type': 'float', 'value': 1,'bounds':[0,np.inf],'dec': True, 'min_step':1},
                               {'name': 'maximum number of annotations', 'type': 'int', 'value': 100},
                               {'name': 'Use Viterbi (only allows observed transitions - EXPERIMENTAL)', 'type': 'bool', 'value': False} ]
-                 }
+                 },
+                FeatureExtractor2Parameter(self.feature_extractor)
                 # {'name': 'Assimilate global classifier from individual animals', 'type': 'action'},
                 # {'name': 'Train global classifier','type': 'action', 'children':[
                 #     {'name': 'Training Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}
@@ -120,7 +135,7 @@ class ClassifierWindow(QMainWindow):
                         {'name': 'Annotation Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}]},
                 ]}
                 for animal in self.classifier.animal_classifier_dict.keys()]
-                 },
+                 }
             ]
 
         ## Create tree of Parameter objects
@@ -164,11 +179,12 @@ class ClassifierWindow(QMainWindow):
         stderr = OutputWrapper(self, False)
         stderr.outputWritten.connect(self.handleOutput)
 
-        self.project.current_animal.annotations.sigLabelsChanged.connect(self.updateLabels)
+        self.project.main_model.annotations.sigLabelsChanged.connect(self.updateLabels)
         self.project.main_model.sigProjectChanged.connect(self.update_settings)
         self.threadpool = QtCore.QThreadPool()
         self.dfrmt = '%Y-%m-%d %H:%M:%S'  # Format to use in date elements
 
+        self.restoreState()
 
     def getLables2Annotate(self):
         all_labels = self.project.get_all_labels()
@@ -177,6 +193,13 @@ class ClassifierWindow(QMainWindow):
     def getLables2train(self):
         all_labels = self.project.get_all_labels()
         return [label for label in all_labels if self.p.param('Global Settings', 'Lablels to train', label).value()]
+
+    def getAnimals2use(self):
+        all_ids = self.project.get_all_animal_ids()
+        return [a for a in all_ids if self.p.param('Animal Settings', a, 'Use animal for global classifier').value()]
+
+    def getFeatures2use(self):
+        return np.array([self.p.param('Global Settings','Features to use', f).value() for f in self.feature_extractor.settings['feature_labels']])
 
     def updateLabels(self):
         self.classifier = ProjectClassifier(self.project)
@@ -230,8 +253,10 @@ class ClassifierWindow(QMainWindow):
                 self.p.param('Animal Settings').removeChild(a)
 
     def update_settings(self):
+        self.saveState()
         self.updateLabels()
         self.updateAnimals()
+        self.restoreState()
 
 
     def homogenize_labels(self):
@@ -262,7 +287,7 @@ class ClassifierWindow(QMainWindow):
         print('Training', animal_id)
         if pbar is not None:
             pbar.setValue(0.1)
-        worker = Worker(self.classifier.train_animal,animal_id,pbar,self.getLables2train())
+        worker = Worker(self.classifier.train_animal,animal_id,pbar,self.getLables2train(), self.getFeatures2use())
         self.threadpool.start(worker)
         return 1, 1
 
@@ -287,7 +312,7 @@ class ClassifierWindow(QMainWindow):
         return lambda: self.runGlobalClassifier(animal_id,pbar)
 
     def runGlobalClassifier(self, animal_id,pbar=None):
-        self.classifier.assimilate_global_classifier(labels2train=self.getLables2train())
+        self.classifier.assimilate_global_classifier(labels2train=self.getLables2train(), animals2use=self.getAnimals2use(), features2use=self.getFeatures2use())
         print('Labeling', animal_id)
         animal = self.project.get_animal(animal_id)
         prob_th = self.p.param('Global Settings','Automatic annotation settings', 'Annotation threshold probability').value()
@@ -304,6 +329,27 @@ class ClassifierWindow(QMainWindow):
         print('Worker Finished, emitting LabelsChanged signal')
         self.project.main_model.annotations.sigLabelsChanged.emit('')
 
+    def saveState(self):
+        classifier_dir = self.project.project_file + '_classifier'
+        if not os.path.isdir(classifier_dir):
+            os.mkdir(classifier_dir)
+
+        fname = os.path.join(classifier_dir, 'classifier_gui_state.json')
+        with open(fname, 'w') as json_file:
+            s = self.p.saveState()
+            json.dump(s, json_file, indent=2)
+
+    def restoreState(self):
+        classifier_dir = self.project.project_file + '_classifier'
+        fname = os.path.join(classifier_dir, 'classifier_gui_state.json')
+        if not os.path.isfile(fname):
+             return
+        with open(fname, 'r') as json_file:
+            s = json.load(json_file)
+        self.p.restoreState(s,addChildren=False,removeChildren=False)
+
+    def closeEvent(self,evnet):
+        self.saveState()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

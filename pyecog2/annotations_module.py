@@ -163,7 +163,7 @@ class AnnotationPage(QObject):
 
     def copy_from(self, annotation_page, clear_history=True,connect_history=True,quiet = False):
         start_t=timer()
-        print('AnnotationPage copy_from start')
+        # print('AnnotationPage copy_from start')
         # self.__dict__ = annotation_page.__dict__  # does not work with PySide
         self.initialize_from_dict(annotation_page.__dict__)
         if not quiet:
@@ -172,9 +172,9 @@ class AnnotationPage(QObject):
             self.connect_annotations_to_history()
         if clear_history:
             self.clear_history() # Reset history
-            print('copy from - history reset')
+            # print('copy from - history reset')
 
-        print('AnnotationPage copy_from finished in', timer()-start_t,'seconds')
+        # print('AnnotationPage copy_from finished in', timer()-start_t,'seconds')
 
     # def copy_to(self, annotation_page):
     #     annotation_page.__dict__ = self.__dict__
@@ -313,7 +313,7 @@ class AnnotationPage(QObject):
                 self.label_channel_range_dict[label] = None
 
             self.sigLabelsChanged.emit(label)
-            print('add label')
+            print('add label: sigLabelsChanged emitted')
             self.cache_to_history()
         else:
             print('Annotations: Label already exists')

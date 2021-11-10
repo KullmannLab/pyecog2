@@ -223,7 +223,7 @@ class PairedGraphicsView():
             if len(arr.shape) < 2:
                 return
             self.n_channels = arr.shape[1]
-            self.scale = 1 / (8 * np.mean(np.std(arr, axis=0, keepdims=True), axis=1))
+            self.scale = 1 / (8 * np.mean(np.std(arr, axis=0, keepdims=True), axis=1) + 1e-12)
             self.overview_plot.vb.setYRange(-2, arr.shape[1] + 1)
             self.insetview_plot.vb.setYRange(-2, arr.shape[1] + 1)
             self.timeline_plot.setTitle('<p style="font-size:large"> Animal: ' + self.animalid + '</b>')

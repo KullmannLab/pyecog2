@@ -393,7 +393,7 @@ class MainWindow(QMainWindow):
 
     def auto_save(self):
         license.update_license_reg_file()
-        print('autosave_save action triggered')
+        # print('autosave_save action triggered')
         fname = self.main_model.project.project_file
         if not os.path.isfile(fname):
             print('warning - project file does not exist yet')
@@ -681,8 +681,16 @@ class MainWindow(QMainWindow):
         settings.beginGroup("MainWindow")
         settings.setValue("windowGeometry", self.saveGeometry())
         settings.setValue("windowState", self.saveState())
-        settings.setValue("darkMode", self.action_darkmode.isChecked())
-        settings.setValue("autoSave", self.action_autosave.isChecked())
+        try:
+            darkmode = self.action_darkmode.isChecked()
+        except Exception:
+            darkmode = False
+        settings.setValue("darkMode", darkmode)
+        try:
+            autosave = self.action_autosave.isChecked()
+        except Exception:
+            autosave = True
+        settings.setValue("autoSave", autosave)
         settings.endGroup()
 
         settings.beginGroup("ProjectSettings")

@@ -125,8 +125,11 @@ class VideoWindow(QWidget):
     def play(self):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
             self.mediaPlayer.pause()
+            print("Video player: pausing")
         else:
+            self.last_position -= 1  # take one millisecond to last position so that first position update is not skipped
             self.mediaPlayer.play()
+            print("Video player: playing")
 
     def mediaStateChanged(self, state):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
@@ -148,6 +151,7 @@ class VideoWindow(QWidget):
         #     return
         if position == 0 or self.waiting_for_file or self.duration == -1 or position == self.last_position:
             # avoid position changes on file transitions or repeated signals on same position
+            print("Video player skiping position update" + str((position == 0 , self.waiting_for_file , self.duration == -1 , position == self.last_position)))
             return
         if position < self.duration-40:  # avoid time changes when switching files
             self.last_position = position
@@ -172,7 +176,7 @@ class VideoWindow(QWidget):
     def setGlobalPosition(self, pos):
         # Connected to project main model sigTimeChanged
         # open the right media
-        print('VideoPlayer setGlobalPosition')
+        # print('VideoPlayer setGlobalPosition')
         if self.current_time_range[0] <= pos <= self.current_time_range[1]: # correct file opened
             position = int((pos-self.current_time_range[0])*1000)
             if self.mediaPlayer.state() == QMediaPlayer.PlayingState and abs(position-self.last_position)<200:
@@ -220,17 +224,21 @@ class VideoWindow(QWidget):
                 self.waiting_for_file = False
                 # print('finished loading file')
                 # self.mediaPlayer.stop()
+                self.duration = self.mediaPlayer.duration()
                 self.mediaPlayer.setPosition(self.position_on_new_file)
                 self.mediaPlayer.play()
                 time.sleep(.05)
+                # if not self.media_state_before_file_transition == QMediaPlayer.PlayingState:
+                #     self.mediaPlayer.pause()
                 self.mediaPlayer.pause()
                 if self.media_state_before_file_transition == QMediaPlayer.PlayingState:
+                    print("resuming play state")
                     self.mediaPlayer.play()
                 # print('finished setting position on new file')
 
 
     def handleError(self):
-        self.playButton.setEnabled(False)
+        # self.playButton.setEnabled(False)
         self.errorLabel.setText("Error: " + self.mediaPlayer.errorString())
         print("Video - Error: " + self.mediaPlayer.errorString())
 

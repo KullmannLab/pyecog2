@@ -63,7 +63,7 @@ def Animal2Parameter(animal):
             'children' : [
                 {'name': 'new id',
                  'type': 'str',
-                 'value': animal.id},
+                 'value': animal.id,},
                 {'name':'EEG directory',
                     'type': 'str',
                     'value': animal.eeg_folder},
@@ -211,6 +211,7 @@ class ProjectEditWindow(QMainWindow):
                 self.project.add_animal(Animal(id=id,eeg_folder=eeg_dir,video_folder=video_dir))
             else:
                 print('Updating animal with id', id)
+                animal.id = id
                 animal.update_eeg_folder(eeg_dir)
                 animal.update_video_folder(video_dir)
 

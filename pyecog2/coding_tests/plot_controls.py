@@ -112,6 +112,9 @@ class PlotControls(QWidget):
         # self.channel_selector = ChannelSelectorWindow(self.main_model)
         # self.channel_selector.show()
 
+    def set_values(self,filter):
+        pass
+
 if __name__ == '__main__':
     import sys
     # if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):

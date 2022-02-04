@@ -100,10 +100,10 @@ class AnnotationElement(QObject):
     #      print('Annotation completely removed')
 
     def __repr__(self):
-        return repr(dict(self.element_dict))
+        return repr(dict(self.element_dict)).replace('"confidence": inf','"confidence": float("inf")')
 
     def __str__(self):
-        return str(dict(self.element_dict))
+        return str(dict(self.element_dict)).replace('"confidence": inf','"confidence": float("inf")')
 
     def dict(self):
         return self.element_dict.copy()

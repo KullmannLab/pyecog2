@@ -93,7 +93,7 @@ class PlotControls(QWidget):
 
 
     def update_filter(self):
-        print(self.filter_check.checkState()>0,self.hp_spin.value(),self.lp_spin.value())
+        # print('Plot controls',self.filter_check.checkState()>0,self.hp_spin.value(),self.lp_spin.value())
         self.sigUpdateFilter.emit((self.filter_check.checkState()>0,self.hp_spin.value(),self.lp_spin.value()))
         return
 

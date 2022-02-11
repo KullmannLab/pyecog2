@@ -152,8 +152,12 @@ class Animal():
         return dict
 
     def get_animal_time_range(self):
-        i = min(self.eeg_init_time)
-        e = max(np.array(self.eeg_init_time) + np.array(self.eeg_duration))
+        try:
+            i = min(self.eeg_init_time)
+            e = max(np.array(self.eeg_init_time) + np.array(self.eeg_duration))
+        except ValueError:
+            i = 0
+            e = 0
         return np.array([i, e])
 
 

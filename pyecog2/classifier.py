@@ -459,14 +459,19 @@ class GaussianClassifier():
             else:
                 starts = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > prob_th).astype('int')) > 0)[0] + 1
                 ends = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > prob_th).astype('int')) < 0)[0] + 1
-
+            
+            if ends[0]<starts[0]: # the data starts in the midle of an event, just ignore it for now 
+                np.concatenate(([0],starts))
+                if len(starts)>len(ends):
+                    np.concatenate((ends,[len(pf)]))
+            
             alist = []
             print('len starts',len(starts))
             manual_label_positions = [a.getPos() for a in animal.annotations.get_all_with_label(label)]
             print('manual label positions:',manual_label_positions)
             for j in range(len(starts)):
                 if not any([intervals_overlap([timev[starts[j]],timev[ends[j]]],pos) for pos in manual_label_positions]):
-                    if ends[j]-starts[j]<.5:
+                    if ends[j]-starts[j]<.5: # this 0.5 seems a bit arbitrary - probably should be reviewed - todo
                         print('interval too small:',starts[j],ends[j])
                         continue
                     # c = np.sum(LLv[starts[j]:ends[j],i])-np.sum(LLv[starts[j]:ends[j],0])

@@ -379,8 +379,8 @@ class PairedGraphicsView():
             self.function_generator_link_graphs(annotation_graph_i, annotation_graph_o))
         annotation_graph_i.sigClicked.connect(
             self.function_generator_link_click(self.main_model.annotations, annotation))
-        # annotation_graph_i.sigRemoveRequested.connect(
-        #     self.function_generator_link_delete(self.main_model.annotations, annotation))
+        annotation_graph_i.sigRemoveRequested.connect(
+            self.function_generator_link_delete(self.main_model.annotations, annotation))
         annotation.sigAnnotationElementChanged.connect(
             self.function_generator_link_annotaions_to_graphs(annotation, annotation_graph_i))
         self.overview_plot.addItem(annotation_graph_o)

@@ -98,15 +98,17 @@ class PairedGraphicsView():
         self.animalid = None
 
         timeline_layout_widget = pg.GraphicsLayoutWidget()
+        timeline_layout_widget.setMinimumHeight(100)
         timeline_date_axis = pg.DateAxisItem(orientation='bottom')
         timeline_date_axis.autoSIPrefix = False
-        self.timeline_plot = timeline_layout_widget.addPlot(axisItems={'bottom': timeline_date_axis})
+        self.timeline_plot = timeline_layout_widget.addPlot(axisItems={'bottom': timeline_date_axis}, )
         self.timeline_plot.showAxis('left', show=False)
         # self.timeline_plot.showAxis('bottom', show=False)
         # self.overview_plot.setLabel('bottom', text='Time', units='s')
         # self.timeline_plot.setLabel('top', units=None)
         self.timeline_plot.showGrid(x=True, y=False, alpha=.5)
         self.timeline_plot_items = []
+
 
         overview_layout_widget = pg.GraphicsLayoutWidget()
         overview_date_axis = DateAxis(orientation='bottom', label_date=False)

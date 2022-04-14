@@ -218,6 +218,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         annotations_to_remove = list(set([item.annotation for item in self.selectedItems()]))
         self.annotationsPage.history_is_paused = True  # Avoid filling history with all the deletion steps - slightly unelegant to do this here
         self.pauseTable(True)
+        print('Annotations to remove', annotations_to_remove)
         for annotation in annotations_to_remove:
             print('Removing annotation:', annotation.getLabel(), annotation.getPos())
             self.annotationsPage.delete_annotation(annotation)
@@ -470,10 +471,13 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
             if self.parent is not None:
                 print('passing to main window')
                 self.parent.keyPressEvent(ev)
+                return
 
         if ev.key() == QtCore.Qt.Key_Delete:
             # self.main_model.annotations.delete_annotation(self.main_model.annotations.focused_annotation)
+            ev.accept()
             self.removeSelection()
+            return
 
         QtWidgets.QTableWidget.keyPressEvent(self, ev)
 

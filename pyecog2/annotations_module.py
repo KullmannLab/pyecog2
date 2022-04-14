@@ -92,8 +92,8 @@ class AnnotationElement(QObject):
     def delete(self):
         if not self._is_deleted:
             self._is_deleted = True
-            # print('Emiting deletion signal from annotation:', self.getLabel(),self.getStart())
-            # print('receivers:', QObject.receivers(self,self.sigAnnotationElementDeleted))
+            print('Emiting deletion signal from annotation:', self.getLabel(),self.getStart())
+            # print('receivers:', QObject.receivers(self.sigAnnotationElementDeleted))
             self.sigAnnotationElementDeleted.emit(self)
 
     # def __del__(self):
@@ -205,21 +205,19 @@ class AnnotationPage(QObject):
         self.cache_to_history()
 
     def delete_annotation(self, annotation,cache_history = True):
-        if type(annotation) is not int:
-            index = self.get_annotation_index(annotation)
-        else:
+        if type(annotation) is int:
             index = annotation # allow for annotation to be the index
             annotation = self.annotations_list[index]
-        if index is None:
-            return
         try:
-            del self.annotations_list[index]
+            self.annotations_list.remove(annotation)
             annotation.delete() # send signal we are deleting annotation
             if cache_history:
                 print('delete annotation')
                 self.cache_to_history()
         except IndexError:
             print('Annotation index is out of range')
+        except ValueError:
+            print('Annotation is not found in annotations_list')
 
     def get_annotation_index(self, annotation):
         for i in range(len(self.annotations_list)):

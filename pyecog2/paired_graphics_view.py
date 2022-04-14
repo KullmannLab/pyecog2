@@ -356,6 +356,10 @@ class PairedGraphicsView():
     def function_generator_link_click(annotationpage, annotation_object):
         return lambda: annotationpage.focusOnAnnotation(annotation_object)
 
+    @staticmethod
+    def function_generator_link_delete(annotationpage, annotation_object):
+        return lambda: annotationpage.delete_annotation(annotation_object)
+
     def add_annotaion_plot(self, annotation):
         color = self.main_model.annotations.label_color_dict[
             annotation.getLabel()]  # circle hue with constant luminosity an saturation
@@ -375,6 +379,8 @@ class PairedGraphicsView():
             self.function_generator_link_graphs(annotation_graph_i, annotation_graph_o))
         annotation_graph_i.sigClicked.connect(
             self.function_generator_link_click(self.main_model.annotations, annotation))
+        # annotation_graph_i.sigRemoveRequested.connect(
+        #     self.function_generator_link_delete(self.main_model.annotations, annotation))
         annotation.sigAnnotationElementChanged.connect(
             self.function_generator_link_annotaions_to_graphs(annotation, annotation_graph_i))
         self.overview_plot.addItem(annotation_graph_o)

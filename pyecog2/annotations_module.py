@@ -218,7 +218,6 @@ class AnnotationPage(QObject):
             if cache_history:
                 print('delete annotation')
                 self.cache_to_history()
-
         except IndexError:
             print('Annotation index is out of range')
 

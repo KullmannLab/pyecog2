@@ -205,11 +205,11 @@ class PyecogScaleBar():
 
     def update_from_curve_item(self):
         if len(self.curve_item.visible_data):
-            dmax, dmin = (max(self.curve_item.visible_data),  min(self.curve_item.visible_data)) # add a pico volt to avoid underflows
-            drange0 = (dmax-dmin) + 1e-12
+            dmin, dmax = self.curve_item.dataBounds(ax=1) # (min(self.curve_item.visible_data),max(self.curve_item.visible_data))
+            drange0 = (dmax-dmin) + 1e-12 # add a pico volt to avoid underflows
         else:
             return
-        data_range = min(drange0, 6*np.std(self.curve_item.visible_data) + 1e-12)
+        data_range = min(drange0, 6*np.std(self.curve_item.visible_data) + 1e-12)  # decreases the effect of massive spikes in data
         data_range10 = 10**np.floor(np.log10(data_range))
         data_range = int(drange0/data_range10)*data_range10  # keep just one significant digit
         dmax, dmin = (dmax*data_range/drange0,  dmin*data_range/drange0)

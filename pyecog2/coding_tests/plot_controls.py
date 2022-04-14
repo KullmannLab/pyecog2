@@ -69,9 +69,9 @@ class PlotControls(QWidget):
         self.lp_spin.valueChanged.connect(self.update_filter)
 
         self.filter_controls_layout.addWidget(self.filter_check,0,0)
-        self.filter_controls_layout.addWidget(QtGui.QLabel('High pass frequency'),1,0)
+        self.filter_controls_layout.addWidget(QtGui.QLabel('High pass frequency (Hz)'),1,0)
         self.filter_controls_layout.addWidget(self.hp_spin,1,1)
-        self.filter_controls_layout.addWidget(QtGui.QLabel('Low pass frequency'),2,0)
+        self.filter_controls_layout.addWidget(QtGui.QLabel('Low pass frequency (Hz)'),2,0)
         self.filter_controls_layout.addWidget(self.lp_spin,2,1)
         self.layout.addWidget(self.filter_controls_widget,0,0)
 
@@ -93,7 +93,7 @@ class PlotControls(QWidget):
 
 
     def update_filter(self):
-        print(self.filter_check.checkState()>0,self.hp_spin.value(),self.lp_spin.value())
+        # print('Plot controls',self.filter_check.checkState()>0,self.hp_spin.value(),self.lp_spin.value())
         self.sigUpdateFilter.emit((self.filter_check.checkState()>0,self.hp_spin.value(),self.lp_spin.value()))
         return
 
@@ -111,6 +111,9 @@ class PlotControls(QWidget):
         print('channel selector')
         # self.channel_selector = ChannelSelectorWindow(self.main_model)
         # self.channel_selector.show()
+
+    def set_values(self,filter):
+        pass
 
 if __name__ == '__main__':
     import sys

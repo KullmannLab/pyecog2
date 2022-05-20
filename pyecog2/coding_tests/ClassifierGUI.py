@@ -83,7 +83,10 @@ class ClassifierWindow(QMainWindow):
         classifier_dir = self.project.project_file + '_classifier' if project is not None else ''
         if os.path.isfile(os.path.join(classifier_dir, '_feature_extractor.json')):
             self.feature_extractor.load_settings(os.path.join(classifier_dir, '_feature_extractor.json'))
-
+        if os.path.isfile(os.path.join(classifier_dir, '_imported.npz')):
+            self.imported_classifier_dir = os.path.join(classifier_dir, '_imported.npz')
+        else:
+            self.imported_classifier_dir = ''
         # if self.project is None:
         #     self.project = Project(main_model=MainModel())
         #     self.project.add_animal(Animal(id='0'))
@@ -98,6 +101,8 @@ class ClassifierWindow(QMainWindow):
         #set([l for a in self.project.animal_list for l in a.annotations.labels if not l.startswith('(auto)') ])
         self.params = [
             {'name': 'Global Settings','type':'group','children':[
+                {'name': 'Import Classifier', 'type': 'action', 'children': [
+                    {'name': 'Use imported classifier:', 'type': 'bool', 'value': os.path.isfile(self.imported_classifier_dir)}]},
                 {'name': 'Lablels to train',
                  'type': 'group',
                  'children': [{'name': l, 'type': 'bool', 'value': False} for l in all_labels]
@@ -135,7 +140,13 @@ class ClassifierWindow(QMainWindow):
                         {'name': 'Annotation Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}]},
                 ]}
                 for animal in self.classifier.animal_classifier_dict.keys()]
-                 }
+                 },
+            {'name': 'Run for all Animals', 'type': 'group', 'expanded': True, 'children': [
+                {'name': 'Train animal-specific classifiers', 'type': 'action', 'children': [
+                    {'name': 'Training Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}]},
+                {'name': 'Auto-generate Annotations with global classifier', 'type': 'action',
+                  'children': [
+                      {'name': 'Annotation Progress', 'type': 'float', 'readonly': True, 'value': 0, 'suffix': '%'}]}]}
             ]
 
         ## Create tree of Parameter objects
@@ -146,6 +157,17 @@ class ClassifierWindow(QMainWindow):
         self.p.param(
             'Global Settings', 'Homogenize ticked labels across project'
             ).sigActivated.connect(self.homogenize_labels)
+
+        self.p.param(
+            'Global Settings', 'Import Classifier'
+            ).sigActivated.connect(self.import_classifier)
+
+        self.p.param(
+            'Run for all Animals', 'Train animal-specific classifiers'
+            ).sigActivated.connect(self.train_all)
+        self.p.param(
+            'Run for all Animals', 'Auto-generate Annotations with global classifier'
+            ).sigActivated.connect(self.run_all)
 
         for animal_id in self.classifier.animal_classifier_dict.keys():
             pbar = self.p.param('Animal Settings',animal_id,'Train animal-specific classifier', 'Training Progress')
@@ -272,6 +294,19 @@ class ClassifierWindow(QMainWindow):
                     else:
                         animal2.annotations.label_color_dict[label] = annotation_page.label_color_dict[label] # if annotation exists copy color
 
+    def import_classifier(self):
+        dialog = QFileDialog(parent=self)
+        dialog.setWindowTitle('Import Classifier file ...')
+        dialog.setFileMode(QFileDialog.ExistingFile)
+        dialog.setAcceptMode(QFileDialog.AcceptOpen)
+        dialog.setNameFilter('*.npz')
+        if dialog.exec():
+            fname = dialog.selectedFiles()[0]
+        else:
+            return
+        self.classifier.import_classifier(fname)
+        self.classifier.save()
+
     def handleOutput(self, text, stdout):
         # color = self.terminal.textColor()
         # self.terminal.setTextColor(color if stdout else self._err_color)
@@ -293,6 +328,27 @@ class ClassifierWindow(QMainWindow):
 
     def runAnimalClassifierGenerator(self,animal_id,pbar=None):
         return lambda: self.runAnimalClassifier(animal_id,pbar)
+
+    def train_all(self):
+        print('Training all animals')
+        pbar = self.p.param('Run for all Animals', 'Train animal-specific classifiers','Training Progress')
+        pbar.setValue(0.1)
+        animal_id_list = [a.id for a in self.project.animal_list]
+        for i, a in enumerate(animal_id_list):
+            pbar_i = self.p.param('Animal Settings', a, 'Train animal-specific classifier','Training Progress')
+            self.trainClassifier(a,pbar_i)
+            pbar.setValue(int((i+1)/len(animal_id_list)*100))
+
+    def run_all(self):
+        print('Classifying all animals')
+        pbar = self.p.param('Run for all Animals','Auto-generate Annotations with global classifier' ,'Annotation Progress')
+        pbar.setValue(0.1)
+        animal_id_list = [a.id for a in self.project.animal_list]
+        for i, a in enumerate(animal_id_list):
+            pbar_i = self.p.param('Animal Settings', a, 'Auto-generate Annotations with global classifier','Annotation Progress')
+            self.runGlobalClassifier(a,pbar_i)
+            pbar.setValue(int((i+1)/len(animal_id_list)*100))
+
 
     def runAnimalClassifier(self,animal_id,pbar=None):
         animal = self.project.get_animal(animal_id)

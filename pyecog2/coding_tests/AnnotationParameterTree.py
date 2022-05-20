@@ -184,3 +184,4 @@ class AnnotationParameterTee(PyecogParameterTree):
         for label in self.shortcut_keys.keys():
             if self.shortcut_keys[label] == shortcutkey:
                 return label
+

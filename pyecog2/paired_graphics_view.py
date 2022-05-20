@@ -9,6 +9,7 @@ from PySide2.QtGui import QPainter, QBrush, QPen
 from datetime import datetime
 # import pyqtgraph_copy.pyqtgraph as pg
 import pyqtgraph as pg
+import pyqtgraph.widgets.RemoteGraphicsView as RemoteGraphicsView
 import colorsys
 
 from pyecog2.pyecog_plot_item import PyecogPlotCurveItem, PyecogLinearRegionItem, PyecogCursorItem
@@ -94,7 +95,6 @@ class PairedGraphicsView():
         self.inset_annotations = []
         self.overview_annotations = []
         self.plotted_annotations = []
-
         self.animalid = None
 
         timeline_layout_widget = pg.GraphicsLayoutWidget()
@@ -108,7 +108,6 @@ class PairedGraphicsView():
         # self.timeline_plot.setLabel('top', units=None)
         self.timeline_plot.showGrid(x=True, y=False, alpha=.5)
         self.timeline_plot_items = []
-
 
         overview_layout_widget = pg.GraphicsLayoutWidget()
         overview_date_axis = DateAxis(orientation='bottom', label_date=False)

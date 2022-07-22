@@ -13,7 +13,7 @@ from timeit import default_timer as timer
 import traceback, inspect, sys
 from pyecog2.pyecog_plot_item import PyecogCursorItem
 import colorsys
-
+import multiprocessing as mp
 
 # Interpret image data as row-major instead of col-major
 pg.setConfigOptions(imageAxisOrder='row-major')
@@ -24,7 +24,7 @@ colors = [tuple([*colorsys.hsv_to_rgb(h,1,255),255]) for h in hues]
 hsvcolormap = pg.ColorMap(hues,colors)
 
 # @jit(parallel=True)
-def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), progress_signal = None, kill_switch = None):
+def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), progress_signal = None, kill_switch = None, multi_proc = True):
     if kill_switch is None:
         kill_switch = [False]
     print('morlet_wavelet called')
@@ -47,15 +47,37 @@ def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), progress_signal = 
     print(Nf,Ns)
     result = np.zeros((Nf, Ns), dtype='complex')
 
-    for k in range(Nf):
-        if kill_switch[0]:
-            break
-        N = int(2 * R / vf[k] / dt)  # Compute size of the wavelet: 2 standard deviations
-        wave = sg.morlet(N, w=R, s=1, complete=0) / N * np.pi * 2   # Normalize de amplitude returned by sg.morlet
-        # result[k, :] = sg.fftconvolve(input_signal, wave, mode='same')
-        result[k, :] = sg.oaconvolve(input_signal, wave, mode='same')
-        if progress_signal is not None:
-            progress_signal.emit(int(100*k/Nf))
+    if multi_proc:
+        def par_sgconvolve(input):
+            N, signal = input
+            wave = sg.morlet(N, w=R, s=1, complete=0) / N * np.pi * 2  # Normalize de amplitude returned by sg.morlet
+            return sg.oaconvolve(signal, wave, mode='same')
+
+        n_cores = max(int(np.ceil(mp.cpu_count()/4))-1,1)
+        print(f'Wavelet using multiproc with {n_cores} cores')
+        for k0 in range(0,Nf,n_cores):
+            input_signal_list = [input_signal]*n_cores
+            if kill_switch[0]:
+                break
+            k_list = list(range(k0,min(k0+n_cores,Nf)))
+            N_list = (2 * R / vf[k_list[0]:k_list[-1]] / dt).astyoe(int)
+            arg_list = zip(N_list,input_signal_list)
+            with mp.Pool(n_cores)as p:
+                batch = p.map(par_sgconvolve,arg_list)
+            result[k_list[0]:k_list[-1], :]
+            if progress_signal is not None:
+                progress_signal.emit(int(100*k_list[-1]/Nf))
+
+    else:
+        for k in range(Nf):
+            if kill_switch[0]:
+                break
+            N = int(2 * R / vf[k] / dt)  # Compute size of the wavelet: 2 standard deviations
+            wave = sg.morlet(N, w=R, s=1, complete=0) / N * np.pi * 2   # Normalize de amplitude returned by sg.morlet
+            # result[k, :] = sg.fftconvolve(input_signal, wave, mode='same')
+            result[k, :] = sg.oaconvolve(input_signal, wave, mode='same')
+            if progress_signal is not None:
+                progress_signal.emit(int(100*k/Nf))
 
     mask = np.zeros(result.shape)
 
@@ -67,8 +89,20 @@ def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), progress_signal = 
     return (result, mask, vf, kill_switch)
 
 
+def par_fftconvolve(input):
+    if len(input) == 5:  # no cross wave
+        dt, R, v, N, signal_f = input  # compute cross-wavelet
+    elif len(input) == 6:
+        dt, R, v, N, signal_f, cross_signalf = input
+
+    env = 2 * np.exp(-(np.arange(N) / N / dt - v) ** 2 / (2 * (v / R) ** 2))  # / np.pi
+    if len(input) == 5:
+        return np.fft.ifft(signal_f * env)
+    else:
+        return (np.fft.ifft(signal_f * env), np.fft.ifft(cross_signalf * env))
+
 def morlet_wavelet_fft(input_signal, dt=1, R=7, freq_interval=(), progress_signal=None, cross_data=None,
-                       kill_switch=None):
+                       kill_switch=None, multi_proc = True):
     if kill_switch is None:
         kill_switch = [False]
     # print('morlet_wavelet called')
@@ -98,15 +132,49 @@ def morlet_wavelet_fft(input_signal, dt=1, R=7, freq_interval=(), progress_signa
         result_cross = None
 
     Ni = len(input_signal)
-    for k in range(Nf):
-        if kill_switch[0]:
-            break
-        env = 2 * np.exp(-(np.arange(Ni)/Ni/dt - vf[k]) ** 2 / (2 * (vf[k] / R) ** 2)) #/ np.pi
-        result[k, :] = np.fft.ifft(input_signalf * env)
-        if cross_data is not None:
-            result_cross[k, :] = np.fft.ifft(cross_dataf * env)
-        if progress_signal is not None:
-            progress_signal.emit(int(100 * k / Nf))
+
+    if multi_proc:
+        n_cores = max(int(np.ceil(mp.cpu_count()/4))-1,1)
+        print(f'Wavelet using multiproc with {n_cores} cores')
+        for k0 in range(0,Nf,n_cores):
+            input_signal_list = [input_signalf]*n_cores
+            if cross_data is not None:
+                input_cross_signal_list = [cross_dataf]*n_cores
+            if kill_switch[0]:
+                break
+            k_list = list(range(k0,min(k0+n_cores,Nf)))
+            dt_list = [dt] * len(k_list)
+            R_list = [R] * len(k_list)
+            v_list = vf[k_list[0]:k_list[-1]+1]
+            N_list = [Ni] * len(k_list)
+            if cross_data is None:
+                arg_list = list(zip(dt_list,R_list,v_list,N_list,input_signal_list))
+            else:
+                arg_list = list(zip(v_list,N_list,input_signal_list,input_cross_signal_list))
+
+            print(f'Wabelet processing klist:{k_list}',end=' ')
+            with mp.Pool(n_cores)as p:
+                batch = p.map(par_fftconvolve,arg_list)
+                if cross_data is not None:
+                    batch, batchcross = zip(*batch)
+            result[k_list[0]:k_list[-1]+1, :] = batch
+            print(np.sum(np.abs(batch),axis=1),end='')
+            if cross_data is not None:
+                result_cross[k_list[0]:k_list[-1]+1, :] = batchcross
+
+            if progress_signal is not None:
+                progress_signal.emit(int(100*k_list[-1]/Nf))
+            print('done')
+    else:
+        for k in range(Nf):
+            if kill_switch[0]:
+                break
+            env = 2 * np.exp(-(np.arange(Ni)/Ni/dt - vf[k]) ** 2 / (2 * (vf[k] / R) ** 2)) #/ np.pi
+            result[k, :] = np.fft.ifft(input_signalf * env)
+            if cross_data is not None:
+                result_cross[k, :] = np.fft.ifft(cross_dataf * env)
+            if progress_signal is not None:
+                progress_signal.emit(int(100 * k / Nf))
 
     mask = np.zeros(result.shape)
     Nlist = (.5 * R / vf / dt).astype('int')  # 2 sigma COI

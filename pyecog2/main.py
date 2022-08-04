@@ -31,6 +31,7 @@ from pyqtgraph.console import ConsoleWidget
 import pkg_resources
 from pyecog2 import license
 from multiprocessing import freeze_support
+from urllib import request
 
 class MainWindow(QMainWindow):
     '''
@@ -217,7 +218,7 @@ class MainWindow(QMainWindow):
         self.toggle_darkmode()  # toggle again darkmode just to make sure the wavelet window and FFT are updated as well
         self.action_autosave.setChecked(self.settings.value("autoSave", type=bool))
         self.toggle_auto_save()
-
+        self.checkGitUpdates()
 
     def check_license(self):
         # Check if license is valid
@@ -673,6 +674,19 @@ class MainWindow(QMainWindow):
 
         # self.menubar.addMenu("Edit")
         # self.menubar.addMenu("View")
+
+    def checkGitUpdates(self):
+        current_version = pkg_resources.get_distribution('pyecog2').version
+        with request.urlopen('https://api.github.com/repos/KullmannLab/TestPublic/releases/latest', timeout=2) as f:
+            data = json.loads(f.read().decode('utf-8'))
+        latest_version = data['tag_name']
+        print(f'Current version:{current_version}\nLatest version:{latest_version}')
+        if latest_version > current_version:
+            self.update_pyecog()
+
+    def updatePyecog(self):
+        print('Ask to update PyEcog')
+        print('Updating PyEcog...')
 
     def closeEvent(self, event):
         self.auto_save()

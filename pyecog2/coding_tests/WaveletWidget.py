@@ -135,7 +135,7 @@ def morlet_wavelet_fft(input_signal, dt=1, R=7, freq_interval=(), progress_signa
 
     if multi_proc:
         n_cores = max(int(np.ceil(mp.cpu_count()/4))-1,1)
-        print(f'Wavelet using multiproc with {n_cores} cores')
+        # print(f'Wavelet using multiproc with {n_cores} cores')
         for k0 in range(0,Nf,n_cores):
             input_signal_list = [input_signalf]*n_cores
             if cross_data is not None:
@@ -152,19 +152,19 @@ def morlet_wavelet_fft(input_signal, dt=1, R=7, freq_interval=(), progress_signa
             else:
                 arg_list = list(zip(v_list,N_list,input_signal_list,input_cross_signal_list))
 
-            print(f'Wabelet processing klist:{k_list}',end=' ')
+            # print(f'Wabelet processing klist:{k_list}',end=' ')
             with mp.Pool(n_cores)as p:
                 batch = p.map(par_fftconvolve,arg_list)
                 if cross_data is not None:
                     batch, batchcross = zip(*batch)
             result[k_list[0]:k_list[-1]+1, :] = batch
-            print(np.sum(np.abs(batch),axis=1),end='')
+            # print(np.sum(np.abs(batch),axis=1),end='')
             if cross_data is not None:
                 result_cross[k_list[0]:k_list[-1]+1, :] = batchcross
 
             if progress_signal is not None:
                 progress_signal.emit(int(100*k_list[-1]/Nf))
-            print('done')
+            # print('done')
     else:
         for k in range(Nf):
             if kill_switch[0]:

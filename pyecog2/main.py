@@ -32,6 +32,9 @@ import pkg_resources
 from pyecog2 import license
 from multiprocessing import freeze_support
 from urllib import request
+import json
+
+os.environ['QT_MAC_WANTS_LAYER'] = '1' # Solves issue with MacOs Big sur not starting QT windows.
 
 class MainWindow(QMainWindow):
     '''
@@ -684,7 +687,7 @@ class MainWindow(QMainWindow):
         if latest_version > current_version:
             self.update_pyecog()
 
-    def updatePyecog(self):
+    def update_pyecog(self):
         print('Ask to update PyEcog')
         print('Updating PyEcog...')
 

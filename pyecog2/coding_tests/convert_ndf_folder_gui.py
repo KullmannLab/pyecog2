@@ -225,9 +225,8 @@ class NDFConverterWindow(QMainWindow):
         self.settings['end'] = end_string
         self.settings['AnimalDictList'] = [{'id': a.name(),
                                              'tidfs': a.value()} for a in self.p.param('Animal id: [TID1,TID2,...],fs').children()]
-
         self.files2convert = [os.path.join(self.folder2convert, f) for f in os.listdir(self.folder2convert)
-                              if (start_time <= int(f[1:-4]) <= end_time)]
+                              if (f.endswith('.ndf') and start_time <= int(f[1:-4]) <= end_time)]
         print(len(self.files2convert), 'files between:', start_time, 'and', end_time)
         for a in self.p.param('Animal id: [TID1,TID2,...],fs').children():
             dh = DataHandler()

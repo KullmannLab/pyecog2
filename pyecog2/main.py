@@ -6,7 +6,7 @@ import webbrowser
 
 import numpy as np
 from PySide2 import QtCore, QtGui
-from PySide2.QtGui import QPalette, QColor
+from PySide2.QtGui import QPalette, QColor, QDesktopServices
 from PySide2.QtCore import Qt, QSettings, QByteArray, QObject
 from PySide2.QtWidgets import QApplication, QPlainTextEdit, QTextEdit, QTextBrowser, QDockWidget, QMainWindow, \
     QFileDialog, QMessageBox
@@ -493,10 +493,12 @@ class MainWindow(QMainWindow):
             self.live_recording_timer.stop()
 
     def open_git_url(self):
-        webbrowser.open('https://github.com/KullmannLab/pyecog2')
+        QDesktopServices.openUrl('https://github.com/KullmannLab/pyecog2')
+        # webbrowser.open('https://github.com/KullmannLab/pyecog2')
 
     def open_docs_url(self):
-        webbrowser.open('https://jcornford.github.io/pyecog_docs/')
+        QDesktopServices.openUrl('https://github.com/KullmannLab/pyecog2/issues')
+        # webbrowser.open('https://jcornford.github.io/pyecog_docs/')
 
     def open_video_window(self):
         self.dock_list['Video'].show()
@@ -670,7 +672,7 @@ class MainWindow(QMainWindow):
         self.action_go_to_git = self.menu_help.addAction("Go to Git Repository")
         self.action_go_to_git.triggered.connect(self.open_git_url)
 
-        self.action_go_to_doc = self.menu_help.addAction("Go to web documentation")
+        self.action_go_to_doc = self.menu_help.addAction("Go to Issues page")
         self.action_go_to_doc.triggered.connect(self.open_docs_url)
 
         self.menu_bar.setNativeMenuBar(False)

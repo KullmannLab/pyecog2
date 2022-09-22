@@ -14,6 +14,8 @@ import traceback, inspect, sys
 from pyecog2.pyecog_plot_item import PyecogCursorItem
 import colorsys
 import multiprocessing as mp
+import concurrent
+from concurrent.futures.process import ProcessPoolExecutor
 
 # Interpret image data as row-major instead of col-major
 pg.setConfigOptions(imageAxisOrder='row-major')
@@ -48,6 +50,7 @@ def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), progress_signal = 
     result = np.zeros((Nf, Ns), dtype='complex')
 
     if multi_proc:
+
         def par_sgconvolve(input):
             N, signal = input
             wave = sg.morlet(N, w=R, s=1, complete=0) / N * np.pi * 2  # Normalize de amplitude returned by sg.morlet

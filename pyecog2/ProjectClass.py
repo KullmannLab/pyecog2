@@ -139,12 +139,12 @@ class Animal():
     def update_video_folder(self,video_folder):
         self.video_folder = os.path.normpath(video_folder)
         self.video_files = glob.glob(video_folder + os.path.sep + '*.mp4')
-        self.video_init_time = [
-            datetime(*map(int, [fname[-18:-14], fname[-14:-12], fname[-12:-10], fname[-10:-8], fname[-8:-6],
-                                fname[-6:-4]])).timestamp()
-            for fname in self.video_files]
+        self.video_init_time = [float(fname[1:-4]) if fname.startswith('V') else
+                                datetime(*map(int, [fname[-18:-14], fname[-14:-12], fname[-12:-10], fname[-10:-8],
+                                                    fname[-8:-6], fname[-6:-4]])).timestamp()
+                                for fname in self.video_files]
         self.video_duration = [15 * 60 for file in
-                               self.video_files]  # this should be replaced in the future to account flexible video durations
+                               self.video_files]  # this should be replaced in the future to account flexible video duration or remove this field completely
 
     def dict(self):
         dict = self.__dict__.copy()

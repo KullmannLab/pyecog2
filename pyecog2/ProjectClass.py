@@ -524,6 +524,7 @@ class Project():
 
     def update_files_from_animal_directories(self):
         for animal in self.animal_list:
+            print('Updating directories for animal', animal) # give progress feedback for project editor
             animal.update_eeg_folder(os.path.normpath(animal.eeg_folder))
             animal.update_video_folder(os.path.normpath(animal.video_folder))
         self.main_model.sigProjectChanged.emit()

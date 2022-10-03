@@ -454,11 +454,11 @@ class GaussianClassifier():
             print(i,label)
 
             if viterbi:
-                starts = np.nonzero(np.diff((MLpath == i).astype('int')) > 0)[1] + 1
-                ends = np.nonzero(np.diff((MLpath == i).astype('int')) < 0)[1] + 1
+                starts = np.nonzero(np.diff((MLpath == i).astype('int'), prepend=0) > 0)[1]
+                ends = np.nonzero(np.diff((MLpath == i).astype('int'), append=0) < 0)[1] + 1
             else:
-                starts = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > prob_th).astype('int')) > 0)[0] + 1
-                ends = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > prob_th).astype('int')) < 0)[0] + 1
+                starts = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > prob_th).astype('int'),  prepend=0) > 0)[0]
+                ends = np.nonzero(np.diff(((pf[i, :].T * (-R2v[:, i] < th)) > prob_th).astype('int'),  append=0) < 0)[0] + 1
 
             alist = []
             print('len starts',len(starts))

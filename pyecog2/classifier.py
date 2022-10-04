@@ -334,7 +334,7 @@ class GaussianClassifier():
                         self.class_cov[i]   = cov
                         self.class_npoints[i] += n_labeled
 
-                # After going through all the labels, do the blanks
+                # After going through all the labels, do the blanks in the locations without labels
                 locs = f_label == 0
                 n_labeled = np.sum(locs)  # number of datapoints labled with blank
                 if n_labeled>0:
@@ -358,7 +358,8 @@ class GaussianClassifier():
                 else:
                     print('Animal:', animal.id, 'file:', ifile, 'of', len(animal.eeg_files), feature_file, end='\r')
 
-        trans_list = [(l[0],l[1],i+1) for i,key in enumerate(self.labels2classify) for l in labeled_positions[key]]
+        trans_list = [(l[0],l[1],i+1) for i,key in enumerate(self.labels2classify) for l in
+                      [key]]
         trans_list.sort()
         self.transitions_matrix = transitionslist2matrix(trans_list, 1/fmeta_dict['fs'], len(self.labels2classify))
         print('Transitions:\n', self.transitions_matrix)

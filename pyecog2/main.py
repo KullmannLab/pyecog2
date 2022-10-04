@@ -2,29 +2,28 @@ import os
 
 os.environ['QT_MULTIMEDIA_PREFERRED_PLUGINS'] = 'windowsmediafoundation'
 import sys
-import webbrowser
 
 import numpy as np
 from PySide2 import QtCore, QtGui
 from PySide2.QtGui import QPalette, QColor, QDesktopServices
-from PySide2.QtCore import Qt, QSettings, QByteArray, QObject
-from PySide2.QtWidgets import QApplication, QPlainTextEdit, QTextEdit, QTextBrowser, QDockWidget, QMainWindow, \
+from PySide2.QtCore import Qt, QSettings
+from PySide2.QtWidgets import QApplication, QTextBrowser, QDockWidget, QMainWindow, \
     QFileDialog, QMessageBox
 
-from pyecog2.ProjectClass import Project, Animal, MainModel
+from pyecog2.ProjectClass import Project, MainModel
 from pyecog2.annotation_table_widget import AnnotationTableWidget
-from pyecog2.annotations_module import AnnotationElement, AnnotationPage
-from pyecog2.coding_tests.AnnotationParameterTree import AnnotationParameterTee
-from pyecog2.coding_tests.FFT import FFTwindow
-from pyecog2.coding_tests.ProjectGUI import ProjectEditWindow
-from pyecog2.coding_tests.VideoPlayer import VideoWindow
-from pyecog2.coding_tests.WaveletWidget import WaveletWindow
-from pyecog2.coding_tests.convert_ndf_folder_gui import NDFConverterWindow
-from pyecog2.coding_tests.FeatureExtractorGUI import FeatureExtractorWindow
-from pyecog2.coding_tests.ClassifierGUI import ClassifierWindow
+from pyecog2.annotations_module import AnnotationElement
+from pyecog2.ui_elements.AnnotationParameterTree import AnnotationParameterTee
+from pyecog2.ui_elements.FFTWidget import FFTwindow
+from pyecog2.ui_elements.ProjectGUI import ProjectEditWindow
+from pyecog2.ui_elements.VideoPlayerWidget import VideoWindow
+from pyecog2.ui_elements.WaveletWidget import WaveletWindow
+from pyecog2.ui_elements.NDFConverterGUI import NDFConverterWindow
+from pyecog2.ui_elements.FeatureExtractorGUI import FeatureExtractorWindow
+from pyecog2.ui_elements.ClassifierGUI import ClassifierWindow
 from pyecog2.paired_graphics_view import PairedGraphicsView
 from pyecog2.tree_widget import FileTreeElement
-from pyecog2.coding_tests.plot_controls import PlotControls
+from pyecog2.ui_elements.PlotControlsWidget import PlotControls
 from datetime import datetime
 import pyqtgraph as pg
 from pyqtgraph.console import ConsoleWidget

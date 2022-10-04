@@ -316,10 +316,10 @@ class GaussianClassifier():
                     if len(lp)>0:
                         lp[:,0] = np.floor(lp[:,0])
                         lp[:, 1] = np.ceil(lp[:, 1])
-                        lp = lp[(lp[:,0]>=0)&(lp[:,1]<=f_vec_d.shape[0])]  # select annotations within the present file
+                        lp = lp[(lp[:,1]>=0)&(lp[:,0]<=f_vec_d.shape[0])]  # select annotations within the present file
                     for loc in lp.astype('int'):
                         # print(label,loc)
-                        f_label[loc[0]:loc[1]] = i+1  # label 0 is reserved for blanks
+                        f_label[max(loc[0],0):min(loc[1],f_vec_d.shape[0])] = i+1  # label 0 is reserved for blanks
                     locs = f_label == (i + 1)
                     n_labeled = np.sum(locs)  # number of datapoints labled with label
                     if n_labeled>0:
@@ -334,23 +334,24 @@ class GaussianClassifier():
                         self.class_cov[i]   = cov
                         self.class_npoints[i] += n_labeled
 
-                    locs = f_label == 0
-                    n_labeled = np.sum(locs)  # number of datapoints labled with blank
-                    if n_labeled>0:
-                        (mu, cov) = average_mu_and_cov(np.mean(f_vec_d[locs],axis=0)[:,np.newaxis],
-                                                       np.cov(f_vec_d[locs].T,bias=True),
-                                                       n_labeled,
-                                                       self.blank_means[:,np.newaxis],
-                                                       self.blank_cov,
-                                                       self.blank_npoints)
-                        # update variables
-                        self.blank_npoints += n_labeled
-                        self.blank_means = mu.ravel()
-                        self.blank_cov   = cov
-                        if sum(np.isnan(cov.ravel())):
-                            print('\nCov matrix is NaN after file:',ifile,eeg_file,'\n')
-                            self._debug_f_vec_d =f_vec_d
-                            return
+                # After going through all the labels, do the blanks
+                locs = f_label == 0
+                n_labeled = np.sum(locs)  # number of datapoints labled with blank
+                if n_labeled>0:
+                    (mu, cov) = average_mu_and_cov(np.mean(f_vec_d[locs],axis=0)[:,np.newaxis],
+                                                   np.cov(f_vec_d[locs].T,bias=True),
+                                                   n_labeled,
+                                                   self.blank_means[:,np.newaxis],
+                                                   self.blank_cov,
+                                                   self.blank_npoints)
+                    # update variables
+                    self.blank_npoints += n_labeled
+                    self.blank_means = mu.ravel()
+                    self.blank_cov   = cov
+                    if sum(np.isnan(cov.ravel())):
+                        print('\nCov matrix is NaN after file:',ifile,eeg_file,'\n')
+                        self._debug_f_vec_d =f_vec_d
+                        return
 
                 if progress_bar is not None:
                     progress_bar.setValue(100*(ianimal + ifile/Nfiles)/Nanimals)

@@ -9,7 +9,6 @@ from PySide2.QtGui import QPalette, QColor, QDesktopServices
 from PySide2.QtCore import Qt, QSettings
 from PySide2.QtWidgets import QApplication, QTextBrowser, QDockWidget, QMainWindow, \
     QFileDialog, QMessageBox
-
 from pyecog2.ProjectClass import Project, MainModel
 from pyecog2.annotation_table_widget import AnnotationTableWidget
 from pyecog2.annotations_module import AnnotationElement
@@ -32,6 +31,15 @@ from pyecog2 import license
 from multiprocessing import freeze_support
 from urllib import request
 import json
+import logging
+
+log_fname = pkg_resources.resource_filename('pyecog2','/') + 'pyecog.log'
+try:
+    os.remove(log_fname)
+except:
+    pass
+
+logger = logging.getLogger(__name__)
 
 os.environ['QT_MAC_WANTS_LAYER'] = '1' # Solves issue with MacOs Big sur not starting QT windows.
 
@@ -106,7 +114,7 @@ class MainWindow(QMainWindow):
         self.text_edit = QTextBrowser()
         hints_file = pkg_resources.resource_filename('pyecog2', 'HelperHints.md')
         # text = open('HelperHints.md').read()
-        print('hints file:', hints_file)
+        logger.info('hints file:' + hints_file)
         text = open(hints_file).read()
         text = text.replace('icons/banner_small.png',
                             pkg_resources.resource_filename('pyecog2', 'icons/banner_small.png'))
@@ -185,7 +193,7 @@ class MainWindow(QMainWindow):
         settings.endGroup()
 
         self.settings = QSettings("PyEcog", "PyEcog")
-        print("Reading GUI configurations from: " + self.settings.fileName())
+        logger.info("Reading GUI configurations from: " + self.settings.fileName())
         self.settings.beginGroup("MainWindow")
         # print(self.settings.value("windowGeometry", type=QByteArray))
         try:
@@ -817,5 +825,5 @@ def execute():
 
 
 if __name__ == '__main__':
-    freeze_support()
+    freeze_support() # Why is this line here? - Answer: it is for creating a compiled executable
     execute()

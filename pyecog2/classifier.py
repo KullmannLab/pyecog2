@@ -358,8 +358,7 @@ class GaussianClassifier():
                 else:
                     print('Animal:', animal.id, 'file:', ifile, 'of', len(animal.eeg_files), feature_file, end='\r')
 
-        trans_list = [(l[0],l[1],i+1) for i,key in enumerate(self.labels2classify) for l in
-                      [key]]
+        trans_list = [(l[0],l[1],i+1) for i,key in enumerate(self.labels2classify) for l in labeled_positions[key]]
         trans_list.sort()
         self.transitions_matrix = transitionslist2matrix(trans_list, 1/fmeta_dict['fs'], len(self.labels2classify))
         print('Transitions:\n', self.transitions_matrix)
@@ -520,6 +519,8 @@ class GaussianClassifier():
     def copy_from(self,gaussian_classifier):
         for key in self.__dict__.keys():
             if key != 'project':
-                self.__dict__[key] = gaussian_classifier.__dict__[key].copy()
-
-
+                try:
+                    self.__dict__[key] = gaussian_classifier.__dict__[key].copy()
+                except:
+                    print(f'error trying to copy gaussian_classifier.__dict__[{key}]')
+                    raise

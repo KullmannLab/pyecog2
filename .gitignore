@@ -102,3 +102,6 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# ML - license reg file
+pyecog2/license/license_reg.txt

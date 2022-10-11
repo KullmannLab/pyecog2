@@ -45,10 +45,7 @@ os.environ['QT_MAC_WANTS_LAYER'] = '1' # Solves issue with MacOs Big sur not sta
 
 class MainWindow(QMainWindow):
     '''
-    basically handles the combination of the the tree menu bar and the paired view
-
-    Most of the code here is for setting up the geometry of the gui and the
-    menu bar stuff
+    Creates the main window, its menus and widgets, creates the main object and loads projects
     '''
 
     def __init__(self, app_handle=None):

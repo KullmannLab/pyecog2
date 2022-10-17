@@ -20,12 +20,12 @@ class TreeModel(QtCore.QAbstractItemModel):
     lowerUpper is overidded modules
     lower_upper is custom methods
     '''
-    print('Building File Tree...')
     sortRole = QtCore.Qt.UserRole
     filterRole = QtCore.Qt.UserRole + 1 # not sure if this is best for cols?
     prepare_for_plot_role = QtCore.Qt.UserRole + 2
 
     def __init__(self, root, parent=None):
+        print('Building File Tree...')
         super(TreeModel, self).__init__(parent)
         self.root_node = root
 

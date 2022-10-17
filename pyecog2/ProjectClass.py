@@ -10,6 +10,8 @@ from PySide2 import QtCore
 import pyqtgraph as pg
 from timeit import default_timer as timer
 
+import logging
+logger = logging.getLogger(__name__)
 
 def clip(x, a, b):  # utility funciton for file buffer
     return min(max(int(x), a), b)
@@ -74,9 +76,9 @@ def load_metadata_file(fname):
                         with open(fname, 'r') as json_file:
                             metadata = json.load(json_file)
                     else:
-                        print('Non-existent file:', fname)
+                        logger.info(f'Non-existent file:{fname}')
             except Exception:
-                print('Unrecognized metafile format')
+                logger.info('Unrecognized metafile format')
     return metadata
 
 
@@ -113,12 +115,11 @@ class Animal():
 
     def update_eeg_folder(self,eeg_folder):
         self.eeg_folder = os.path.normpath(eeg_folder)
-        print('Looking for files:',eeg_folder,os.path.sep,'*.h5')
+        logger.info('Looking for files:',eeg_folder,os.path.sep,'*.h5')
         h5files = glob.glob(eeg_folder + os.path.sep + '*.h5')
         h5files.sort()
         for i,file in enumerate(h5files):
             if os.path.isfile(file[:-2] + 'meta'):
-                # print(file[:-2] + 'meta already exists')
                 continue
             start = int(os.path.split(file)[-1].split('_')[0][1:])
             try:
@@ -192,7 +193,7 @@ class FileBuffer():  # Consider translating this to cython
             try:
                 h5file = H5File(fname[:-4] + 'h5')
             except:
-                print('error trying to open',fname[:-4] + 'h5')
+                logger.warning(f'error trying to open {fname[:-4]} h5')
                 raise
             channels = []
             duration = metadata['duration']
@@ -205,7 +206,7 @@ class FileBuffer():  # Consider translating this to cython
             self.data.append(arr)
         else:  # it is a bin file and can be mememaped
             try:
-                if self.verbose: print('opening binary fie:',fname[:-4] + 'bin')
+                if self.verbose: logger.info(f'opening binary fie: {fname[:-4]} bin')
                 m = np.memmap(fname[:-4] + 'bin', mode='r', dtype =metadata['data_format'] )
             except ValueError:
                 m = np.zeros(0)  # binary file is empty so just create empty array
@@ -262,7 +263,7 @@ class FileBuffer():  # Consider translating this to cython
         else:
             # Now clear buffer if range is not contiguous to previous range
             if trange[1] < self.range[0] or trange[0] > self.range[1]:
-                if self.verbose: print('Non-contiguous data: restarting buffer...')
+                if self.verbose: logger.info('Non-contiguous data: restarting buffer...')
                 self.clear_buffer()
             # fill buffer with the necessary files:
             for i, file in enumerate(self.eeg_files):
@@ -270,9 +271,9 @@ class FileBuffer():  # Consider translating this to cython
                 # if (frange[0] <= trange[0] < frange[1]) or (frange[0] <= trange[1] < frange[1]) or \
                 #         (trange[0] <= frange[0] < trange[1]) or (trange[0] <= frange[1] < trange[1]):
                 if intervals_overlap(frange,trange):
-                    if self.verbose: print('Adding file to buffer: ', file)
+                    if self.verbose: logger.info(f'Adding file to buffer: {file}')
                     self.add_file_to_buffer(file)
-            if self.verbose: print('files in buffer: ', self.files)
+            if self.verbose: logger.info('files in buffer: {self.files}')
 
         #  Find sample ranges from time data_ranges:
         sample_ranges = []
@@ -292,7 +293,7 @@ class FileBuffer():  # Consider translating this to cython
         if n_envelope is None:
             n_envelope = total_sample_range
         if n_envelope>2**(28): # data is larger than 1 GByte and could bust available RAM 4bytes*2**28 = 1GB
-            if self.verbose: print('ERROR: too much data to keep in memory (>1GB)')
+            if self.verbose: logger.warning('Too much data to keep in memory (>1GB)')
             return [],[]
 
         file_envlopes = [int(n_envelope * (s[1] - s[0]) / total_sample_range) + 1 for s in
@@ -357,7 +358,7 @@ class FileBuffer():  # Consider translating this to cython
 
                     enveloped_data.append(dV*visible_data[:targetPtr, :].reshape((-1, 1)))
                 except Exception:
-                    print('ERROR in downsampling')
+                    logger.error('ERROR in downsampling')
                     raise
                     # throw_error()
                     # return 0
@@ -444,7 +445,7 @@ class Project():
 
     def set_current_animal(self, animal):  # copy alterations made to annotations
         start_t = timer()
-        print('ProjectClass set_current_animal start')
+        logger.info('ProjectClass set_current_animal start')
         if animal is None or animal is self.current_animal:
             return
         self.current_animal.annotations.copy_from(self.main_model.annotations,connect_history=False,quiet=True)
@@ -452,7 +453,7 @@ class Project():
         self.current_animal = animal
         self.file_buffer = FileBuffer(self.current_animal)
         self.main_model.annotations.sigLabelsChanged.emit('')
-        print('ProjectClass set_current_animal ran in',timer()-start_t,'seconds')
+        logger.info(f'ProjectClass set_current_animal ran in {timer()-start_t} seconds')
 
     def save_to_json(self, fname):
         try:
@@ -460,7 +461,7 @@ class Project():
             # self.main_model.annotations.copy_to(self.current_animal.annotations)
             self.current_animal.annotations.copy_from(self.main_model.annotations, connect_history=False, quiet=True)
         except Exception:
-            print('no main model defined')
+            logger.error('no main model defined')
 
         dict = self.__dict__.copy()
         # print(dict.keys())
@@ -484,9 +485,9 @@ class Project():
         main_model = self.main_model
         self.__dict__ = dict
         self.main_model = main_model
-        print('looking for', current_animal_id)
+        logger.info(f'looking for animal: {current_animal_id}')
         self.set_current_animal(self.get_animal(current_animal_id))
-        print('current animal:', self.current_animal.id)
+        logger.info(f'current animal:{self.current_animal.id}')
         self.file_buffer = FileBuffer(self.current_animal)
         self.project_file = fname.strip('_autosave') # when recovering autosaves, make the project file the original project file
         if not hasattr(self,'filter_settings'):  #Backwards compatibility
@@ -510,11 +511,11 @@ class Project():
 
     def add_animal(self, animal):
         if self.get_animal(animal.id) is None:
-            print('Added animal', animal.id, 'to project')
+            logger.info(f'Added animal {animal.id} to project')
             self.animal_list.append(animal)
             self.main_model.sigProjectChanged.emit()
         else:
-            print('Animal with id:', animal.id, 'already exists in project: nothing added')
+            logger.info(f'Animal with id: {animal.id} already exists in project: nothing added')
 
     def delete_animal(self,animal_id):
         for animal in self.animal_list:
@@ -524,7 +525,7 @@ class Project():
 
     def update_files_from_animal_directories(self):
         for animal in self.animal_list:
-            print('Updating directories for animal', animal) # give progress feedback for project editor
+            logger.info(f'Updating directories for animal {animal}') # give progress feedback for project editor
             animal.update_eeg_folder(os.path.normpath(animal.eeg_folder))
             animal.update_video_folder(os.path.normpath(animal.video_folder))
         self.main_model.sigProjectChanged.emit()
@@ -539,8 +540,8 @@ class Project():
         for directory in eeg_dir_list:
             if directory not in existing_eeg_dir:
                 id = directory.split(os.path.sep)[-2]
-                print('Creating animal from directory:' ,directory)
-                print('Adding animal with id:',id)
+                logger.info(f'Creating animal from directory:{directory}')
+                logger.info('Adding animal with id: {id}')
                 video_dir = self.video_root_folder + os.path.sep + id + os.path.sep
                 if video_dir not in video_dir_list:
                     video_dir = None  # check if compatible video dir exists
@@ -558,7 +559,7 @@ class Project():
         # print('Project() get_data_from_range called for chanbel', channel, '; time range:', trange, ', duration:',
         #       trange[1] - trange[0])
         if (animal is not None) and (animal is not self.current_animal):  # reset file buffer if animal has changed
-            print('Clearing File Buffer')
+            logger.info('Clearing File Buffer')
             self.set_current_animal(animal)
             # self.current_animal = animal
             self.file_buffer = FileBuffer(self.current_animal)
@@ -588,7 +589,7 @@ class Project():
 
     def set_temp_project_from_folder(self,eeg_folder):
         eeg_folder = os.path.normpath(eeg_folder)
-        print('Looking for files:', eeg_folder, os.path.sep, '*.h5')
+        logger.info(f'Looking for files: {eeg_folder}{os.path.sep}*.h5')
         h5files = glob.glob(eeg_folder + os.path.sep + '*.h5')
         h5files.sort()
         for i, file in enumerate(h5files):
@@ -650,4 +651,4 @@ class MainModel(QtCore.QObject):
         if pos != self.window:
             self.window = pos
             self.sigWindowChanged.emit(pos)
-            print('Window changesd to:', pos)
+            logger.info(f'Window changed to:{pos}')

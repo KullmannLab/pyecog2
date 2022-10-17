@@ -6,7 +6,6 @@ import colorsys
 from collections import OrderedDict
 from timeit import default_timer as timer
 import logging
-
 logger = logging.getLogger(__name__)
 
 # Function to generate nicely spaced colors (i.e. points around a ring)

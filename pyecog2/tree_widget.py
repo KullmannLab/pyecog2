@@ -15,6 +15,9 @@ import pyqtgraph as pg
 from pyecog2.tree_model_and_nodes import FileTreeProxyModel, TreeModel
 from pyecog2.tree_model_and_nodes import FileNode, DirectoryNode, ChannelNode, HDF5FileNode, LieteNode, ProjectNode,BuildingNode
 
+import logging
+logger = logging.getLogger(__name__)
+
 class FileTreeView(QtWidgets.QTreeView):
 
     def __init__(self, parent=None):
@@ -28,13 +31,13 @@ class FileTreeView(QtWidgets.QTreeView):
     #     node = self.currentIndex().internalPointer()
 
     def selectionChanged(self, *args):
-        print('selection changed', args)
+        logger.info(f'selection changed {args}')
         super(FileTreeView, self).selectionChanged(*args)
         index = self.currentIndex()
         self.model().data(index, TreeModel.prepare_for_plot_role)
 
     def setSelection(self, *args):
-        print('setSelection', args)
+        logger.info(f'setSelection {args}')
         super(FileTreeView, self).setSelection(*args)
 
 class FileTreeElement():
@@ -134,7 +137,7 @@ class FileTreeElement():
                     for tid in tids:
                         channel_node = ChannelNode(str(tid), parent=child_node)
                 except IndexError:
-                    print('h5 with no children detected:', fullname)
+                    logger.error('H5 file with no children detected: {fullname}')
                 name_to_node[fullname] = child_node # this seems un necessary - I think this is only needed for directory branch nodes
         return root
 
@@ -161,7 +164,7 @@ class FileTreeElement():
                         for tid in tids:
                             channel_node = ChannelNode(str(tid), parent=child_node)
                     except IndexError:
-                        print('h5 with no children detected:', fullname)
+                        logger.error('H5 file with no children detected: {fullname}')
                 else:
                     child_node = FileNode(filename, parent=node)
                 name_to_node[fullname] = child_node
@@ -189,7 +192,7 @@ class FileTreeElement():
 
 
 
-if __name__ == '__main__':
+if __name__ == '__main__': # OBSOLETE???
 
     app = QtWidgets.QApplication(sys.argv)
     screen = app.primaryScreen()

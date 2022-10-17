@@ -5,6 +5,8 @@ from PySide2.QtWidgets import QApplication, QWidget
 import sys
 import numpy as np
 import pyqtgraph as pg
+import logging
+logger = logging.getLogger(__name__)
 
 pg.setConfigOption('background', 'w')
 pg.setConfigOption('foreground', 'k')
@@ -40,7 +42,7 @@ class FFTWindowItem(pg.PlotWidget):
             self.setBackground(self.main_model.color_settings['brush'])
             # print('window', self.main_model.window)
             if self.main_model.window[1]-self.main_model.window[0] > 3600:
-                print('Window too large to compute FFT (>3600s)')
+                logger.warning('Window too large to compute FFT (>3600s)')
                 self.setLabel('bottom', 'Window too large to compute Wavelet (>3600s)')
                 return
             data, time = self.main_model.project.get_data_from_range(self.main_model.window,channel = self.channel)
@@ -56,17 +58,17 @@ class FFTWindowItem(pg.PlotWidget):
             self.p1.setData(x = vf+vf[1], y = 2*np.abs(dataf))
             self.setLabel('bottom', 'Frequency', units = 'Hz')
             # self.setLimits(xMin=vf[0],xMax=vf[-1],yMin=min(0,min(np.abs(dataf))),yMax = 1.1*max(dataf))
-            print('Updated FFT')
+            logger.info('Updated FFT')
             # print('Reg Entropy:',reg_entropy(dataf))
 
     def setNfft(self,nfft):
         self.nfft = int(2**nfft)
-        print('FFT nfft set to',self.nfft)
+        logger.info(f'FFT nfft set to {self.nfft}')
         self.updateData()
 
     def setChannel(self,c):
         self.channel = int(c)
-        print('FFT channel set to ',c)
+        logger.info(f'FFT channel set to {c}')
         self.updateData()
 
 

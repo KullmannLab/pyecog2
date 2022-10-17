@@ -13,6 +13,8 @@ from pyqtgraph.parametertree import Parameter
 from pyecog2.ui_elements.pyecogParameterTree import PyecogParameterTree, PyecogGroupParameter
 from timeit import default_timer as timer
 
+import logging
+logger = logging.getLogger(__name__)
 
 ## this group includes a menu allowing the user to add new parameters into its child list
 # class ScalableGroup(pTypes.GroupParameter):
@@ -51,7 +53,7 @@ class ScalableGroup(PyecogGroupParameter):
                      'removable': True})
                 break
             except Exception:
-                print("Label %d" % n,'already exists')
+                logger.warning(f'Label {n} already exists')
                 n +=1
 
 
@@ -61,7 +63,7 @@ class AnnotationParameterTee(PyecogParameterTree):
         self.annotationPage = annotations
         labels = self.annotationPage.labels
         self.shortcut_keys = dict([(l, i+1) for i,l in enumerate(labels)])
-        print('Labels:', labels)
+        logger.info(f'Labels:{labels}')
         Label_initial_dict = [{'name': label,
                                'type': 'group',
                                'children':[
@@ -89,7 +91,7 @@ class AnnotationParameterTee(PyecogParameterTree):
         #     return # skip re_init because it already ran
         # self.last_label_change = label
         start_t = timer()
-        print('AnnotationParameterTree Re_init Called ', label)
+        logger.info('AnnotationParameterTree Re_init Called {label}')
         self.p.sigTreeStateChanged.disconnect()
         labels = self.annotationPage.labels
         if set(labels) != set(self.shortcut_keys.keys()):  # restart shortcut keys in case labels change in annotationPage

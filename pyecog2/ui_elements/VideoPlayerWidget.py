@@ -12,6 +12,9 @@ import sys
 import time
 import numpy as np
 
+import logging
+logger = logging.getLogger(__name__)
+
 import pkg_resources
 clock_icon_file = pkg_resources.resource_filename('pyecog2', 'icons/wall-clock.png')
 play_icon_file = pkg_resources.resource_filename('pyecog2', 'icons/play.png')
@@ -125,11 +128,11 @@ class VideoWindow(QWidget):
     def play(self):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
             self.mediaPlayer.pause()
-            print("Video player: pausing")
+            logger.info("Video player: pausing")
         else:
             self.last_position -= 1  # take one millisecond to last position so that first position update is not skipped
             self.mediaPlayer.play()
-            print("Video player: playing")
+            logger.info("Video player: playing")
 
     def mediaStateChanged(self, state):
         if self.mediaPlayer.state() == QMediaPlayer.PlayingState:
@@ -151,7 +154,7 @@ class VideoWindow(QWidget):
         #     return
         if position == 0 or self.waiting_for_file or self.duration == -1 or position == self.last_position:
             # avoid position changes on file transitions or repeated signals on same position
-            print("Video player skiping position update" + str((position == 0 , self.waiting_for_file , self.duration == -1 , position == self.last_position)))
+            logger.info(f'Video player skiping position update {(position == 0 , self.waiting_for_file , self.duration == -1 , position == self.last_position)}')
             return
         if position < self.duration-40:  # avoid time changes when switching files
             self.last_position = position
@@ -159,7 +162,7 @@ class VideoWindow(QWidget):
             self.sigTimeChanged.emit(position/1000 + self.current_time_range[0])
         else: # position is at the end of file - try to switch to next file
             pos = self.current_time_range[1] + .04
-            print('Trying to jump to next file',self.current_time_range[1],self.duration,pos)
+            logger.info(f'Trying to jump to next file {self.current_time_range[1], self.duration, pos}')
             self.setGlobalPosition(pos)
 
     def durationChanged(self, duration):
@@ -186,14 +189,14 @@ class VideoWindow(QWidget):
             self.mediaPlayer.setPosition(position)  # UNIX time
             return
         else:
-            print('searching for video file', self.main_model.project.current_animal.id, len(self.main_model.project.current_animal.video_files))
+            logger.info(f'searching for video file {self.main_model.project.current_animal.id, len(self.main_model.project.current_animal.video_files)}')
             for i, file in enumerate(self.main_model.project.current_animal.video_files): # search for file to open
                 arange = [self.main_model.project.current_animal.video_init_time[i] + self.video_time_offset,
                           self.main_model.project.current_animal.video_init_time[i] + self.main_model.project.current_animal.video_duration[i]
                           + self.video_time_offset]
                 # print((arange[0], pos, arange[1]),(arange[0] <= pos <= arange[1]))
                 if (arange[0] <= pos <= arange[1]):
-                    print('Changing video file: ', file)
+                    logger.info(f'Changing video file: {file}')
                     self.current_file = file
                     self.errorLabel.setText("File: " + self.current_file)
                     self.current_time_range = arange
@@ -207,7 +210,7 @@ class VideoWindow(QWidget):
                     self.playButton.setEnabled(True)
                     # self.duration = (arange[1]-arange[0])*1000
                     return
-        print('no video file found for current position',pos)
+        logger.info(f'No video file found for current position {pos}')
         self.errorLabel.setText('No video file found for current position ' + str(pos))
         self.mediaPlayer.stop()
         self.mediaPlayer.setMedia(QMediaContent())
@@ -232,7 +235,7 @@ class VideoWindow(QWidget):
                 #     self.mediaPlayer.pause()
                 self.mediaPlayer.pause()
                 if self.media_state_before_file_transition == QMediaPlayer.PlayingState:
-                    print("resuming play state")
+                    logger.info("resuming play state")
                     self.mediaPlayer.play()
                 # print('finished setting position on new file')
 
@@ -240,7 +243,7 @@ class VideoWindow(QWidget):
     def handleError(self):
         # self.playButton.setEnabled(False)
         self.errorLabel.setText("Error: " + self.mediaPlayer.errorString())
-        print("Video - Error: " + self.mediaPlayer.errorString())
+        logger.info("Video - Error: " + self.mediaPlayer.errorString())
 
 
 if __name__ == '__main__':

@@ -409,7 +409,7 @@ class MainWindow(QMainWindow):
         if not os.path.isfile(fname):
             logger.warning('warning - project file does not exist yet')
         elif fname.endswith('.pyecog'):
-            logger.info('Auto saving project to:', fname + '_autosave')
+            logger.info(f'Auto saving project to: {fname}_autosave')
             self.main_model.project.save_to_json(fname + '_autosave')
         else:
             logger.warning('project filename not in *.pyecog')
@@ -728,7 +728,7 @@ class MainWindow(QMainWindow):
         #     # settings.setValue("windowState", self.dock_list[dock_name].saveState())
         #     settings.endGroup()
         self.saveState()
-        logger.info(self.title)
+        print(self.title)
         print('all finished - all data saved successfully - farewell!')
         logger.info('SUCCESS')
 
@@ -764,7 +764,7 @@ class MainWindow(QMainWindow):
 
         for i in range(len(numbered_keys)):
             if evt.key() == numbered_keys[i]:
-                logger.info(i + 1, 'pressed')
+                logger.info(f'{i + 1} pressed')
                 label = self.annotation_parameter_tree.get_label_from_shortcut(i + 1)
                 if label is not None:
                     if self.main_model.annotations.focused_annotation is None:

@@ -16,6 +16,8 @@ import colorsys
 import multiprocessing as mp
 import concurrent
 from concurrent.futures.process import ProcessPoolExecutor
+import logging
+logger = logging.getLogger(__name__)
 
 # Interpret image data as row-major instead of col-major
 pg.setConfigOptions(imageAxisOrder='row-major')
@@ -29,7 +31,7 @@ hsvcolormap = pg.ColorMap(hues,colors)
 def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), progress_signal = None, kill_switch = None, multi_proc = True):
     if kill_switch is None:
         kill_switch = [False]
-    print('morlet_wavelet called')
+    logging.info('morlet_wavelet called')
     Ns = len(input_signal)
     if len(freq_interval) > 0:
         minf = max(freq_interval[0], R / (Ns * dt))  # avoid wavelets with COI longer than the signal
@@ -46,7 +48,6 @@ def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), progress_signal = 
 
     alfa = (maxf / minf) ** (1 / Nf) - 1  # According to the expression achived by fn = ((1+1/R)^n)*f0 where 1/R = alfa
     vf = ((1 + alfa) ** np.arange(0, Nf)) * minf
-    print(Nf,Ns)
     result = np.zeros((Nf, Ns), dtype='complex')
 
     if multi_proc:
@@ -57,7 +58,7 @@ def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), progress_signal = 
             return sg.oaconvolve(signal, wave, mode='same')
 
         n_cores = max(int(np.ceil(mp.cpu_count()/4))-1,1)
-        print(f'Wavelet using multiproc with {n_cores} cores')
+        logging.info(f'Wavelet using multiproc with {n_cores} cores')
         for k0 in range(0,Nf,n_cores):
             input_signal_list = [input_signal]*n_cores
             if kill_switch[0]:
@@ -283,17 +284,17 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
 
     def setR(self,r):
         self.R = r
-        print('Waelet R set to',r)
+        logger.info(f'Waelet R set to {r}')
         self.update_data()
 
     def setChannel(self,c):
         self.channel = int(c)
-        print('Wavlet channel set to ',c)
+        logger.info(f'Wavlet channel set to {c}')
         self.update_data()
 
     def setCrossChannel(self,c):
         self.cross_channel = int(c)
-        print('Wavlet cross channel set to ',c)
+        logger.info(f'Wavlet cross channel set to {c}')
         self.update_data()
 
     def update_data(self):
@@ -312,7 +313,7 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
                 print('random data')
             else:
                 if self.main_model.window[1] - self.main_model.window[0] > 3600:
-                    print('Window too large to compute Wavelet (>3600s)')
+                    logger.warning('Window too large to compute Wavelet (>3600s)')
                     self.p1.setLabel('bottom', 'Window too large to compute Wavelet (>3600s)')
                     return
                 # print('window' , self.main_model.window)
@@ -374,7 +375,7 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         for i, s in enumerate(self.thread_killswitch_list): # clean up killswitch list
             if s is ks:
                 del self.thread_killswitch_list[i]
-                print(self.thread_killswitch_list)
+                logger.info(f'{self.thread_killswitch_list}')
         if ks[0]:  # If the task was killed do not update the plot
             # print('Wavelet process killed: not ploting data')
             # print('Killswitch list:', self.thread_killswitch_list)
@@ -391,7 +392,7 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             #               np.ones(self.wav.shape), # saturation
             #               value-minvalue]))  # temporary value
             # self.data = np.moveaxis(self.data,0,-1) +minvalue
-            print('data shape',self.data.shape)
+            logger.info(f'data shape {self.data.shape}')
             self.img.setImage(self.data*((self.value + self.coi)[:,:,np.newaxis]), # *(value[:,:,np.newaxis]),
                               autoLevels=False)
             # hsvim = plt.cm.hsv(np.angle(result) / 2 / np.pi + .5)
@@ -434,7 +435,7 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         self.cursor.setPos(self.main_model.time_position - self.main_model.window[0])
         self.show()
         end_t = timer()
-        print('Updated Wavelet in ',end_t-self.start_t, 'seconds')
+        logger.info(f'Updated Wavelet in {end_t - self.start_t} seconds')
 
 
 class WaveletWindow(QWidget):

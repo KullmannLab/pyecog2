@@ -184,7 +184,7 @@ class AnnotationPage(QObject):
     def focusOnAnnotation(self, annotation):
         if annotation != self.focused_annotation:
             self.focused_annotation = annotation
-            logger.info('focused on', annotation)
+            logger.info(f'focused on {annotation}')
             self.sigFocusOnAnnotation.emit(annotation)
 
     @staticmethod
@@ -244,7 +244,7 @@ class AnnotationPage(QObject):
             self.cache_to_history()
 
     def delete_label(self, label):
-        logger.info('labels before delete',self.labels)
+        logger.info(f'labels before delete {self.labels}')
         if label in self.labels:
             self.delete_all_with_label(label,cache_history=False)
             del self.label_color_dict[label]
@@ -252,7 +252,7 @@ class AnnotationPage(QObject):
             for i, l in reversed(list(enumerate(self.labels))):
                 if l == label:
                     del self.labels[i]
-        logger.info('labels after', self.labels)
+        logger.info(f'labels after {self.labels}')
         self.cache_to_history()
         self.sigPauseTable.emit(False)
         self.sigLabelsChanged.emit(None)
@@ -297,7 +297,7 @@ class AnnotationPage(QObject):
         self.cache_to_history()
 
     def add_label(self, label, color = None):
-        logger.info(label,color,self.labels)
+        logger.info(f'Adding label: {label, color, self.labels}')
         if label not in self.labels:
             self.labels.append(label) # for future if labels can have global propreties... probably will never be used
             if label not in self.label_color_dict.keys():
@@ -400,12 +400,12 @@ class AnnotationPage(QObject):
     def step_back_in_history(self):
         if len(self.history) > -self.history_step:
             self.history_step -= 1
-            logger.info('going back to step', self.history_step,'of history',len(self.history))
+            logger.info(f'going back to step {self.history_step} of history {len(self.history)}')
             for d in self.history:
-                logger.info(d['labels'])
+                logger.info(f"{d['labels']}")
             self.restore_from_dict(self.history[self.history_step])
         else:
-            logger.info('cannot go further back in history: step',self.history_step,'of:',-len(self.history))
+            logger.warning(f'Cannot go further back in history: step {self.history_step} of: {-len(self.history)}')
 
     def step_forward_in_history(self):
         if self.history_step>=-1:

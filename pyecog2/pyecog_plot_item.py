@@ -7,6 +7,8 @@ from pyqtgraph.functions import siScale, siFormat
 import numpy as np
 from scipy import signal
 from pyecog2.ProjectClass import intervals_overlap
+import logging
+logger = logging.getLogger(__name__)
 
 class PyecogPlotCurveItem(pg.PlotCurveItem):
     ''' Hmm seems like you need the graphics scene subcalss of pyqtgraph
@@ -83,15 +85,15 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
 
                 if newXRange[1]>previousXRange[1]:
                     n_new_points = int(((newXRange[1]-self.visible_time[-1])*n)/(newXRange[1]-newXRange[0]))
-                    print('npoints', n_new_points)
+                    logger.info(f'npoints {n_new_points}')
                     if n_new_points>0:
                         # grab data to append
                         visible_data, visible_time = self.project.get_data_from_range([previousXRange[1]+ds, newXRange[1]+ds],
                                                                                       self.channel, n_envelope=n_new_points, for_plot=True)
                         try:
-                            print(self.visible_data.shape,visible_data.shape)
-                            print('visible times',self.visible_time[-1],visible_time[0])
-                            print('delta visible times',visible_time[0]-self.visible_time[-1],ds)
+                            logger.info(f'{self.visible_data.shape, visible_data.shape}')
+                            logger.info(f'visible times {self.visible_time[-1], visible_time[0]}')
+                            logger.info(f'delta visible times {visible_time[0] - self.visible_time[-1], ds}')
                         except:
                             pass
                         if len(visible_data):
@@ -100,14 +102,14 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
                 else:
                     # grab data to prepend
                     n_new_points = int(((self.visible_time[0]-newXRange[0])*n)/(newXRange[1]-newXRange[0]))
-                    print('npoints', n_new_points)
+                    logger.info(f'npoints {n_new_points}')
                     if n_new_points>0:
                         visible_data, visible_time = self.project.get_data_from_range([newXRange[0], previousXRange[0]-ds],
                                                                                       self.channel, n_envelope=n_new_points, for_plot=True)
                         try:
-                            print(self.visible_data.shape,visible_data.shape)
-                            print('visible times',self.visible_time[0],visible_time[-1])
-                            print('delta visible times',visible_time[-1]-self.visible_time[0],ds)
+                            logger.info(f'{self.visible_data.shape, visible_data.shape}')
+                            logger.info(f'visible times {self.visible_time[0], visible_time[-1]}')
+                            logger.info(f'delta visible times {visible_time[-1] - self.visible_time[0], ds}')
                         except:
                             pass
                         if len(visible_data):

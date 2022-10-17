@@ -5,6 +5,9 @@ import numpy as np
 import colorsys
 from collections import OrderedDict
 from timeit import default_timer as timer
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Function to generate nicely spaced colors (i.e. points around a ring)
 def i_spaced_nfold(i,n):
@@ -92,7 +95,7 @@ class AnnotationElement(QObject):
     def delete(self):
         if not self._is_deleted:
             self._is_deleted = True
-            print('Emiting deletion signal from annotation:', self.getLabel(),self.getStart())
+            logger.info('Emiting deletion signal from annotation:', self.getLabel(),self.getStart())
             # print('receivers:', QObject.receivers(self.sigAnnotationElementDeleted))
             self.sigAnnotationElementDeleted.emit(self)
 
@@ -182,17 +185,17 @@ class AnnotationPage(QObject):
     def focusOnAnnotation(self, annotation):
         if annotation != self.focused_annotation:
             self.focused_annotation = annotation
-            print('focused on', annotation)
+            logger.info('focused on', annotation)
             self.sigFocusOnAnnotation.emit(annotation)
 
     @staticmethod
     def checklist(alist):  # try to check if dictionary structure is valid
         if type(alist) is not list:
-            print('Annotations: invalid type for annotations list')
+            logger.info('Annotations: invalid type for annotations list')
             return False
         # Now check that all elements are of type AnnotationElement
         if not all([isinstance(annotation, AnnotationElement) for annotation in alist]):
-            print('Annotations: invalid type for annotations list elements')
+            logger.info('Annotations: invalid type for annotations list elements')
             return False
         return True
 
@@ -201,7 +204,7 @@ class AnnotationPage(QObject):
         self.add_label(annotation.getLabel())
         annotation.sigAnnotationElementChanged.connect(self.cache_to_history)
         self.sigAnnotationAdded.emit(annotation)
-        print('add annotation')
+        logger.info('add annotation')
         self.cache_to_history()
 
     def delete_annotation(self, annotation,cache_history = True):
@@ -212,12 +215,12 @@ class AnnotationPage(QObject):
             self.annotations_list.remove(annotation)
             annotation.delete() # send signal we are deleting annotation
             if cache_history:
-                print('delete annotation')
+                logger.info('delete annotation')
                 self.cache_to_history()
         except IndexError:
-            print('Annotation index is out of range')
+            logger.info('Annotation index is out of range')
         except ValueError:
-            print('Annotation is not found in annotations_list')
+            logger.info('Annotation is not found in annotations_list')
 
     def get_annotation_index(self, annotation):
         for i in range(len(self.annotations_list)):
@@ -238,11 +241,11 @@ class AnnotationPage(QObject):
             if a.getLabel() == label:
                 self.delete_annotation(i,cache_history=False)
         if cache_history:
-            print('delete all with label')
+            logger.info('delete all with label')
             self.cache_to_history()
 
     def delete_label(self, label):
-        print('labels before delete',self.labels)
+        logger.info('labels before delete',self.labels)
         if label in self.labels:
             self.delete_all_with_label(label,cache_history=False)
             del self.label_color_dict[label]
@@ -250,7 +253,7 @@ class AnnotationPage(QObject):
             for i, l in reversed(list(enumerate(self.labels))):
                 if l == label:
                     del self.labels[i]
-        print('labels after', self.labels)
+        logger.info('labels after', self.labels)
         self.cache_to_history()
         self.sigPauseTable.emit(False)
         self.sigLabelsChanged.emit(None)
@@ -269,12 +272,12 @@ class AnnotationPage(QObject):
         self.sigLabelsChanged.emit(new_label)
         self.history_is_paused = False
         self.cache_to_history()
-        print('change label name')
+        logger.info('change label name')
 
     def change_label_color(self,label,color):
         self.label_color_dict[label] = color
         self.sigLabelsChanged.emit(label)
-        print('change label color')
+        logger.info('change label color')
         self.cache_to_history()
 
     def change_label_channel_range(self,label,channel_range):
@@ -291,11 +294,11 @@ class AnnotationPage(QObject):
             c = None
         self.label_channel_range_dict[label] = c
         self.sigLabelsChanged.emit(label)
-        print('change label range')
+        logger.info('change label range')
         self.cache_to_history()
 
     def add_label(self, label, color = None):
-        print(label,color,self.labels)
+        logger.info(label,color,self.labels)
         if label not in self.labels:
             self.labels.append(label) # for future if labels can have global propreties... probably will never be used
             if label not in self.label_color_dict.keys():
@@ -310,10 +313,10 @@ class AnnotationPage(QObject):
                 self.label_channel_range_dict[label] = None
 
             self.sigLabelsChanged.emit(label)
-            print('add label: sigLabelsChanged emitted')
+            logger.info('add label: sigLabelsChanged emitted')
             self.cache_to_history()
         else:
-            print('Annotations: Label already exists')
+            logger.info('Annotations: Label already exists')
 
     def export_to_json(self, fname):
         # convert annotation objects into dictionaries
@@ -332,7 +335,7 @@ class AnnotationPage(QObject):
         self.label_channel_range_dict = object_list[3]
         self.connect_annotations_to_history()
         self.clear_history()
-        print('import from json')
+        logger.info('import from json')
 
     def export_to_csv(self, fname, label): # Currently not in use
         with open(fname, 'w') as f:
@@ -398,16 +401,16 @@ class AnnotationPage(QObject):
     def step_back_in_history(self):
         if len(self.history) > -self.history_step:
             self.history_step -= 1
-            print('going back to step', self.history_step,'of history',len(self.history))
+            logger.info('going back to step', self.history_step,'of history',len(self.history))
             for d in self.history:
-                print(d['labels'])
+                logger.info(d['labels'])
             self.restore_from_dict(self.history[self.history_step])
         else:
-            print('cannot go further back in history: step',self.history_step,'of:',-len(self.history))
+            logger.info('cannot go further back in history: step',self.history_step,'of:',-len(self.history))
 
     def step_forward_in_history(self):
         if self.history_step>=-1:
-            print('Already at most recent point in history')
+            logger.info('Already at most recent point in history')
         else:
             self.history_step += 1
             # print('going forward to step', self.history_step,'of history',len(self.history))

@@ -32,14 +32,7 @@ from multiprocessing import freeze_support
 from urllib import request
 import json
 import logging
-
-log_fname = pkg_resources.resource_filename('pyecog2','/') + 'pyecog.log'
-try:
-    os.remove(log_fname)
-except:
-    pass
-
-logger = logging.getLogger(__name__)
+from logging_aux import LoggerWriter # DefaultStreamHandler
 
 os.environ['QT_MAC_WANTS_LAYER'] = '1' # Solves issue with MacOs Big sur not starting QT windows.
 
@@ -50,7 +43,20 @@ class MainWindow(QMainWindow):
 
     def __init__(self, app_handle=None):
         super().__init__()
+
         self.app_handle = app_handle
+
+        # Initialize logging
+        log_fname = pkg_resources.resource_filename('pyecog2', '/') + 'pyecog.log'
+        logging.basicConfig(filename=log_fname, filemode='w',level=logging.DEBUG)
+        logger = logging.getLogger(__name__)
+        logger.info(f'Session start: {datetime.now()}')
+        sys.stdout = LoggerWriter(logger.debug) # redirect stdout and stderr to log file
+        sys.stderr = LoggerWriter(logger.warning)
+
+        # test errors
+        print([]+1)
+
         if os.name == 'posix':
             pyecog_string = '🇵 🇾 🇪 🇨 🇴 🇬'
         else:

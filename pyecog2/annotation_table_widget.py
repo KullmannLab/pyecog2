@@ -452,7 +452,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         self.contextMenu.popup(ev.globalPos())
 
     def keyPressEvent(self, ev):
-        looger.info(f'Key press captured by Table {ev.key()}')
+        logger.info(f'Key press captured by Table {ev.key()}')
         if ev.key() == QtCore.Qt.Key_C and ev.modifiers() == QtCore.Qt.ControlModifier:
             ev.accept()
             self.copySel()

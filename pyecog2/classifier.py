@@ -11,6 +11,8 @@ import json
 from numba import jit
 from scipy.stats import chi2
 from pyecog2.annotations_module import AnnotationElement
+import logging
+logger = logging.getLogger(__name__)
 
 @jit(nopython=True,nogil=True)
 def MVGD_LL_jit(fdata,mu,inv_cov,LL,no_scale):
@@ -108,7 +110,8 @@ class ProjectClassifier():
         if os.path.isdir(classifier_dir):
             self.load()
         else:
-            print('creating classifier folder:',classifier_dir)
+            logger.info(f'creating classifier folder:{classifier_dir}')
+            print(f'creating classifier folder:{classifier_dir}')
             os.mkdir(classifier_dir)
             self.animal_classifier_dict = OrderedDict([(a.id, GaussianClassifier(project, self.feature_extractor, labels)) for a in project.animal_list])
 
@@ -124,31 +127,37 @@ class ProjectClassifier():
 
     def load(self):
         classifier_dir = self.project.project_file + '_classifier'
+        logger.info(f'loading {classifier_dir}')
         print('loading',classifier_dir)
         self.animal_classifier_dict = OrderedDict([(a.id, GaussianClassifier(self.project,
                                                                       self.feature_extractor,
                                                                       self.global_classifier.labels2classify))
                                             for a in self.project.animal_list])  # generate classifiers for all animals
         if not os.path.isdir(classifier_dir):
+            logger.info('No classifiers saved for current project yet')
             print('No classifiers saved for current project yet')
             return
         try:
             self.global_classifier.load(os.path.join(classifier_dir,'_global.npz'))
         except Exception:
+            logger.info('Could not load global classifier')
             print('Could not load global classifier')
         try:
             self.imported_classifier.load(os.path.join(classifier_dir,'_imported.npz'))
         except Exception:
+            logger.info('Could not load imported classifier')
             print('Could not load imported classifier')
         try:
             self.feature_extractor.load_settings(os.path.join(classifier_dir, '_feature_extractor.json'))
         except:
+            logger.info('Could not load feature extractor')
             print('Could not load feature extractor')
         for animal_id in self.animal_classifier_dict: # load classifiers for the ones that exist
             try:
                 self.animal_classifier_dict[animal_id].load(os.path.join(classifier_dir, animal_id+'.npz'))
             except Exception:
-                print(animal_id,'does not have a classifier yet')
+                logger.info(f'{animal_id} does not have a classifier yet')
+                print(f'{animal_id} does not have a classifier yet')
 
     def import_classifier(self,fname):
         self.imported_classifier.load(fname)
@@ -161,7 +170,8 @@ class ProjectClassifier():
             self.global_classifier = GaussianClassifier(self.project, self.feature_extractor,labels = labels2train, features=features2use)
         for k, gc in self.animal_classifier_dict.items():
             if animals2use is None or k in animals2use:
-                print('assimilating',k)
+                logger.info(f'assimilating {k}')
+                print(f'assimilating {k}')
                 self.global_classifier.assimilate_classifier(gc)
         self.global_classifier.save(os.path.join(self.project.project_file + '_classifier','_global.npz'))
 
@@ -180,6 +190,7 @@ class ProjectClassifier():
         gc.copy_from(self.animal_classifier_dict[animal.id])
         if gc.blank_npoints == 0:
             progress_bar.setValue(0.1)
+            logger.info('Training animal specific classifier first...')
             print('Training animal specific classifier first...')
             gc.train([animal])
         gc.copy_re_normalized_classifier(self.global_classifier)
@@ -291,8 +302,12 @@ class GaussianClassifier():
             recieving animal list to possibly allow to lump different datasets into a single GC, but usually the animal 
             list will only contain one animal
             '''
-            print('Training with animal:', animal.id)
-            print('Training with classes:', self.labels2classify)
+
+            logger.info(f'Training with animal: {animal.id}')
+            logger.info(f'Training with classes: {self.labels2classify}')
+
+            print(f'Training with animal: {animal.id}')
+            print(f'Training with classes: {self.labels2classify}')
             labeled_positions = {}
             for label in self.labels2classify:
                 labeled_positions[label] = np.array([a.getPos() for a in animal.annotations.get_all_with_label(label)])
@@ -349,6 +364,7 @@ class GaussianClassifier():
                     self.blank_means = mu.ravel()
                     self.blank_cov   = cov
                     if sum(np.isnan(cov.ravel())):
+                        logger.info(f'\nCov matrix is NaN after file: {ifile} {eeg_file} \n')
                         print('\nCov matrix is NaN after file:',ifile,eeg_file,'\n')
                         self._debug_f_vec_d =f_vec_d
                         return
@@ -361,6 +377,7 @@ class GaussianClassifier():
         trans_list = [(l[0],l[1],i+1) for i,key in enumerate(self.labels2classify) for l in labeled_positions[key]]
         trans_list.sort()
         self.transitions_matrix = transitionslist2matrix(trans_list, 1/fmeta_dict['fs'], len(self.labels2classify))
+        logger.info(f'Transitions:\n {self.transitions_matrix}')
         print('Transitions:\n', self.transitions_matrix)
         if progress_bar is not None:
             progress_bar.setValue(100)
@@ -382,6 +399,7 @@ class GaussianClassifier():
     def classify_animal(self, animal, progress_bar=None, max_annotations=-1, labels2annotate=None, prob_th=0.5,
                         outlier_th = 1, viterbi=False):
         if self.blank_npoints == 0:
+            logger.info('Classifier needs to be trained first')
             print('Classifier needs to be trained first')
             return None,None,None,None
 
@@ -425,6 +443,7 @@ class GaussianClassifier():
         LLv_reg = np.maximum(LLth, LLv)*(1-self.overlap)*.5 # TEMPORARY 0.5 FACTOR!
         R2v = np.vstack(R2v)
         timev = np.hstack(timev)
+        logger.info('\nRunning HMM...')
         print('\nRunning HMM...')
         hmm = HMM_LL()
         hmm.A = transitions2rates(self.transitions_matrix, self.blank_npoints, self.class_npoints)
@@ -443,6 +462,7 @@ class GaussianClassifier():
 
         if progress_bar is not None:
             progress_bar.setValue(99)   # Almost done...
+        logger.info('Combining results and generating annotations...')
         print('Combining results and generating annotations...')
         # threshold to reject classifications outside .999 confidence interval of the class distribution
         th = chi2.isf(1e-3,self.Ndim,scale=0.5)
@@ -483,14 +503,15 @@ class GaussianClassifier():
                 else:
                     print('annotation already exists at', starts[j], ends[j])
 
+            logger.info(f'Found {len(alist)} putative events. Saving {max_annotations} with highest confidence score')
             print('Found',len(alist), 'putative events. Saving',max_annotations,'with highest confidence score')
             alist.sort(key=lambda c:-c[0])
             animal.annotations.delete_label('(auto)'+label)  # Delete all previous auto generated labels
             try:
                 old_color = animal.annotations.label_color_dict[label]
-                print('found color for ', label, old_color)
+                # print('found color for ', label, old_color)
             except Exception:
-                print('did not find color for' , label)
+                # print('did not find color for' , label)
                 old_color = (255,255,255)
             new_color = tuple([ max(int(c*0.65),0) for c in old_color])
             animal.annotations.add_label('(auto)'+label,color = new_color)
@@ -522,5 +543,6 @@ class GaussianClassifier():
                 try:
                     self.__dict__[key] = gaussian_classifier.__dict__[key].copy()
                 except:
+                    logger.warning(f'error trying to copy gaussian_classifier.__dict__[{key}]')
                     print(f'error trying to copy gaussian_classifier.__dict__[{key}]')
                     raise

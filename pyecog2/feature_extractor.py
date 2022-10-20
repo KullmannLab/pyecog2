@@ -9,6 +9,8 @@ from pyecog2.ProjectClass import FileBuffer
 from scipy.signal import get_window
 from importlib import import_module
 import multiprocessing
+import logging
+logger = logging.getLogger(__name__)
 # constructors for functions that grab the power from frequency bands
 
 # @jit(nopython=True)
@@ -125,7 +127,8 @@ class FeatureExtractor():
         eeg_init_time = animal.eeg_init_time
         eeg_duration = animal.eeg_duration
         animal_id = animal.id
-        print('Extracting features for animal', animal_id)
+        logger.info(f'Extracting features for animal {animal_id}')
+        print(f'Extracting features for animal {animal_id}')
         tuples = [(eeg_files,eeg_init_time,eeg_duration, animal_id, i,re_write) for i in range(Nfiles)]
         # The following is not working yet...
         # with multiprocessing.Pool(processes=n_cores,initializer=my_worker_flist_init,

@@ -9,6 +9,8 @@ from pyecog2.ProjectClass import Animal
 from pyqtgraph.parametertree import Parameter
 from pyecog2.ui_elements.pyecogParameterTree import PyecogParameterTree,PyecogGroupParameter
 
+import logging
+logger = logging.getLogger(__name__)
 
 class OutputWrapper(QtCore.QObject):
     outputWritten = QtCore.Signal(object, object)
@@ -52,7 +54,7 @@ class ScalableGroup(PyecogGroupParameter):
         try:
             self.addChild(Animal2Parameter(Animal(id='Animal '+str(n))))
         except Exception:
-            print('Animal with name','Animal '+str(n+1),'already exists. Trying to add animal with name:','Animal '+str(n+1))
+            logger.info(f'Animal with name: Animal {n+1} already exists. Trying to add animal with name: Animal {n + 1}')
             self.addNew(typ,n+1)
 
 def Animal2Parameter(animal):
@@ -95,7 +97,7 @@ class ProjectEditWindow(QMainWindow):
         self.button.clicked.connect(self.update_project_settings)
 
         self.animal_dict = [Animal2Parameter(animal) for animal in self.project.animal_list]
-        print(self.animal_dict)
+        # print(self.animal_dict)
 
         self.params = [
             {'name': 'Global Settings','type':'group','children':[
@@ -183,7 +185,7 @@ class ProjectEditWindow(QMainWindow):
 
 
     def setProjectTitle(self, eeg_root_folder_param):
-        print('Changing project title to:',eeg_root_folder_param.value())
+        logger.info(f'Changing project title to: {eeg_root_folder_param.value()}')
         self.project.setTitle(eeg_root_folder_param.value())
 
 
@@ -197,7 +199,7 @@ class ProjectEditWindow(QMainWindow):
         deleted_animals = list(set(old_animal_list)-set(animal_param_list))
 
         for a in deleted_animals:
-            print('Deleting animal with id',a)
+            logger.info(f'Deleting animal with id {a}')
             self.project.delete_animal(a)
 
         for p in animal_param_list:
@@ -207,23 +209,26 @@ class ProjectEditWindow(QMainWindow):
             video_dir = self.p.param('Animal list:',p,'Video directory').value()
             self.p.param('Animal list:',p).setName(id)
             if animal is None:
-                print('Adding new animal with id', id)
+                logger.info(f'Adding new animal with id {id}')
                 self.project.add_animal(Animal(id=id,eeg_folder=eeg_dir,video_folder=video_dir))
             else:
-                print('Updating animal with id', id)
+                logger.info(f'Updating animal with id {id}')
                 animal.id = id
                 animal.update_eeg_folder(eeg_dir)
                 animal.update_video_folder(video_dir)
 
         self.project.main_model.sigProjectChanged.emit()
+        logger.info('Project update finished')
         print('Project update finished')
 
 
     def update_project_from_roots(self):
         self.project.eeg_root_folder = self.p.param('Global Settings', 'Select EEG root directory','EEG root directory:').value()
         self.project.video_root_folder = self.p.param('Global Settings', 'Select Video root directory','Video root directory:').value()
+        logger.info('Updating project from root directories...')
+        logger.info(f'Processing {self.project.eeg_root_folder}...')
         print('Updating project from root directories...')
-        print('processing', self.project.eeg_root_folder)
+        print(f'Processing {self.project.eeg_root_folder}...')
         self.project.update_project_from_root_directories()
 
         # update animal list in GUI
@@ -232,7 +237,7 @@ class ProjectEditWindow(QMainWindow):
         self.p.param('Animal list:').addChildren(self.animal_dict)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # OBSOLETE ???
     app = QApplication(sys.argv)
     window = ProjectEditWindow()
     window.setGeometry(500, 300, 300, 200)

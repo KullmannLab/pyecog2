@@ -115,7 +115,7 @@ class MainWindow(QMainWindow):
         self.text_edit = QTextBrowser()
         hints_file = pkg_resources.resource_filename('pyecog2', 'HelperHints.md')
         # text = open('HelperHints.md').read()
-        logger.info('hints file:' + hints_file)
+        logger.info(f'hints file: {hints_file}')
         text = open(hints_file).read()
         text = text.replace('icons/banner_small.png',
                             pkg_resources.resource_filename('pyecog2', 'icons/banner_small.png'))
@@ -291,11 +291,11 @@ class MainWindow(QMainWindow):
     def get_available_screen(self):
         app = QApplication.instance()
         screen = app.primaryScreen()
-        logger.info('Screen: %s' % screen.name())
+        logger.info(f'Screen: {screen.name()}')
         size = screen.size()
-        logger.info('Size: %d x %d' % (size.width(), size.height()))
+        logger.info(f'Size: {size.width()} x {size.height()}')
         rect = screen.availableGeometry()
-        logger.info('Available: %d x %d' % (rect.width(), rect.height()))
+        logger.info(f'Available: {rect.width()} x {rect.height()}')
         return (size, rect)
 
     def reset_geometry(self):
@@ -381,7 +381,7 @@ class MainWindow(QMainWindow):
         if not os.path.isfile(fname):
             self.save_as()
         else:
-            logger.info('Saving project to:', fname)
+            logger.info(f'Saving project to: {fname}')
             self.main_model.project.save_to_json(fname)
         self.toggle_auto_save()
 
@@ -398,7 +398,7 @@ class MainWindow(QMainWindow):
             if not fname.endswith('.pyecog'):
                 fname = fname + '.pyecog'
             self.main_model.project.project_file = fname
-            logger.info('Saving project to:', self.main_model.project.project_file)
+            logger.info(f'Saving project to: {self.main_model.project.project_file}')
             self.main_model.project.save_to_json(fname)
         self.toggle_auto_save()
 
@@ -488,7 +488,7 @@ class MainWindow(QMainWindow):
         self.main_model.project.file_buffer.get_data_from_range([xmin, xmax], n_envelope=10, channel=0)
         buffer_x_max = self.main_model.project.file_buffer.get_t_max_for_live_plot()
         # print(full_xrange)
-        logger.info('reload_plot', buffer_x_max, xmax)
+        logger.info(f'reload_plot {buffer_x_max, xmax}')
         if buffer_x_max > xmax:
             # print('called set xrange')
             self.paired_graphics_view.insetview_plot.vb.setXRange(buffer_x_max - x_range, buffer_x_max, padding=0)

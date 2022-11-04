@@ -115,7 +115,7 @@ class Animal():
 
     def update_eeg_folder(self,eeg_folder):
         self.eeg_folder = os.path.normpath(eeg_folder)
-        logger.info('Looking for files:',eeg_folder,os.path.sep,'*.h5')
+        logger.info(f'Looking for files:{eeg_folder}{os.path.sep}*.h5')
         h5files = glob.glob(eeg_folder + os.path.sep + '*.h5')
         h5files.sort()
         for i,file in enumerate(h5files):
@@ -273,7 +273,7 @@ class FileBuffer():  # Consider translating this to cython
                 if intervals_overlap(frange,trange):
                     if self.verbose: logger.info(f'Adding file to buffer: {file}')
                     self.add_file_to_buffer(file)
-            if self.verbose: logger.info('files in buffer: {self.files}')
+            if self.verbose: logger.info(f'files in buffer: {self.files}')
 
         #  Find sample ranges from time data_ranges:
         sample_ranges = []
@@ -489,7 +489,16 @@ class Project():
         self.set_current_animal(self.get_animal(current_animal_id))
         logger.info(f'current animal:{self.current_animal.id}')
         self.file_buffer = FileBuffer(self.current_animal)
-        self.project_file = fname.strip('_autosave') # when recovering autosaves, make the project file the original project file
+        if self.project_file != fname.strip('_autosave'):
+            logger.info('Project file changed since last opening')
+            orig_dirname, org_fname = os.path.split(self.project_file)
+            new_dirname, new_fname = os.path.split(fname.strip('_autosave'))
+            if orig_dirname == new_dirname:
+                logger.info('Only file name changed')
+                self.project_file = fname.strip('_autosave') # when recovering autosaves, make the project file the original project file
+            else:
+                logger.info('Project file changed directories - asking if user wants to update EEG and/or Video directories as well')
+
         if not hasattr(self,'filter_settings'):  #Backwards compatibility
             self.filter_settings = (False, 0, 1e6)
         self.main_model.sigProjectChanged.emit()
@@ -541,7 +550,7 @@ class Project():
             if directory not in existing_eeg_dir:
                 id = directory.split(os.path.sep)[-2]
                 logger.info(f'Creating animal from directory:{directory}')
-                logger.info('Adding animal with id: {id}')
+                logger.info(f'Adding animal with id: {id}')
                 video_dir = self.video_root_folder + os.path.sep + id + os.path.sep
                 if video_dir not in video_dir_list:
                     video_dir = None  # check if compatible video dir exists

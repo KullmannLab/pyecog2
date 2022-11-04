@@ -177,7 +177,7 @@ class ProjectClassifier():
 
     def train_animal(self,animal_id,pbar=None,labels2train=None,features2use=None):
         a = self.project.get_animal(animal_id)
-        if False:  # animal_id in self.animal_classifier_dict.keys(): # At this point there is no point on keping the previous classifier
+        if False:  # animal_id in self.animal_classifier_dict.keys(): # At this point there is no point on keeping the previous classifier
             gc = self.animal_classifier_dict[animal_id]
         else:
             gc = GaussianClassifier(self.project,self.feature_extractor,labels = labels2train, features=features2use)
@@ -187,12 +187,17 @@ class ProjectClassifier():
 
     def classify_animal_with_global(self, animal, progress_bar=None,max_annotations=-1,labels2annotate=None, prob_th=0.5, outlier_th = 1, viterbi=False):
         gc = GaussianClassifier(self.project,self.feature_extractor,self.global_classifier.labels2classify)
-        gc.copy_from(self.animal_classifier_dict[animal.id])
-        if gc.blank_npoints == 0:
+        if self.animal_classifier_dict[animal.id].blank_npoints ==0:
             progress_bar.setValue(0.1)
             logger.info('Training animal specific classifier first...')
             print('Training animal specific classifier first...')
-            gc.train([animal])
+            self.animal_classifier_dict[animal.id].train([animal])
+        gc.copy_from(self.animal_classifier_dict[animal.id])
+        # if gc.blank_npoints == 0:
+        #     progress_bar.setValue(0.1)
+        #     logger.info('Training animal specific classifier first...')
+        #     print('Training animal specific classifier first...')
+        #     gc.train([animal])
         gc.copy_re_normalized_classifier(self.global_classifier)
         gc.classify_animal(animal,progress_bar,max_annotations,labels2annotate, prob_th=prob_th, outlier_th = outlier_th,viterbi=viterbi)
 
@@ -539,7 +544,8 @@ class GaussianClassifier():
 
     def copy_from(self,gaussian_classifier):
         for key in self.__dict__.keys():
-            if key != 'project':
+            # if key not in ['project','labels2classify','features','Ndim','FeatureExtractorNdim']:
+            if key not in ['project']:
                 try:
                     self.__dict__[key] = gaussian_classifier.__dict__[key].copy()
                 except:

@@ -361,7 +361,7 @@ class MainWindow(QMainWindow):
                         fname = fname + '_autosave'
 
             self.main_model.project.load_from_json(fname)
-            self.tree_element.set_rootnode_from_project(self.main_model.project)
+            # self.tree_element.set_rootnode_from_project(self.main_model.project) # This seems to be no longer needed, as the signaling is now properly implemented
             if self.main_model.project.current_animal.eeg_init_time:
                 init_time = np.min(self.main_model.project.current_animal.eeg_init_time)
             else:
@@ -731,6 +731,7 @@ class MainWindow(QMainWindow):
         print(self.title)
         print('all finished - all data saved successfully - farewell!')
         logger.info('SUCCESS')
+
 
     def keyPressEvent(self, evt):
         logger.info(f'Key press captured by Main {evt.key()}')

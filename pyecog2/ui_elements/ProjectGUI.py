@@ -194,6 +194,8 @@ class ProjectEditWindow(QMainWindow):
         # self.project.eeg_root_folder = eeg_root_folder.value(0)
 
     def update_project_settings(self):
+        logger.info('Project update started')
+        print('Project update started...')
         animal_param_list = self.p.param('Animal list:').getValues()
         old_animal_list = [a.id for a in self.project.animal_list]
         deleted_animals = list(set(old_animal_list)-set(animal_param_list))

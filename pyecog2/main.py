@@ -527,7 +527,16 @@ class MainWindow(QMainWindow):
 
     def openNDFconverter(self):
         logger.info('opening NDF converter')
+        if hasattr(self, 'ndf_converter'):
+            self.ndf_converter.setWindowState(
+                (self.ndf_converter.windowState() & ~Qt.WindowMinimized) | Qt.WindowActive)
+            self.ndf_converter.raise_()
+            self.ndf_converter.show()
+            return
         self.ndf_converter = NDFConverterWindow(parent=self)
+        geometry = self.ndf_converter.geometry()
+        geometry.setHeight(self.geometry().height())
+        self.ndf_converter.setGeometry(geometry)
         self.ndf_converter.show()
 
     def openProjectEditor(self):

@@ -7,7 +7,8 @@ from pyqtgraph.parametertree import Parameter
 from pyecog2.ndf_converter import NdfFile, DataHandler
 from pyecog2.ui_elements.WaveletWidget import Worker
 from pyecog2.ui_elements.pyecogParameterTree import PyecogParameterTree,PyecogGroupParameter
-
+import logging
+logger = logging.getLogger(__name__)
 
 class OutputWrapper(QtCore.QObject):
     outputWritten = QtCore.Signal(object, object)
@@ -132,6 +133,7 @@ class NDFConverterWindow(QMainWindow):
         stderr.outputWritten.connect(self.handleOutput)
 
         self.threadpool = QtCore.QThreadPool()
+        self.converter_running = False
 
         self.dfrmt = '%Y-%m-%d %H:%M:%S'  # Format to use in date elements
 
@@ -207,9 +209,20 @@ class NDFConverterWindow(QMainWindow):
         print('Saving files to folder:', self.destination_folder)
 
     def runConvertFiles(self):
+        if self.converter_running:
+            print('NDF converter is already running')
+            logger.info('NDF converter is already running')
+            return
         worker = Worker(self.convertFiles)
+        worker.signals.finished.connect(self.converterFinished)
+        self.converter_running = True
         print('Starting file conversion...')
         self.threadpool.start(worker)
+
+    def converterFinished(self,dummy_arg = None):
+        print('NDF converter finished')
+        logger.infot('NDF converter finished')
+        self.converter_running = False
 
     def convertFiles(self):
         start_string = self.p.param('Date Range', 'Start').value()

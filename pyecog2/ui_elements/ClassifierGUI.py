@@ -267,7 +267,7 @@ class ClassifierWindow(QMainWindow):
 
         for a in previous_animals:
             if a not in all_animals:
-                self.p.param('Animal Settings').removeChild(a)
+                self.p.param('Animal Settings').removeChild(self.p.param('Animal Settings', a,))
 
     def update_settings(self):
         self.saveState()

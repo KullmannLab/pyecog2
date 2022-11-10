@@ -147,6 +147,19 @@ class Animal():
         self.video_duration = [15 * 60 for file in
                                self.video_files]  # this should be replaced in the future to account flexible video duration or remove this field completely
 
+    def substitute_eeg_folder_prefix(self,old_prefix,new_prefix):
+        for f in self.video_files:
+            if f.startswith(old_prefix):
+                f = f'{new_prefix}{f[len(old_prefix):]}'
+            else:
+                Warning('EEG file name does not start with given prefix')
+    def substitute_video_folder_prefix(self,old_prefix,new_prefix):
+        for f in self.eeg_files:
+            if f.startswith(old_prefix):
+                f = f'{new_prefix}{f[len(old_prefix):]}'
+            else:
+                Warning('Video file name does not start with given prefix')
+
     def dict(self):
         dict = self.__dict__.copy()
         dict['annotations'] = self.annotations.dict()

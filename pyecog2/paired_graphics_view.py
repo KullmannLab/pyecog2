@@ -260,7 +260,7 @@ class PairedGraphicsView():
             else:
                 pen = pens[i % len(pens)]
 
-            logger.info('Setting plotitem channel data')
+            logger.info(f'Setting plotitem channel data for channel {i}')
             self.set_plotitem_channel_data(pen, i, self.scale)
 
         end_t = timer()
@@ -303,8 +303,15 @@ class PairedGraphicsView():
 
         self.set_scenes_plot_annotations_data(self.main_model.annotations, self.overview_plot.viewRange)
         self.main_model.annotations.sigFocusOnAnnotation.connect(self.set_focus_on_annotation)
+
         self.set_scene_window(self.main_model.window)
         self.set_scene_cursor()
+
+        # Set again the overview ranges - trying to hunt a bug that on first animal selection no traces appear
+        self.overview_plot.setXRange(*overview_range, padding=0)
+        self.insetview_plot.vb.setXRange(overview_range[0],
+                                         overview_range[0] + min(30, overview_range[1] - overview_range[0]), padding=0)
+
 
         end_t = timer()
         logger.info(f'Paired graphics view plot annotations + etc. in {end_t - start_t} seconds')

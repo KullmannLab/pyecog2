@@ -205,7 +205,7 @@ class MainWindow(QMainWindow):
         try:
             self.restoreState(self.settings.value("windowState"))
         except Exception as e:
-            logger.error('Error restiring state')
+            logger.error('Error restoring state')
             logger.error(e)
 
         self.action_darkmode.setChecked(self.settings.value("darkMode", type=bool))

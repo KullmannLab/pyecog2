@@ -152,14 +152,17 @@ class Animal():
         if f.startswith(old_prefix):
             f = os.path.normpath(f'{new_prefix}{f[len(old_prefix):]}')
         self.eeg_folder = f
-
-        for f in self.video_files:
+        already_warned = False
+        for i,f in enumerate(self.eeg_files):
             # replace backslashes from windows to more flexible forward dashes (if someone uses backslashes in UNIX... they deserve the ensuing bug)
             f = f.replace('\\', '/')
             if f.startswith(old_prefix):
                 f = os.path.normpath(f'{new_prefix}{f[len(old_prefix):]}')
+                self.eeg_files[i] = f
             else:
-                Warning('EEG file name does not start with given prefix')
+                if not already_warned:
+                    logger.warning('EEG file name does not start with given prefix')
+                    already_warned = True
 
     def substitute_video_folder_prefix(self,old_prefix,new_prefix):
         f = self.video_folder
@@ -167,14 +170,17 @@ class Animal():
         if f.startswith(old_prefix):
             f = os.path.normpath(f'{new_prefix}{f[len(old_prefix):]}')
         self.video_folder = f
-
-        for f in self.eeg_files:
+        already_warned = False
+        for i,f in enumerate(self.video_files):
             # replace backslashes from windows to more flexible forward dashes (if someone uses backslashes in UNIX... they deserve the ensuing bug)
             f = f.replace('\\','/')
             if f.startswith(old_prefix):
                 f = os.path.normpath(f'{new_prefix}{f[len(old_prefix):]}')
+                self.video_files[i] = f
             else:
-                Warning('Video file name does not start with given prefix')
+                if not already_warned:
+                    logger.warning('Video file name does not start with given prefix')
+                    already_warned = True
 
     def dict(self):
         dict = self.__dict__.copy()
@@ -518,10 +524,10 @@ class Project():
         self.set_current_animal(self.get_animal(current_animal_id))
         logger.info(f'current animal:{self.current_animal.id}')
         self.file_buffer = FileBuffer(self.current_animal)
+        orig_dirname, org_fname = os.path.split(self.project_file)
+        new_dirname, new_fname = os.path.split(fname.strip('_autosave'))
         if self.project_file != fname.strip('_autosave'):
             logger.info('Project file changed since last opening')
-            orig_dirname, org_fname = os.path.split(self.project_file)
-            new_dirname, new_fname = os.path.split(fname.strip('_autosave'))
             if orig_dirname == new_dirname:
                 logger.info('Only file name changed')
                 self.project_file = fname.strip('_autosave') # when recovering autosaves, make the project file the original project file
@@ -535,16 +541,19 @@ class Project():
 
     def update_folder_structure_from_new_project_location(self, new_project_path,
                                                           old_project_path, update_eeg=True, update_video=True):
+        logger.info(f'Updating project folders, from: {old_project_path}, to:{new_project_path}')
         old_project_path_n = old_project_path.replace('\\', '/')
         new_project_path_n = new_project_path.replace('\\', '/')
         commonsuffix =  os.path.commonprefix([old_project_path_n[::-1],new_project_path_n[::-1]])[::-1]
         new_prefix = new_project_path_n[:-len(commonsuffix)+1]
         old_prefix = old_project_path_n[:-len(commonsuffix)+1]
         for a in self.animal_list:
+            logger.info(f'Updating project folders for animal {a.id}')
             if update_eeg:
                 a.substitute_eeg_folder_prefix(old_prefix,new_prefix)
             if update_video:
                 a.substitute_video_folder_prefix(old_prefix,new_prefix)
+        self.main_model.sigProjectChanged.emit()
 
     def export_annotations(self, fname):
         with open(fname, 'w') as f:

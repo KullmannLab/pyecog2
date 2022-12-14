@@ -360,8 +360,19 @@ class MainWindow(QMainWindow):
                     if retval == QMessageBox.Yes:
                         fname = fname + '_autosave'
 
-            self.main_model.project.load_from_json(fname)
-            # self.tree_element.set_rootnode_from_project(self.main_model.project) # This seems to be no longer needed, as the signaling is now properly implemented
+            (new_dirname, orig_dirname) = self.main_model.project.load_from_json(fname)
+            if new_dirname != orig_dirname:
+                # Ask if user wants to update EEG and Video file paths
+                msg = QMessageBox(parent=self)
+                msg.setIcon(QMessageBox.Information)
+                msg.setText("The project file seems to have moved since last opened. Do you want to update the EEG and Video file paths based on the new location?")
+                msg.setDetailedText(f"Original location: {orig_dirname}\nNew location: {new_dirname}")
+                msg.setWindowTitle("Update directory structures")
+                msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+                retval = msg.exec_()
+                if retval == QMessageBox.Yes:
+                    self.main_model.project.update_folder_structure_from_new_project_location(new_dirname,orig_dirname)
+
             if self.main_model.project.current_animal.eeg_init_time:
                 init_time = np.min(self.main_model.project.current_animal.eeg_init_time)
             else:

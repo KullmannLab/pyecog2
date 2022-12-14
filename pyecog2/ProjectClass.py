@@ -81,7 +81,6 @@ def load_metadata_file(fname):
                 logger.info('Unrecognized metafile format')
     return metadata
 
-
 class Animal():
     def __init__(self, id=None, eeg_folder=None, video_folder=None, dict={}):
         if dict != {}:
@@ -148,15 +147,32 @@ class Animal():
                                self.video_files]  # this should be replaced in the future to account flexible video duration or remove this field completely
 
     def substitute_eeg_folder_prefix(self,old_prefix,new_prefix):
+        f = self.eeg_folder
+        f = f.replace('\\', '/')
+        if f.startswith(old_prefix):
+            f = os.path.normpath(f'{new_prefix}{f[len(old_prefix):]}')
+        self.eeg_folder = f
+
         for f in self.video_files:
+            # replace backslashes from windows to more flexible forward dashes (if someone uses backslashes in UNIX... they deserve the ensuing bug)
+            f = f.replace('\\', '/')
             if f.startswith(old_prefix):
-                f = f'{new_prefix}{f[len(old_prefix):]}'
+                f = os.path.normpath(f'{new_prefix}{f[len(old_prefix):]}')
             else:
                 Warning('EEG file name does not start with given prefix')
+
     def substitute_video_folder_prefix(self,old_prefix,new_prefix):
+        f = self.video_folder
+        f = f.replace('\\', '/')
+        if f.startswith(old_prefix):
+            f = os.path.normpath(f'{new_prefix}{f[len(old_prefix):]}')
+        self.video_folder = f
+
         for f in self.eeg_files:
+            # replace backslashes from windows to more flexible forward dashes (if someone uses backslashes in UNIX... they deserve the ensuing bug)
+            f = f.replace('\\','/')
             if f.startswith(old_prefix):
-                f = f'{new_prefix}{f[len(old_prefix):]}'
+                f = os.path.normpath(f'{new_prefix}{f[len(old_prefix):]}')
             else:
                 Warning('Video file name does not start with given prefix')
 
@@ -515,6 +531,20 @@ class Project():
         if not hasattr(self,'filter_settings'):  #Backwards compatibility
             self.filter_settings = (False, 0, 1e6)
         self.main_model.sigProjectChanged.emit()
+        return (new_dirname, orig_dirname)
+
+    def update_folder_structure_from_new_project_location(self, new_project_path,
+                                                          old_project_path, update_eeg=True, update_video=True):
+        old_project_path_n = old_project_path.replace('\\', '/')
+        new_project_path_n = new_project_path.replace('\\', '/')
+        commonsuffix =  os.path.commonprefix([old_project_path_n[::-1],new_project_path_n[::-1]])[::-1]
+        new_prefix = new_project_path_n[:-len(commonsuffix)+1]
+        old_prefix = old_project_path_n[:-len(commonsuffix)+1]
+        for a in self.animal_list:
+            if update_eeg:
+                a.substitute_eeg_folder_prefix(old_prefix,new_prefix)
+            if update_video:
+                a.substitute_video_folder_prefix(old_prefix,new_prefix)
 
     def export_annotations(self, fname):
         with open(fname, 'w') as f:
@@ -570,7 +600,7 @@ class Project():
                 self.add_animal(Animal(id=id,eeg_folder=directory,video_folder=video_dir))
         self.main_model.sigProjectChanged.emit()
 
-    def get_data_from_range(self, trange, channel=None, animal=None, n_envelope=None,for_plot = False):
+    def get_data_from_range(self, trange, channel=None, animal=None, n_envelope=None, for_plot=False):
         '''
         :param trange: list of length 2 - [init_time, end_time] for the data to get
         :param channel: channel from wich to grab the data

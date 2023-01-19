@@ -28,7 +28,7 @@ colors = [tuple([*colorsys.hsv_to_rgb(h,1,255),255]) for h in hues]
 hsvcolormap = pg.ColorMap(hues,colors)
 
 # @jit(parallel=True)
-def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), progress_signal = None, kill_switch = None, multi_proc = True):
+def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), progress_signal = None, kill_switch = None, multi_proc = False):
     if kill_switch is None:
         kill_switch = [False]
     logging.info('morlet_wavelet called')
@@ -106,7 +106,7 @@ def par_fftconvolve(input):
         return (np.fft.ifft(signal_f * env), np.fft.ifft(cross_signalf * env))
 
 def morlet_wavelet_fft(input_signal, dt=1, R=7, freq_interval=(), progress_signal=None, cross_data=None,
-                       kill_switch=None, multi_proc = True):
+                       kill_switch=None, multi_proc = False):
     if kill_switch is None:
         kill_switch = [False]
     # print('morlet_wavelet called')

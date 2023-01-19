@@ -492,7 +492,7 @@ class GaussianClassifier():
             print('manual label positions:',manual_label_positions)
             for j in range(len(starts)):
                 if not any([intervals_overlap([timev[starts[j]],timev[ends[j]]],pos) for pos in manual_label_positions]):
-                    if ends[j]-starts[j]<.5:
+                    if ends[j]-starts[j]<.5: # this 0.5 seems a bit arbitrary - probably should be reviewed - todo
                         print('interval too small:',starts[j],ends[j])
                         continue
                     # c = np.sum(LLv[starts[j]:ends[j],i])-np.sum(LLv[starts[j]:ends[j],0])

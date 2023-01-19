@@ -4,6 +4,9 @@ from datetime import datetime
 import numpy as np
 from timeit import default_timer as timer
 
+import logging
+logger = logging.getLogger(__name__)
+
 basestring = str
 asUnicode = str
 
@@ -149,9 +152,8 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         * list-of-dicts  [{'x': 1, 'y': 4}, {'x': 2, 'y': 5}, ...]
         """
         start_t = timer()
-        print('Annotations Table widget Set Data called. Annotations page length:',
-              len(self.annotationsPage.annotations_list),
-              'row count:', self.rowCount())
+        logger.info(f'''Annotations Table widget Set Data called. Annotations page length:
+                    {len(self.annotationsPage.annotations_list)} row count: {self.rowCount()}''')
         ranges = self.selectedRanges()
         self.clear()
         self.appendData(data)
@@ -161,7 +163,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         items = self.selectedItems()
         if len(items) > 0:
             self.setCurrentItem(items[0])
-        print('Annotations Table widget Set Data ran in', timer() - start_t, 'seconds')
+        logger.info(f'Annotations Table widget Set Data ran in {timer() - start_t} seconds')
 
     @_defersort
     def appendData(self, annotaion_list):
@@ -205,22 +207,22 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         # couldn't figure out any other way apart from reseting all the data
         # plus when reseting the table, for some reason the annotations are not fully removed
         if self.table_paused:
-            print('Table paused: skiping deleting annotation and reseting table data...', r, '(', self.rowCount(), ')')
+            logger.info(f'Table paused: skiping deleting annotation and reseting table data... {r} ({self.rowCount()})')
             return
-        print('Deleting annotation and reseting table data...', r, '(', self.rowCount(), ')')
+        logger.info('Deleting annotation and reseting table data... {r} ({self.rowCount()})')
         if len(self.annotationsPage.annotations_list) < self.rowCount():
             self.setData(self.annotationsPage.annotations_list)
         else:
-            print('Nothing to delete')
-        print('Finnished rebuilding Annotations Table')
+            logger.info('Nothing to delete')
+        logger.info('Finnished rebuilding Annotations Table')
 
     def removeSelection(self):
         annotations_to_remove = list(set([item.annotation for item in self.selectedItems()]))
         self.annotationsPage.history_is_paused = True  # Avoid filling history with all the deletion steps - slightly unelegant to do this here
         self.pauseTable(True)
-        print('Annotations to remove', annotations_to_remove)
+        logger.info(f'Annotations to remove {annotations_to_remove}')
         for annotation in annotations_to_remove:
-            print('Removing annotation:', annotation.getLabel(), annotation.getPos())
+            logger.info(f'Removing annotation: {annotation.getLabel(), annotation.getPos()}')
             self.annotationsPage.delete_annotation(annotation)
         self.pauseTable(False)
         self.setData(self.annotationsPage.annotations_list)
@@ -231,7 +233,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         annotations_to_change = list(set([item.annotation for item in self.selectedItems()]))
         self.annotationsPage.history_is_paused = True  # Avoid filling history with all the deletion steps - slightly unelegant to do this here
         for annotation in annotations_to_change:
-            print('changing annotation label', annotation.getLabel(), annotation.getPos())
+            logger.info(f'changing annotation label {annotation.getLabel(), annotation.getPos()}')
             annotation.setLabel(label)
             # annotation.setConfidence(float('inf'))  # not convenient because of annotation jumps if ordered by confidence
         # a bit of a pity that this signal cannot be emited by the anotationPage
@@ -450,7 +452,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         self.contextMenu.popup(ev.globalPos())
 
     def keyPressEvent(self, ev):
-        print('Key press captured by Table', ev.key())
+        logger.info(f'Key press captured by Table {ev.key()}')
         if ev.key() == QtCore.Qt.Key_C and ev.modifiers() == QtCore.Qt.ControlModifier:
             ev.accept()
             self.copySel()
@@ -461,7 +463,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
 
         for i in range(len(numbered_keys)):
             if ev.key() == numbered_keys[i]:
-                print(i + 1, 'pressed')
+                logger.info(f'{i + 1} pressed')
                 self.parent.keyPressEvent(ev)
                 # if self.annotationsPage.focused_annotation is not None:
                 #     self.changeSelectionLabel(self.annotationsPage.labels[i])
@@ -469,7 +471,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
 
         if ev.key() == QtCore.Qt.Key_Space:  # pass spacebar presses to main window -  implementation is a bit naughty...
             if self.parent is not None:
-                print('passing to main window')
+                logger.info('passing keystroke to main window')
                 self.parent.keyPressEvent(ev)
                 return
 
@@ -586,13 +588,13 @@ class AnnotationTableWidgetItem(QtWidgets.QTableWidgetItem):
 
     def textChanged(self):
         """Called when this item's text has changed for any reason."""
-        print('TextChanged was called')
+        logger.info('TextChanged was called')
         self._text = self.text()
 
         if self._blockValueChange:
             # text change was result of value or format change; do not
             # propagate.
-            print('skiped set value')
+            logger.info('skiped set value')
             return
 
         try:
@@ -601,7 +603,7 @@ class AnnotationTableWidgetItem(QtWidgets.QTableWidgetItem):
         except ValueError:
             # self.value = str(self.text())
             self._updateText()
-            print('error changing value ')
+            logger.warning('error changing value ')
 
     def format(self):
         if callable(self._format):

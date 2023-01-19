@@ -9,6 +9,7 @@ from PySide2.QtGui import QPainter, QBrush, QPen
 from datetime import datetime
 # import pyqtgraph_copy.pyqtgraph as pg
 import pyqtgraph as pg
+import pyqtgraph.widgets.RemoteGraphicsView as RemoteGraphicsView
 import colorsys
 
 from pyecog2.pyecog_plot_item import PyecogPlotCurveItem, PyecogLinearRegionItem, PyecogCursorItem
@@ -17,6 +18,9 @@ from pyqtgraph.Point import Point
 from timeit import default_timer as timer
 from pyecog2.ProjectClass import intervals_overlap
 from pyecog2.annotations_module import i_spaced_nfold
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 # Function to overide pyqtgraph ViewBox wheel events
@@ -94,7 +98,6 @@ class PairedGraphicsView():
         self.inset_annotations = []
         self.overview_annotations = []
         self.plotted_annotations = []
-
         self.animalid = None
 
         timeline_layout_widget = pg.GraphicsLayoutWidget()
@@ -108,7 +111,6 @@ class PairedGraphicsView():
         # self.timeline_plot.setLabel('top', units=None)
         self.timeline_plot.showGrid(x=True, y=False, alpha=.5)
         self.timeline_plot_items = []
-
 
         overview_layout_widget = pg.GraphicsLayoutWidget()
         overview_date_axis = DateAxis(orientation='bottom', label_date=False)
@@ -135,7 +137,7 @@ class PairedGraphicsView():
         self.splitter.addWidget(timeline_layout_widget)
         self.splitter.addWidget(overview_layout_widget)
         self.splitter.addWidget(insetview_layout_widget)
-        print('setting splitter sizes')
+        logger.info('setting splitter sizes')
         self.splitter.setSizes([150, 500, 500])
         # self.splitter.setStretchFactor(1, 6)  # make inset view 6 times larger
 
@@ -196,7 +198,7 @@ class PairedGraphicsView():
                                          overview_range[0] + min(30, overview_range[1] - overview_range[0]), padding=0)
 
         if self.animalid == self.main_model.project.current_animal.id and not force_reset:  # running for the first time
-            print('Same animal:', self.animalid)
+            logger.info(f'Same animal: {self.animalid}')
             return
 
         self.animalid = self.main_model.project.current_animal.id
@@ -205,20 +207,20 @@ class PairedGraphicsView():
 
         # we need to handle if channel not seen before
         # 6 std devations
-        print('Items to delete')
-        print(self.overview_plot.items)
+        logger.info('Items to delete')
+        logger.info(self.overview_plot.items)
         self.overview_plot.clear()
-        print('Items after delete')
-        print(self.overview_plot.items)
+        logger.info('Items after delete')
+        logger.info(self.overview_plot.items)
         self.insetview_plot.clear()
         # print(overview_range)
 
         end_t = timer()
-        print('Paired graphics view init finished in', end_t - start_t, 'seconds')
+        logger.info(f'Paired graphics view init finished in {end_t - start_t}seconds')
         start_t = end_t
         # if self.scale is None:  # running for the first time
         if True:  # running for the first time
-            print('Getting data to compute plot scale factors for new animal', self.animalid)
+            logger.info(f'Getting data to compute plot scale factors for new animal {self.animalid}')
             arr, tarr = self.main_model.project.get_data_from_range(overview_range,
                                                                     n_envelope=1000)  # self.overview_plot.vb.viewRange()[0]) wierd behaviour here because vb.viewRange() range is not updated
             # print(arr.shape, tarr.shape)
@@ -232,7 +234,7 @@ class PairedGraphicsView():
             end_t = timer()
 
         end_t = timer()
-        print('Paired graphics view scale computation finished in', end_t - start_t, 'seconds')
+        logger.info(f'Paired graphics view scale computation finished in {end_t - start_t} seconds')
         start_t = end_t
 
         if self.n_channels > 1:
@@ -258,21 +260,21 @@ class PairedGraphicsView():
             else:
                 pen = pens[i % len(pens)]
 
-            print('Setting plotitem channel data')
+            logger.info(f'Setting plotitem channel data for channel {i}')
             self.set_plotitem_channel_data(pen, i, self.scale)
 
         end_t = timer()
-        print('Paired graphics view plot channels finnished in', end_t - start_t, 'seconds')
+        logger.info(f'Paired graphics view plot channels finnished in {end_t - start_t} seconds')
         start_t = end_t
 
-        print('settng up extra plot parameters...')
+        logger.info('settng up extra plot parameters...')
         # prevent scrolling past 0 and end of data
         # self.insetview_plot.vb.setLimits(xMin=0, xMax=arr.shape[0] / fs)
         self.overview_plot.vb.setLimits(maxXRange=3600)
         self.insetview_plot.vb.setLimits(maxXRange=3600)
         self.overview_plot.vb.setLimits(yMin=-3, yMax=self.n_channels + 3)
         max_range = self.main_model.project.current_animal.get_animal_time_range()
-        print('Project time range:', max_range)
+        logger.info(f'Project time range: {max_range}')
         self.overview_plot.vb.setLimits(xMin=max_range[0], xMax=max_range[1])
         self.insetview_plot.vb.setLimits(xMin=max_range[0], xMax=max_range[1])
         self.overview_plot.addItem(self.overviewROI)  # put back the overview box
@@ -301,11 +303,18 @@ class PairedGraphicsView():
 
         self.set_scenes_plot_annotations_data(self.main_model.annotations, self.overview_plot.viewRange)
         self.main_model.annotations.sigFocusOnAnnotation.connect(self.set_focus_on_annotation)
+
         self.set_scene_window(self.main_model.window)
         self.set_scene_cursor()
 
+        # Set again the overview ranges - trying to hunt a bug that on first animal selection no traces appear
+        self.overview_plot.setXRange(*overview_range, padding=0)
+        self.insetview_plot.vb.setXRange(overview_range[0],
+                                         overview_range[0] + min(30, overview_range[1] - overview_range[0]), padding=0)
+
+
         end_t = timer()
-        print('Paired graphics view plot annotations + etc. in', end_t - start_t, 'seconds')
+        logger.info(f'Paired graphics view plot annotations + etc. in {end_t - start_t} seconds')
 
     def set_plotitem_channel_data(self, pen, index, init_scale):
         '''
@@ -500,7 +509,7 @@ class PairedGraphicsView():
         self.main_model.sigWindowChanged.connect(window_item_i.setRegion)
 
     def graphics_object_xchanged(self):
-        print('xChanged graphics object')
+        logger.info('xChanged graphics object')
 
     def overviewROIchanged(self):
         state = self.overviewROI.getState()
@@ -576,8 +585,8 @@ class PairedGraphicsView():
 
     def inset_clicked(self, ev):
         pos = self.insetview_plot.vb.mapSceneToView(ev.scenePos())
-        print('insetclicked ', pos)
-        print('modifiers:', ev.modifiers())
+        logger.info(f'insetclicked {pos}')
+        logger.info(f'modifiers: {ev.modifiers()}')
         modifiers = ev.modifiers()
         if modifiers == QtCore.Qt.ShiftModifier:
             self.main_model.annotations.focusOnAnnotation(None)

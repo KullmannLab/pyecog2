@@ -7,6 +7,9 @@ import pkg_resources
 
 from timeit import default_timer as timer
 
+import logging
+logger = logging.getLogger(__name__)
+
 # rename module to be filetree model?
 # maybe split file into one that has nodes seperately
 
@@ -20,12 +23,12 @@ class TreeModel(QtCore.QAbstractItemModel):
     lowerUpper is overidded modules
     lower_upper is custom methods
     '''
-    print('Building File Tree...')
     sortRole = QtCore.Qt.UserRole
     filterRole = QtCore.Qt.UserRole + 1 # not sure if this is best for cols?
     prepare_for_plot_role = QtCore.Qt.UserRole + 2
 
     def __init__(self, root, parent=None):
+        logger.info('Building File Tree...')
         super(TreeModel, self).__init__(parent)
         self.root_node = root
 
@@ -116,7 +119,7 @@ class TreeModel(QtCore.QAbstractItemModel):
         if role == TreeModel.prepare_for_plot_role:
             if hasattr(node, 'prepare_for_plot'):
                 range = node.prepare_for_plot()
-                print('Emmiting plot_node_signal with range:',range)
+                logger.info(f'Emmiting plot_node_signal with range: {range}')
                 if range is not None:
                     self.plot_node_signal.emit(range)
 
@@ -352,7 +355,7 @@ class AnimalNode(Node):
     def __init__(self, animal, parent=None,path=''):
         super(AnimalNode, self).__init__(str(animal.id),parent=parent,path=path)
         self.animal = animal
-        print('Adding animal:',animal.id)
+        logger.info(f'Adding animal: {animal.id}')
         self.setFlags(QtCore.Qt.ItemIsEnabled| QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable)
         if animal.eeg_files: # Assuming all files for a given animal are of a given type to speed-up start-up process
             file = animal.eeg_files[0]
@@ -379,7 +382,7 @@ class AnimalNode(Node):
 
     def prepare_for_plot(self):
         # plot the earliest file
-        print('Tree AnimalNode: Prepare for plot start **************************************************************')
+        logger.info('Tree AnimalNode: Prepare for plot start')
         if self.animal.id == self.parent.project.current_animal.id:
             return
         children = self.children

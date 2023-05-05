@@ -227,7 +227,7 @@ class HMM_LL():
         # transpose to get left eigen vector
         eigen_vals, eigen_vecs = np.linalg.eig(A.T)
         ind = np.where(eigen_vals == np.max(eigen_vals))[0]
-        self.stationary_dist = eigen_vecs[:, ind].T[0]  # transpose back as should be row vec
+        self.stationary_dist = np.abs(eigen_vecs[:, ind].T[0])  # transpose back as should be row vec
         self.stationary_dist = self.stationary_dist/np.sum(self.stationary_dist)
         self._A = A
 

@@ -164,7 +164,7 @@ class AnnotationPage(QObject):
                 self.clear_history()
 
     def copy_from(self, annotation_page, clear_history=True,connect_history=True,quiet = False):
-        start_t=timer()
+        # start_t=timer()
         # print('AnnotationPage copy_from start')
         # self.__dict__ = annotation_page.__dict__  # does not work with PySide
         self.initialize_from_dict(annotation_page.__dict__)
@@ -259,8 +259,6 @@ class AnnotationPage(QObject):
 
     def change_label_name(self,old_label, new_label):
         self.history_is_paused = True
-        for annotation in self.get_all_with_label(old_label):
-            annotation.setLabel(new_label)
         for i,l in enumerate(self.labels):
             if l == old_label:
                 self.labels[i] = new_label
@@ -268,6 +266,8 @@ class AnnotationPage(QObject):
         self.label_channel_range_dict[new_label] = self.label_channel_range_dict[old_label]
         del self.label_color_dict[old_label]
         del self.label_channel_range_dict[old_label]
+        for annotation in self.get_all_with_label(old_label):
+            annotation.setLabel(new_label)
         self.sigLabelsChanged.emit(new_label)
         self.history_is_paused = False
         self.cache_to_history()
@@ -344,11 +344,12 @@ class AnnotationPage(QObject):
                     f.write(str(i) + ',' + str(a.getStart()) + ',' + str(a.getEnd()) + ',' + str(a.getConfidence()) +
                             ',' + str(a.getNotes()) + '\n')
 
-    def __repr__(self):
-        return repr([json.loads(repr(a).replace('\'','\"')) for a in self.annotations_list])
+    # def __repr__(self):
+    #     return repr([json.loads(repr(a).replace('\'','\"')) for a in self.annotations_list])  # this is broken
 
     def __str__(self):
-        return str([json.loads(repr(a).replace('\'','\"')) for a in self.annotations_list])
+        return (f'Annotations page with {len(self.annotations_list)} AnnotationElements, with lables {self.labels}')
+        # return str([json.loads(repr(a).replace('\'','\"')) for a in self.annotations_list])
 
     def dict(self):
         # dict = self.__dict__.copy()

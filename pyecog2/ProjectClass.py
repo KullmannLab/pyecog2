@@ -241,8 +241,8 @@ class FileBuffer():  # Consider translating this to cython
             self.data.append(arr)
         else:  # it is a bin file and can be mememaped
             try:
-                if self.verbose: logger.info(f'opening binary fie: {fname[:-4]} bin')
-                m = np.memmap(fname[:-4] + 'bin', mode='r', dtype =metadata['data_format'] )
+                if self.verbose: logger.info(f'opening binary fie: {metadata["binaryfilename"]}')
+                m = np.memmap(metadata['binaryfilename'], mode='r', dtype =metadata['data_format'] )
             except ValueError:
                 m = np.zeros(0)  # binary file is empty so just create empty array
             m = m.reshape((-1, metadata['no_channels']))

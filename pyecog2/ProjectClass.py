@@ -52,6 +52,7 @@ def read_neuropixels_metadata(fname):
             d[linesplit[0]]=linesplit[1][:-1]
 
     m = {'no_channels':int(d['nSavedChans']),
+         'binaryfilename':fname[:-4] + 'bin',
          'fs':float(d['imSampRate']),
          'start_timestamp_unix': datetime.timestamp(datetime.strptime(d['fileCreateTime'],'%Y-%m-%dT%H:%M:%S')),
          'duration':float(d['fileTimeSecs']),
@@ -241,7 +242,7 @@ class FileBuffer():  # Consider translating this to cython
             self.data.append(arr)
         else:  # it is a bin file and can be mememaped
             try:
-                if self.verbose: logger.info(f'opening binary fie: {metadata["binaryfilename"]}')
+                if self.verbose: logger.info(f'opening binary file: {metadata["binaryfilename"]}')
                 m = np.memmap(metadata['binaryfilename'], mode='r', dtype =metadata['data_format'] )
             except ValueError:
                 m = np.zeros(0)  # binary file is empty so just create empty array

@@ -365,7 +365,7 @@ class PairedGraphicsView():
 
     @staticmethod
     def function_generator_link_click(annotationpage, annotation_object):
-        return lambda: annotationpage.focusOnAnnotation(annotation_object)
+        return lambda: annotationpage.focusOnAnnotation(annotation_object, modifier='inset_click')
 
     @staticmethod
     def function_generator_link_delete(annotationpage, annotation_object):
@@ -435,7 +435,7 @@ class PairedGraphicsView():
                 # print('annotation.getpos , pos:', (annotation.getPos(), pos))
                 self.add_annotaion_plot(annotation)
 
-    def set_focus_on_annotation(self, annotation):
+    def set_focus_on_annotation(self, annotation, modifier=''):
         if annotation is None:
             return
         state = self.overviewROI.getState()
@@ -443,12 +443,13 @@ class PairedGraphicsView():
         self.main_model.set_time_position(annotation_pos[0] - 0.9)
         self.main_model.set_window_pos([annotation_pos[0] - 1, annotation_pos[1] + 1])
 
-        # if annotation_pos[0] > state['pos'][0] and annotation_pos[1] < state['pos'][0] + state['size'][0]:
-        #     return  # skip if annotation is already completely in the plot area
-        fov = [state['pos'][0], state['pos'][0] + state['size'][0]]
-        fov80 = [fov[0] + 0.1*(fov[1]-fov[0]), fov[1] - 0.1*(fov[1]-fov[0])]
-        if intervals_overlap(fov80, annotation_pos):
-            return # skip if annotation is already in the central 80% field of view
+        if modifier == '': # signal comes from unspecified origin
+            if annotation_pos[0] > state['pos'][0] and annotation_pos[1] < state['pos'][0] + state['size'][0]:
+                return  # skip if annotation is already completely in the plot area
+        elif modifier == 'inset_click': #  signal comes from inset click
+            fov = [state['pos'][0], state['pos'][0] + state['size'][0]]
+            if intervals_overlap(fov, annotation_pos):
+                return # skip if annotation is already in the field of view
 
         state['pos'][0] = annotation_pos[0] - .25 * (
         state['size'][0])  # put start of annotation in first quarter of screen

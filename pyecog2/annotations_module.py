@@ -111,7 +111,7 @@ class AnnotationElement(QObject):
         return self.element_dict.copy()
 
 class AnnotationPage(QObject):
-    sigFocusOnAnnotation = QtCore.Signal(object)
+    sigFocusOnAnnotation = QtCore.Signal(object,str)
     sigAnnotationAdded   = QtCore.Signal(object)
     sigLabelsChanged     = QtCore.Signal(object)
     sigPauseTable        = QtCore.Signal(bool)
@@ -181,11 +181,12 @@ class AnnotationPage(QObject):
     # def copy_to(self, annotation_page):
     #     annotation_page.__dict__ = self.__dict__
 
-    def focusOnAnnotation(self, annotation):
+    def focusOnAnnotation(self, annotation, modifier=''):
         if annotation != self.focused_annotation:
             self.focused_annotation = annotation
             logger.info(f'focused on {annotation}')
-            self.sigFocusOnAnnotation.emit(annotation)
+            self.sigFocusOnAnnotation.emit(annotation, modifier)
+
 
     @staticmethod
     def checklist(alist):  # try to check if dictionary structure is valid

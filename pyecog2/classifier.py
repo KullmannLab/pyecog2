@@ -176,6 +176,7 @@ class ProjectClassifier():
         self.global_classifier.save(os.path.join(self.project.project_file + '_classifier','_global.npz'))
 
     def train_animal(self,animal_id,pbar=None,labels2train=None,features2use=None):
+        logger.info(f'started training of animal {animal_id}')
         a = self.project.get_animal(animal_id)
         if False:  # animal_id in self.animal_classifier_dict.keys(): # At this point there is no point on keeping the previous classifier
             gc = self.animal_classifier_dict[animal_id]
@@ -184,6 +185,7 @@ class ProjectClassifier():
             self.animal_classifier_dict[animal_id] = gc
         gc.train([a],progress_bar=pbar)
         gc.save(os.path.join(self.project.project_file + '_classifier',animal_id+'.npz'))
+        logger.info(f'finished training of animal {animal_id}')
 
     def classify_animal_with_global(self, animal, progress_bar=None,max_annotations=-1,labels2annotate=None, prob_th=0.5, outlier_th = 1, viterbi=False):
         gc = GaussianClassifier(self.project,self.feature_extractor,self.global_classifier.labels2classify)

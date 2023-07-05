@@ -442,8 +442,13 @@ class PairedGraphicsView():
         annotation_pos = annotation.getPos()
         self.main_model.set_time_position(annotation_pos[0] - 0.9)
         self.main_model.set_window_pos([annotation_pos[0] - 1, annotation_pos[1] + 1])
-        if annotation_pos[0] > state['pos'][0] and annotation_pos[1] < state['pos'][0] + state['size'][0]:
-            return  # skip if annotation is already completely in the plot area
+
+        # if annotation_pos[0] > state['pos'][0] and annotation_pos[1] < state['pos'][0] + state['size'][0]:
+        #     return  # skip if annotation is already completely in the plot area
+        fov = [state['pos'][0], state['pos'][0] + state['size'][0]]
+        fov80 = [fov[0] + 0.1*(fov[1]-fov[0]), fov[1] - 0.1*(fov[1]-fov[0])]
+        if intervals_overlap(fov80, annotation_pos):
+            return # skip if annotation is already in the central 80% field of view
 
         state['pos'][0] = annotation_pos[0] - .25 * (
         state['size'][0])  # put start of annotation in first quarter of screen

@@ -22,8 +22,7 @@ import traceback
 
 class NdfFile:
     """
-        Class to load ndf binary files.
-
+        Class to load ndf binary files. https://www.opensourceinstruments.com/Electronics/A3017/SCT.html#File%20Format
     The NDF file starts with a header of at least twelve bytes:
         - The first four bytes spell the NDF identifier " ndf". The identifier is then
           followed by three four-byte big-endian numbers.
@@ -45,6 +44,7 @@ class NdfFile:
     1	Most Significant Data Byte
     2	Least Significant Data Byte
     3	Timestamp or Version Number
+    4-payload size (optional) payload bytes for other data
 
     All messages with channel number zero are clock messages. This channel acts as a reference clock that
     is subsequently used to align the data messages from the transmitter channels and do error correction.
@@ -88,6 +88,7 @@ class NdfFile:
         self.identifier = None
         self.data_address = None
         self.metadata = None
+        self.payload = 0
 
         self.t_stamps = None
         self.read_ids = None
@@ -136,6 +137,9 @@ class NdfFile:
             if meta_data_length != 0:
                 f.seek(meta_data_string_address)
                 self.metadata = f.read(meta_data_length)
+                payload = re.findall('<payload>(.*?)</payload>',str(self.metadata))
+                if payload:
+                    self.payload = int(payload[0])
             else:
                 print('meta data not found')
 
@@ -147,7 +151,7 @@ class NdfFile:
         f = open(self.filepath, 'rb')
         f.seek(self.data_address)
         self._e_bit_reads = np.fromfile(f, dtype = 'u1')
-        self.transmitter_id_bytes = self._e_bit_reads[::4]
+        self.transmitter_id_bytes = self._e_bit_reads[::4+self.payload]
         tid_message_counts = pd.Series(self.transmitter_id_bytes).value_counts()  # count how many different ids exist
         for tid, count in tid_message_counts.iteritems():
             if count > message_threshold and tid != 0:
@@ -432,8 +436,9 @@ class NdfFile:
         f.seek(self.data_address)
 
         # initally read in self.get_valid_tids_and_fs
-        self.t_stamps_8bit = self._e_bit_reads[3::4]
-        self.voltage_messages = np.frombuffer(self._e_bit_reads[1:-1:].tobytes(), dtype='>u2')[::2]
+        self.t_stamps_8bit = self._e_bit_reads[3::4+self.payload]
+        self.voltage_messages = np.frombuffer(np.array(list(zip(self._e_bit_reads[1::4+self.payload],self._e_bit_reads[2::4+self.payload]))).tobytes(),dtype='>u2')
+        # np.frombuffer(self._e_bit_reads[1:-1:].tobytes(), dtype='>u2')[::2]
 
         no_clock_messages_flag = self.merge_coarse_and_fine_clocks()  # this generates self.time_array
         if no_clock_messages_flag:

@@ -221,7 +221,7 @@ class NDFConverterWindow(QMainWindow):
 
     def converterFinished(self,dummy_arg = None):
         print('NDF converter finished')
-        logger.infot('NDF converter finished')
+        logger.info('NDF converter finished')
         self.converter_running = False
 
     def convertFiles(self):

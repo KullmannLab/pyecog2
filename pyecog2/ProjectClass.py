@@ -41,25 +41,60 @@ def create_metafile_from_h5(file,duration = 3600):
         json.dump(metadata, json_file, indent=2, sort_keys=True)
 
 
+# def read_neuropixels_metadata(fname):
+#     d = {}
+#     with open(fname) as f:
+#         while True:
+#             line =f.readline()
+#             if line == '':
+#                 break
+#             linesplit = line.split('=')
+#             d[linesplit[0]]=linesplit[1][:-1]
+#
+#     m = {'no_channels':int(d['nSavedChans']),
+#          'binaryfilename':fname[:-4] + 'bin',
+#          'fs':float(d['imSampRate']),
+#          'start_timestamp_unix': datetime.timestamp(datetime.strptime(d['fileCreateTime'],'%Y-%m-%dT%H:%M:%S')),
+#          'duration':float(d['fileTimeSecs']),
+#          'data_format':'int16',
+#          'volts_per_bit': 1.170e-3/float(eval('[' + (d['~imroTbl'].replace('(', ',(').replace(' ', ',')[1:] + ']') )[1][3])}
+#     return m
+
+
 def read_neuropixels_metadata(fname):
     d = {}
+    filetype = str.split(str(fname), sep='.')[-2]
     with open(fname) as f:
         while True:
-            line =f.readline()
+            line = f.readline()
             if line == '':
                 break
             linesplit = line.split('=')
-            d[linesplit[0]]=linesplit[1][:-1]
+            d[linesplit[0]] = linesplit[1][:-1]
 
-    m = {'no_channels':int(d['nSavedChans']),
-         'binaryfilename':fname[:-4] + 'bin',
-         'fs':float(d['imSampRate']),
-         'start_timestamp_unix': datetime.timestamp(datetime.strptime(d['fileCreateTime'],'%Y-%m-%dT%H:%M:%S')),
-         'duration':float(d['fileTimeSecs']),
-         'data_format':'int16',
-         'volts_per_bit': 1.170e-3/float(eval('[' + (d['~imroTbl'].replace('(', ',(').replace(' ', ',')[1:] + ']') )[1][3])}
+    Imax = 512
+    Vmax = float(d['imAiRangeMax'])
+    APgain = eval('[' + (d['~imroTbl'].replace('(', ',(').replace(' ', ',')[1:] + ']'))[1][3]
+    LFgain = eval('[' + (d['~imroTbl'].replace('(', ',(').replace(' ', ',')[1:] + ']'))[1][4]
+    APuV_per_bit = 1 * Vmax / Imax / APgain
+    LFuV_per_bit = 1 * Vmax / Imax / LFgain
+
+    m = {'no_channels': int(d['nSavedChans']),
+         'binaryfilename': fname[:-4] + 'bin',
+         'fs': float(d['imSampRate']),
+         'start_timestamp_unix': datetime.timestamp(datetime.strptime(d['fileCreateTime'], '%Y-%m-%dT%H:%M:%S')),
+         'duration': float(d['fileTimeSecs']),
+         'data_format': 'int16',
+         'fileSizeBytes': int(d['fileSizeBytes'])}
+
+    if filetype == 'lf':
+        m['volts_per_bit'] = LFuV_per_bit
+        m['file_type'] = 'lf'
+    elif filetype == 'ap':
+        m['volts_per_bit'] = APuV_per_bit
+        m['file_type'] = 'ap'
+
     return m
-
 
 def load_metadata_file(fname):
     try:  # most common scenario

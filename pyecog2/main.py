@@ -320,7 +320,6 @@ class MainWindow(QMainWindow):
         temp_project.set_temp_project_from_folder(dirname)
         self.tree_element.set_rootnode_from_project(temp_project)
         self.main_model.project = temp_project
-        os.chdir(dirname)
 
     def new_project(self):
         license.update_license_reg_file()

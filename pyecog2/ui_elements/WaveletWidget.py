@@ -331,11 +331,17 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             # save levels from colorbar
             if self.last_plot_was_wave:
                 if self.hist_levels is not None:
+                    # print('updating hist_levels',self.hist_levels )
                     self.hist_levels = self.hist.getLevels()
+                    # print('updataed hist_levels',self.hist_levels )
             elif self.last_plot_was_cross:
                 if self.hist_levels_cross is not None:
+                    # print('updating hist_levels_cross',self.hist_levels_cross )
                     self.hist_levels_cross = self.hist.getLevels()
-
+                    # print('updataed hist_levels_cross',self.hist_levels_cross)
+            # print('Wavelet data shape:',data.shape)
+            self.last_plot_was_wave = False
+            self.last_plot_was_cross = False
             self.img.setImage(self.data*0)
             # if self.hist_levels is not None: # Mantain levels from previous view if they exist
             #     self.hist.setLevels(*self.hist_levels)
@@ -375,11 +381,7 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             # print('Killswitch list:', self.thread_killswitch_list)
             return
         if self.cross_wav is not None: # plotting cross wavelet
-            if not self.last_plot_was_cross:
-                self.hist.gradient.loadPreset('cyclic')
             self.last_plot_was_cross = True
-            self.last_plot_was_wave = False
-
             cross_wav = self.wav*np.conj(self.cross_wav)
             # self.value = np.log10(np.abs(cross_wav)+1)/2
             self.value = np.log10(np.sqrt(np.abs(cross_wav))+1.001)
@@ -396,20 +398,17 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             # hsvim = plt.cm.hsv(np.angle(result) / 2 / np.pi + .5)
             # intensity = np.abs(result)[:, :, np.newaxis]
 
+            self.hist.gradient.loadPreset('spectrum')
             self.hist.axis.setLabel( text = 'Hue: Phase (0 - 360<sup>o</sup>) <br> Saturation: Log Coherence', units = 'V')
             if self.hist_levels_cross is None:
                 self.hist_levels_cross = [0,maxvalue]
                 # self.hist.setLevels(*self.hist_levels_cross)
 
         else:  # plotting normal wavelet
-            print('self.last_plot_was_wave:', self.last_plot_was_wave)
-            if not self.last_plot_was_wave:
-                print('reseting colormap')
-                self.hist.gradient.loadPreset('viridis')
             self.last_plot_was_wave = True
-            self.last_plot_was_cross = False
             self.data = np.log10(np.abs(self.wav)+1e-9)  # +1e-3
             self.img.setImage(self.data + self.coi)
+            self.hist.gradient.loadPreset('viridis')
             self.hist.axis.setLabel(text='Amplitude', units='Log<sub>10</sub> V')
 
         self.img.resetTransform()

@@ -91,6 +91,42 @@ class FeatureExtractor():
              )
         self.update_from_settings()
 
+    def multichannel_auto_settings(self,n_channels):
+        self.settings = OrderedDict(
+            window_length=5,  # length in seconds for the segments on which to compute features
+            overlap=.5,  # overlap ratio between windows
+            window='rectangular',
+            # power_bands = [(1, 4), (4, 8), (8, 12), (12, 30), (30, 50), (50, 70), (70, 120)],
+            # number_of_features = 15,
+            feature_labels=sum([[f'ch{ch} log std', f'ch{ch} kurtosis', f'ch{ch} skewness',
+                                f'ch{ch} log coastline (log sum of abs diff)',
+                                f'ch{ch} log power in band (1, 4) Hz',
+                                f'ch{ch} log power in band (4, 8) Hz',
+                                f'ch{ch} log power in band (8, 12) Hz',
+                                f'ch{ch} log power in band (12, 30) Hz',
+                                f'ch{ch} log power in band (30, 50) Hz',
+                                f'ch{ch} log power in band (50, 120) Hz',
+                                f'ch{ch} Spectrum entropy']
+                                for ch in range(n_channels)], []),
+            feature_time_functions=sum([[f'lambda x:np.log(np.std(x[{ch},:]))',
+                                         f'lambda x:stats.kurtosis(x[{ch},:])',
+                                         f'lambda x:stats.skew(x[{ch},:])',
+                                         f'lambda x:np.log(np.mean(np.abs(np.diff(x[{ch},:],axis=0))))']
+                                         for ch in range(n_channels)], []),
+            feature_freq_functions=sum([[f'lambda x: fe.powerf(1, 4)(x[{ch},:])',
+                                         f'lambda x: fe.powerf(4, 8)(x[{ch},:])',
+                                         f'lambda x: fe.powerf(8, 12)(x[{ch},:])',
+                                         f'lambda x: fe.powerf(12, 30)(x[{ch},:])',
+                                         f'lambda x: fe.powerf(30, 50)(x[{ch},:])',
+                                         f'lambda x: fe.powerf(50, 120)(x[{ch},:])',
+                                         f'lambda x: fe.reg_entropy']
+                                        for ch in range(n_channels)], []),
+            function_module_dependencies=[('numpy', 'np'),
+                                          ('pyecog2.feature_extractor', 'fe'),
+                                          ('scipy.stats', 'stats')]
+        )
+        self.update_from_settings()
+
     def update_from_settings(self,settings = None):
         if settings is not None:
             self.settings = settings

@@ -17,9 +17,28 @@ logger = logging.getLogger(__name__)
 def rfft_band_power(fdata, fs, band):
     return np.log(np.mean(np.abs(fdata[int(len(fdata)*band[0]/fs):int(len(fdata)*band[1]/fs)]))) # todo consider making this with proper units
 
+def powerf(bandi, bandf, ch=0):
+    return lambda fdata, fs: rfft_band_power(fdata[ch,:], fs, (bandi, bandf))
 
-def powerf(bandi, bandf):
-    return lambda fdata, fs: rfft_band_power(fdata, fs, (bandi, bandf))
+
+
+def rfft_band_corr(fdata_a,fdata_b,fs,band): # Correlation of the spectra within a frequency band
+    bi = int(len(fdata_a)*band[0]/fs)
+    bf = int(len(fdata_a)*band[1]/fs)
+    cross = np.mean(np.abs((fdata_a[bi:bf] * fdata_b[bi:bf])))**2
+    auto = np.mean(np.abs(fdata_a[bi:bf])**2) * np.mean(np.abs(fdata_b[bi:bf])**2)
+    return np.log10(cross/auto)  # todo consider making this with proper units
+
+def rfft_band_icorr(fdata_a,fdata_b,fs,band): # Correlation of the spectral imaginary part within a frequency band
+    bi = int(len(fdata_a)*band[0]/fs)
+    bf = int(len(fdata_a)*band[1]/fs)
+    cross = np.mean(np.abs(np.imag((np.conj(fdata_a[bi:bf]) * fdata_b[bi:bf]))))**2
+    auto = np.mean(np.abs(fdata_a[bi:bf])**2) * np.mean(np.abs(fdata_b[bi:bf])**2)
+    return np.log10(cross/auto)  # todo consider making this with proper units
+
+
+def fband_corr(bandi, bandf, cha, chb): # computes log
+    return lambda fdata, fs: rfft_band_corr(fdata[cha,:],fdata[chb,:], fs, (bandi, bandf))
 
 
 @jit(nopython=True)
@@ -48,12 +67,15 @@ class FeatureExtractor():
     ML: I am not sure if using file buffers is the best way of going about it: on the one hand it abstracts away the file
     access, on the other hand it will probably always be relatively slow... maybe not a major issue since it will only be
     ran once (or a small number of times) for each project.
-
-    Preliminarily just thinking about single channel data. Include multichannel features later
     '''
     def __init__(self, settings_dict = None):
         self.settings = settings_dict
         if self.settings is None:
+            self.multichannel_auto_settings()
+        self.update_from_settings()
+
+    def multichannel_auto_settings(self,n_channels=1):
+        if n_channels == 1:
             self.settings = OrderedDict(
                 window_length = 5,  # length in seconds for the segments on which to compute features
                 overlap = .5,        # overlap ratio between windows
@@ -89,42 +111,46 @@ class FeatureExtractor():
                                                 ('pyecog2.feature_extractor','fe'),
                                                 ('scipy.stats','stats')]
              )
-        self.update_from_settings()
-
-    def multichannel_auto_settings(self,n_channels):
-        self.settings = OrderedDict(
-            window_length=5,  # length in seconds for the segments on which to compute features
-            overlap=.5,  # overlap ratio between windows
-            window='rectangular',
-            # power_bands = [(1, 4), (4, 8), (8, 12), (12, 30), (30, 50), (50, 70), (70, 120)],
-            # number_of_features = 15,
-            feature_labels=sum([[f'ch{ch} log std', f'ch{ch} kurtosis', f'ch{ch} skewness',
-                                f'ch{ch} log coastline (log sum of abs diff)',
-                                f'ch{ch} log power in band (1, 4) Hz',
-                                f'ch{ch} log power in band (4, 8) Hz',
-                                f'ch{ch} log power in band (8, 12) Hz',
-                                f'ch{ch} log power in band (12, 30) Hz',
-                                f'ch{ch} log power in band (30, 50) Hz',
-                                f'ch{ch} log power in band (50, 120) Hz',
-                                f'ch{ch} Spectrum entropy']
-                                for ch in range(n_channels)], []),
-            feature_time_functions=sum([[f'lambda x:np.log(np.std(x[{ch},:]))',
-                                         f'lambda x:stats.kurtosis(x[{ch},:])',
-                                         f'lambda x:stats.skew(x[{ch},:])',
-                                         f'lambda x:np.log(np.mean(np.abs(np.diff(x[{ch},:],axis=0))))']
-                                         for ch in range(n_channels)], []),
-            feature_freq_functions=sum([[f'lambda x: fe.powerf(1, 4)(x[{ch},:])',
-                                         f'lambda x: fe.powerf(4, 8)(x[{ch},:])',
-                                         f'lambda x: fe.powerf(8, 12)(x[{ch},:])',
-                                         f'lambda x: fe.powerf(12, 30)(x[{ch},:])',
-                                         f'lambda x: fe.powerf(30, 50)(x[{ch},:])',
-                                         f'lambda x: fe.powerf(50, 120)(x[{ch},:])',
-                                         f'lambda x: fe.reg_entropy']
-                                        for ch in range(n_channels)], []),
-            function_module_dependencies=[('numpy', 'np'),
-                                          ('pyecog2.feature_extractor', 'fe'),
-                                          ('scipy.stats', 'stats')]
-        )
+        else:
+            self.settings = OrderedDict(
+                window_length=5,  # length in seconds for the segments on which to compute features
+                overlap=.5,  # overlap ratio between windows
+                window='rectangular',
+                # power_bands = [(1, 4), (4, 8), (8, 12), (12, 30), (30, 50), (50, 70), (70, 120)],
+                # number_of_features = 15,
+                feature_labels=sum([[f'ch{ch} log std', f'ch{ch} kurtosis', f'ch{ch} skewness',
+                                    f'ch{ch} log coastline (log sum of abs diff)',
+                                    f'ch{ch} log power in band (1, 4) Hz',
+                                    f'ch{ch} log power in band (4, 8) Hz',
+                                    f'ch{ch} log power in band (8, 12) Hz',
+                                    f'ch{ch} log power in band (12, 30) Hz',
+                                    f'ch{ch} log power in band (30, 50) Hz',
+                                    f'ch{ch} log power in band (50, 120) Hz',
+                                    f'ch{ch} Spectrum entropy']
+                                    for ch in range(n_channels)], []) +
+                                sum([[f'Spectral correlation (1Hz to 120Hz) between channels {cha} and {chb}):'
+                                     for chb in range(cha+1, n_channels)]
+                                     for cha in range(n_channels)], []),
+                feature_time_functions=sum([[f'lambda x:np.log(np.std(x[{ch},:]))',
+                                             f'lambda x:stats.kurtosis(x[{ch},:])',
+                                             f'lambda x:stats.skew(x[{ch},:])',
+                                             f'lambda x:np.log(np.mean(np.abs(np.diff(x[{ch},:],axis=0))))']
+                                             for ch in range(n_channels)], []),
+                feature_freq_functions=sum([[f'lambda x: fe.powerf(1, 4, ch={ch})',
+                                             f'lambda x: fe.powerf(4, 8, ch={ch})',
+                                             f'lambda x: fe.powerf(8, 12, ch={ch})',
+                                             f'lambda x: fe.powerf(12, 30, ch={ch})',
+                                             f'lambda x: fe.powerf(30, 50, ch={ch})',
+                                             f'lambda x: fe.powerf(50, 120, ch={ch})',
+                                             f'lambda x: fe.reg_entropy(x[{ch},:])']
+                                            for ch in range(n_channels)], []) +
+                                        sum([[f'fe.fband_corr(1, 120, {cha}, {chb})'
+                                                  for chb in range(cha+1,n_channels)]
+                                            for cha in range(n_channels)], []),
+                function_module_dependencies=[('numpy', 'np'),
+                                              ('pyecog2.feature_extractor', 'fe'),
+                                              ('scipy.stats', 'stats')]
+            )
         self.update_from_settings()
 
     def update_from_settings(self,settings = None):

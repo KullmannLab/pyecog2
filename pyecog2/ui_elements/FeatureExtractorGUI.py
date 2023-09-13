@@ -129,6 +129,8 @@ class FeatureExtractorWindow(QMainWindow):
         self.setCentralWidget(widget)
         self.terminal = QTextBrowser(self)
         self._err_color = QtCore.Qt.red
+        self.button = QPushButton('Reset to Default Settings', self)
+        self.button.clicked.connect(self.resetSettings)
         self.button0 = QPushButton('Import Settings File', self)
         self.button0.clicked.connect(self.loadSettingsFile)
         self.button1 = QPushButton('Set Project feature Extractor', self)
@@ -145,10 +147,11 @@ class FeatureExtractorWindow(QMainWindow):
         self.t = PyecogParameterTree()
         self.updateTreeFromSettings()
 
+        layout.addWidget(self.button)
         layout.addWidget(self.button0)
         layout.addWidget(self.t)
-        layout.setRowStretch(1,10)
-        layout.setRowMinimumHeight(1,400)
+        layout.setRowStretch(2,10)
+        layout.setRowMinimumHeight(2,400)
         layout.setColumnMinimumWidth(0,600)
         layout.addWidget(self.button1)
         extract_widget = QWidget()
@@ -160,7 +163,7 @@ class FeatureExtractorWindow(QMainWindow):
         layout.addWidget(self.progressBar0)
         layout.addWidget(self.progressBar1)
         layout.addWidget(self.terminal)
-        layout.setRowMinimumHeight(7,300)
+        layout.setRowMinimumHeight(8,300)
         stdout = OutputWrapper(self, True)
         stdout.outputWritten.connect(self.handleOutput)
         stderr = OutputWrapper(self, False)
@@ -189,6 +192,13 @@ class FeatureExtractorWindow(QMainWindow):
             self.feature_extractor.load_settings(fname)
             self.updateTreeFromSettings()
             print('loaded', fname)
+
+    def resetSettings(self):
+        nchannels = self.project.file_buffer.get_nchannels()
+        print(f'Resetting Settings for {nchannels} channels')
+        self.feature_extractor.multichannel_auto_settings(nchannels)
+        print(self.feature_extractor.settings)
+        self.updateTreeFromSettings()
 
     def exportSettingsFile(self):
         dialog = QFileDialog(self)

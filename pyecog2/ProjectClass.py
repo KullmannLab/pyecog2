@@ -313,7 +313,7 @@ class FileBuffer():  # Consider translating this to cython
         if self.data:
             return max([data.shape[1] for data in self.data])
         else:
-            return 0
+            return 1
 
     def clear_buffer(self):
         self.files = []

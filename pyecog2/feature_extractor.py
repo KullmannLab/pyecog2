@@ -18,7 +18,7 @@ def rfft_band_power(fdata, fs, band):
     return np.log(np.mean(np.abs(fdata[int(len(fdata)*band[0]/fs):int(len(fdata)*band[1]/fs)]))) # todo consider making this with proper units
 
 def powerf(bandi, bandf, ch=0):
-    return lambda fdata, fs: rfft_band_power(fdata[ch,:], fs, (bandi, bandf))
+    return lambda fdata, fs: rfft_band_power(fdata[:,ch], fs, (bandi, bandf))
 
 
 
@@ -38,7 +38,7 @@ def rfft_band_icorr(fdata_a,fdata_b,fs,band): # Correlation of the spectral imag
 
 
 def fband_corr(bandi, bandf, cha, chb): # computes log
-    return lambda fdata, fs: rfft_band_corr(fdata[cha,:],fdata[chb,:], fs, (bandi, bandf))
+    return lambda fdata, fs: rfft_band_corr(fdata[:,cha],fdata[:,chb], fs, (bandi, bandf))
 
 
 @jit(nopython=True)
@@ -50,6 +50,9 @@ def reg_entropy(fdata,fs):
     fdata_x_f = fdata_x_f+1e-9*np.max(fdata_x_f)
     fdata_x_f = fdata_x_f**2/np.sum(fdata_x_f**2)
     return -np.sum(fdata_x_f*np.log(fdata_x_f))
+
+def reg_entropy_ch(ch):
+    return lambda fdata, fs: reg_entropy(fdata[:,ch],fs)
 
 # Worker funcitons to workaround the fact that lambda funcitons are not picklable for multiprocess
 # The use of global variables means that only one feature extractor can be active at a time
@@ -119,30 +122,32 @@ class FeatureExtractor():
                 # power_bands = [(1, 4), (4, 8), (8, 12), (12, 30), (30, 50), (50, 70), (70, 120)],
                 # number_of_features = 15,
                 feature_labels=sum([[f'ch{ch} log std', f'ch{ch} kurtosis', f'ch{ch} skewness',
-                                    f'ch{ch} log coastline (log sum of abs diff)',
-                                    f'ch{ch} log power in band (1, 4) Hz',
-                                    f'ch{ch} log power in band (4, 8) Hz',
-                                    f'ch{ch} log power in band (8, 12) Hz',
-                                    f'ch{ch} log power in band (12, 30) Hz',
-                                    f'ch{ch} log power in band (30, 50) Hz',
-                                    f'ch{ch} log power in band (50, 120) Hz',
-                                    f'ch{ch} Spectrum entropy']
+                                    f'ch{ch} log coastline (log sum of abs diff)']
+                                    for ch in range(n_channels)], []) +
+                               sum([[f'ch{ch} log power in band (1, 4) Hz',
+                                     f'ch{ch} log power in band (4, 8) Hz',
+                                     f'ch{ch} log power in band (8, 12) Hz',
+                                     f'ch{ch} log power in band (12, 30) Hz',
+                                     f'ch{ch} log power in band (30, 50) Hz',
+                                     f'ch{ch} log power in band (50, 120) Hz',
+                                     f'ch{ch} Spectrum entropy']
                                     for ch in range(n_channels)], []) +
                                 sum([[f'Spectral correlation (1Hz to 120Hz) between channels {cha} and {chb}):'
                                      for chb in range(cha+1, n_channels)]
                                      for cha in range(n_channels)], []),
-                feature_time_functions=sum([[f'lambda x:np.log(np.std(x[{ch},:]))',
-                                             f'lambda x:stats.kurtosis(x[{ch},:])',
-                                             f'lambda x:stats.skew(x[{ch},:])',
-                                             f'lambda x:np.log(np.mean(np.abs(np.diff(x[{ch},:],axis=0))))']
+
+                feature_time_functions=sum([[f'lambda x:np.log(np.std(x[:,{ch}]))',
+                                             f'lambda x:stats.kurtosis(x[:,{ch}])',
+                                             f'lambda x:stats.skew(x[:,{ch}])',
+                                             f'lambda x:np.log(np.mean(np.abs(np.diff(x[:,{ch}],axis=0))))']
                                              for ch in range(n_channels)], []),
-                feature_freq_functions=sum([[f'lambda x: fe.powerf(1, 4, ch={ch})',
-                                             f'lambda x: fe.powerf(4, 8, ch={ch})',
-                                             f'lambda x: fe.powerf(8, 12, ch={ch})',
-                                             f'lambda x: fe.powerf(12, 30, ch={ch})',
-                                             f'lambda x: fe.powerf(30, 50, ch={ch})',
-                                             f'lambda x: fe.powerf(50, 120, ch={ch})',
-                                             f'lambda x: fe.reg_entropy(x[{ch},:])']
+                feature_freq_functions=sum([[f'fe.powerf(1, 4, ch={ch})',
+                                             f'fe.powerf(4, 8, ch={ch})',
+                                             f'fe.powerf(8, 12, ch={ch})',
+                                             f'fe.powerf(12, 30, ch={ch})',
+                                             f'fe.powerf(30, 50, ch={ch})',
+                                             f'fe.powerf(50, 120, ch={ch})',
+                                             f'fe.reg_entropy_ch({ch})']
                                             for ch in range(n_channels)], []) +
                                         sum([[f'fe.fband_corr(1, 120, {cha}, {chb})'
                                                   for chb in range(cha+1,n_channels)]

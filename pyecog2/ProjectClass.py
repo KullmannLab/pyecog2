@@ -30,7 +30,7 @@ def create_metafile_from_h5(file,duration = 3600):
     metadata = OrderedDict(fs=fs,
                            no_channels=len(h5_file.attributes['t_ids']),
                            data_format='h5',
-                           volts_per_bit=4e-7,
+                           volts_per_bit=1e-6,
                            transmitter_id=str(h5_file.attributes['t_ids']),
                            start_timestamp_unix=int(os.path.split(file)[-1].split('_')[0][1:]),
                            duration=duration,  # assume all h5 files have 1hr duration

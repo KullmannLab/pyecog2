@@ -9,16 +9,20 @@ from scipy import signal
 from PySide2 import QtCore
 import pyqtgraph as pg
 from timeit import default_timer as timer
+from pyedflib import EdfReader
 
 import logging
 logger = logging.getLogger(__name__)
 
+
 def clip(x, a, b):  # utility funciton for file buffer
     return min(max(int(x), a), b)
+
 
 def intervals_overlap(a,b):
     # return (a[0] <= b[0] < a[1]) or (a[0] <= b[1] < a[1]) or (b[0] <= a[0] < b[1]) or (b[0] <= a[1] < b[1])
     return (a[0] <= b[0] < a[1]) or (a[0] < b[1] <= a[1]) or (b[0] <= a[0] < b[1]) or (b[0] < a[1] <= b[1])
+
 
 def create_metafile_from_h5(file,duration = 3600):
     assert file.endswith('.h5')
@@ -41,24 +45,24 @@ def create_metafile_from_h5(file,duration = 3600):
         json.dump(metadata, json_file, indent=2, sort_keys=True)
 
 
-# def read_neuropixels_metadata(fname):
-#     d = {}
-#     with open(fname) as f:
-#         while True:
-#             line =f.readline()
-#             if line == '':
-#                 break
-#             linesplit = line.split('=')
-#             d[linesplit[0]]=linesplit[1][:-1]
-#
-#     m = {'no_channels':int(d['nSavedChans']),
-#          'binaryfilename':fname[:-4] + 'bin',
-#          'fs':float(d['imSampRate']),
-#          'start_timestamp_unix': datetime.timestamp(datetime.strptime(d['fileCreateTime'],'%Y-%m-%dT%H:%M:%S')),
-#          'duration':float(d['fileTimeSecs']),
-#          'data_format':'int16',
-#          'volts_per_bit': 1.170e-3/float(eval('[' + (d['~imroTbl'].replace('(', ',(').replace(' ', ',')[1:] + ']') )[1][3])}
-#     return m
+def create_metafile_from_edf(file):
+    assert file.endswith('.edf')
+    edf_file = EdfReader(file)
+    fsv = edf_file.getSampleFrequencies()
+    assert all([f == fsv[0] for f in fsv]) #check all channels have the same sampling frequency
+    dimension_dict = {'V': 1, 'mV': 1-3, 'uV': 1-6, 'nV': 1-9}
+    metadata = OrderedDict(fs=fsv[0],
+                           no_channels=len(fsv),
+                           data_format='edf',
+                           volts_per_bit=dimension_dict[edf_file.getPhysicalDimension(0)],
+                           transmitter_id=edf_file.getSignalHeader(0)['label'],
+                           start_timestamp_unix=int(edf_file.getStartdatetime().timestamp()),
+                           duration=int(edf_file.getFileDuration()),  # assume all h5 files have 1hr duration
+                           channel_labels=[edf_file.getSignalHeader(ch)['label'] for ch in range(len(fsv))],
+                           experiment_metadata_str=edf_file.getRecordingAdditional())
+    metafile = file[:-3] + 'meta'
+    with open(metafile, 'w') as json_file:
+        json.dump(metadata, json_file, indent=2, sort_keys=True)
 
 
 def read_neuropixels_metadata(fname):
@@ -111,11 +115,39 @@ def load_metadata_file(fname):
                         create_metafile_from_h5(fname[:-4] + 'h5')  # create metafiles for h5 files if they do not exist
                         with open(fname, 'r') as json_file:
                             metadata = json.load(json_file)
+                    elif os.path.isfile(fname[:-4] + 'edf'):
+                        create_metafile_from_edf(fname[:-4] + 'edf')  # create metafiles for edf files if they do not exist
+                        with open(fname, 'r') as json_file:
+                            metadata = json.load(json_file)
                     else:
                         logger.info(f'Non-existent file:{fname}')
             except Exception:
                 logger.info('Unrecognized metafile format')
     return metadata
+
+def generate_metadata_for_folder(eeg_folder):
+    logger.info(f'Looking for files:{eeg_folder}{os.path.sep}*.h5')
+    h5files = glob.glob(eeg_folder + os.path.sep + '*.h5')
+    h5files.sort()
+    for i, file in enumerate(h5files):
+        if os.path.isfile(file[:-2] + 'meta'):
+            continue
+        start = int(os.path.split(file)[-1].split('_')[0][1:])
+        try:
+            next_start = int(os.path.split(h5files[i + 1])[-1].split('_')[0][1:])
+            duration = min(next_start - start, 3600)
+        except Exception:
+            duration = 3600
+        create_metafile_from_h5(file, duration)
+
+    logger.info(f'Looking for files:{eeg_folder}{os.path.sep}*.edf')
+    edffiles = glob.glob(eeg_folder + os.path.sep + '*.edf')
+    edffiles.sort()
+    for i, file in enumerate(edffiles):
+        if os.path.isfile(file[:-2] + 'meta'):
+            continue
+        create_metafile_from_edf(file)
+
 
 class Animal():
     def __init__(self, id=None, eeg_folder=None, video_folder=None, dict={}):
@@ -150,19 +182,7 @@ class Animal():
 
     def update_eeg_folder(self,eeg_folder):
         self.eeg_folder = os.path.normpath(eeg_folder)
-        logger.info(f'Looking for files:{eeg_folder}{os.path.sep}*.h5')
-        h5files = glob.glob(eeg_folder + os.path.sep + '*.h5')
-        h5files.sort()
-        for i,file in enumerate(h5files):
-            if os.path.isfile(file[:-2] + 'meta'):
-                continue
-            start = int(os.path.split(file)[-1].split('_')[0][1:])
-            try:
-                next_start = int(os.path.split(h5files[i+1])[-1].split('_')[0][1:])
-                duration = min(next_start-start,3600)
-            except Exception:
-                duration = 3600
-            create_metafile_from_h5(file,duration)
+        generate_metadata_for_folder(eeg_folder)  # generate metadata files for h5 and edf files that do not have them
         self.eeg_files = glob.glob(eeg_folder + os.path.sep + '*.meta')
         self.eeg_files.sort()
         self.eeg_init_time = []
@@ -273,6 +293,18 @@ class FileBuffer():  # Consider translating this to cython
                     channels.append(h5file[tid]['data'][:int(duration*metadata['fs'])])
                 else:
                     channels.append(h5file[tid]['data'])
+            arr = np.vstack(channels).T
+            self.data.append(arr)
+        elif metadata['data_format'] == 'edf':
+            try:
+                edf_file = EdfReader(fname[:-4] + 'edf')
+            except:
+                logger.warning(f'error trying to open {fname[:-4]} edf')
+                raise
+            channels = []
+            duration = metadata['duration']
+            for ch in range(metadata['no_channels']):
+                channels.append(edf_file.readSignal(ch))
             arr = np.vstack(channels).T
             self.data.append(arr)
         else:  # it is a bin file and can be mememaped
@@ -686,20 +718,7 @@ class Project():
 
     def set_temp_project_from_folder(self,eeg_folder):
         eeg_folder = os.path.normpath(eeg_folder)
-        logger.info(f'Looking for files: {eeg_folder}{os.path.sep}*.h5')
-        h5files = glob.glob(eeg_folder + os.path.sep + '*.h5')
-        h5files.sort()
-        for i, file in enumerate(h5files):
-            if os.path.isfile(file[:-2] + 'meta'):
-                # print(file[:-2] + 'meta already exists')
-                continue
-            start = int(os.path.split(file)[-1].split('_')[0][1:])
-            try:
-                next_start = int(os.path.split(h5files[i + 1])[-1].split('_')[0][1:])
-                duration = min(next_start - start, 3600)
-            except Exception:
-                duration = 3600
-            create_metafile_from_h5(file, duration)
+        generate_metadata_for_folder(eeg_folder)
         eeg_files = glob.glob(eeg_folder + os.path.sep + '*.meta')
         eeg_files.sort()
         for fname in eeg_files:

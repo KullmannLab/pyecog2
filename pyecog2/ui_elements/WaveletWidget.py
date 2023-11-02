@@ -4,9 +4,9 @@ Wavelet widget for EEG signals in pyecog
 """
 
 import pyqtgraph as pg
-from PySide2 import QtCore, QtGui
-from PySide2.QtWidgets import QApplication, QWidget
-from PySide2.QtCore import QRunnable, Slot, QThreadPool
+from PySide6 import QtCore, QtGui
+from PySide6.QtWidgets import QApplication, QWidget
+from PySide6.QtCore import QRunnable, Slot, QThreadPool
 import numpy as np
 import scipy.signal as sg
 from timeit import default_timer as timer

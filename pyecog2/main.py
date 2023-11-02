@@ -4,10 +4,10 @@ os.environ['QT_MULTIMEDIA_PREFERRED_PLUGINS'] = 'windowsmediafoundation'
 import sys
 
 import numpy as np
-from PySide2 import QtCore, QtGui
-from PySide2.QtGui import QPalette, QColor, QDesktopServices
-from PySide2.QtCore import Qt, QSettings
-from PySide2.QtWidgets import QApplication, QTextBrowser, QDockWidget, QMainWindow, \
+from PySide6 import QtCore, QtGui
+from PySide6.QtGui import QPalette, QColor, QDesktopServices
+from PySide6.QtCore import Qt, QSettings
+from PySide6.QtWidgets import QApplication, QTextBrowser, QDockWidget, QMainWindow, \
     QFileDialog, QMessageBox
 from pyecog2.ProjectClass import Project, MainModel
 from pyecog2.annotation_table_widget import AnnotationTableWidget
@@ -27,6 +27,7 @@ from datetime import datetime
 import pyqtgraph as pg
 from pyqtgraph.console import ConsoleWidget
 import pkg_resources
+import importlib.resources
 from pyecog2 import license
 from multiprocessing import freeze_support
 from urllib import request
@@ -35,7 +36,7 @@ import logging
 from pyecog2.logging_aux import LoggerWriter # DefaultStreamHandler
 
 # Initialize logging
-log_fname = pkg_resources.resource_filename('pyecog2', '/') + 'pyecog.log'
+log_fname = importlib.resources.files('pyecog2') / 'pyecog.log'
 logging.basicConfig(filename=log_fname, filemode='w', level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 logger.info(f'Session start: {datetime.now()}')
@@ -836,9 +837,9 @@ def execute():
     pg.setConfigOption('background', 'w')
     # pg.setConfigOption('foreground', 'k')
     pg.setConfigOption('antialias', True)
-
-    pg.setConfigOption('useWeave', True)
-    # pg.setConfigOption('useOpenGL', True)
+    # pg.setConfigOption('useWeave', True) # deprecated?
+    pg.setConfigOption('useOpenGL', True)
+    pg.setConfigOption('useNumba', True)
 
     screen = MainWindow(app_handle=app)
     screen.get_available_screen()

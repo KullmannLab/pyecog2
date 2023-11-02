@@ -1,7 +1,7 @@
 
 from scipy.signal import stft
-from PySide2 import QtGui, QtCore
-from PySide2.QtWidgets import QApplication, QWidget
+from PySide6 import QtGui, QtCore
+from PySide6.QtWidgets import QApplication, QWidget
 import sys
 import numpy as np
 import pyqtgraph as pg

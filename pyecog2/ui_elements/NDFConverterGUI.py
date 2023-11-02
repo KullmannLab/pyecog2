@@ -1,7 +1,7 @@
 import sys, os, glob
 from datetime import datetime
-from PySide2 import QtGui, QtCore
-from PySide2.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog
+from PySide6 import QtGui, QtCore
+from PySide6.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog
 
 from pyqtgraph.parametertree import Parameter
 from pyecog2.ndf_converter import NdfFile, DataHandler

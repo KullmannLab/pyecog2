@@ -1,8 +1,8 @@
 import pyqtgraph as pg
-from PySide2 import QtCore, QtGui
-from PySide2.QtCore import Qt
-from PySide2.QtWidgets import QApplication, QWidget, QCheckBox, QPushButton, QMainWindow, QGridLayout, QTableView
-from PySide2.QtCore import QRunnable, Slot, QThreadPool
+from PySide6 import QtCore
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QApplication, QWidget, QCheckBox, QPushButton, QMainWindow, QGridLayout, QTableView, QLabel
+from PySide6.QtCore import QRunnable, Slot, QThreadPool
 import numpy as np
 import scipy.signal as sg
 from timeit import default_timer as timer
@@ -69,20 +69,20 @@ class PlotControls(QWidget):
         self.lp_spin.valueChanged.connect(self.update_filter)
 
         self.filter_controls_layout.addWidget(self.filter_check,0,0)
-        self.filter_controls_layout.addWidget(QtGui.QLabel('High pass frequency (Hz)'),1,0)
+        self.filter_controls_layout.addWidget(QLabel('High pass frequency (Hz)'),1,0)
         self.filter_controls_layout.addWidget(self.hp_spin,1,1)
-        self.filter_controls_layout.addWidget(QtGui.QLabel('Low pass frequency (Hz)'),2,0)
+        self.filter_controls_layout.addWidget(QLabel('Low pass frequency (Hz)'),2,0)
         self.filter_controls_layout.addWidget(self.lp_spin,2,1)
         self.layout.addWidget(self.filter_controls_widget,0,0)
 
         self.Xrange_spin_o = pg.SpinBox(value=3600.0, bounds=[0, 3600],step=.1,compactHeight=False,dec=True)
         self.Xrange_spin_o.valueChanged.connect(self.update_Xrange_o)
-        self.range_controls_layout.addWidget(QtGui.QLabel('Overview X range (s)'),0,0)
+        self.range_controls_layout.addWidget(QLabel('Overview X range (s)'),0,0)
         self.range_controls_layout.addWidget(self.Xrange_spin_o,0,1)
 
         self.Xrange_spin_i = pg.SpinBox(value=30.0, bounds=[0, 3600],step=.1,compactHeight=False,dec=True)
         self.Xrange_spin_i.valueChanged.connect(self.update_Xrange_i)
-        self.range_controls_layout.addWidget(QtGui.QLabel('Inset X range (s)'),1,0)
+        self.range_controls_layout.addWidget(QLabel('Inset X range (s)'),1,0)
         self.range_controls_layout.addWidget(self.Xrange_spin_i,1,1)
         self.layout.addWidget(self.range_controls_widget,1,0)
 

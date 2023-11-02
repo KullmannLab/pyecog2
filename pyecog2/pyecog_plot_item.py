@@ -1,5 +1,5 @@
-from PySide2 import QtGui, QtWidgets, QtCore
-from PySide2.QtCore import QThread, Signal, Qt, QRect, QTimer
+from PySide6 import QtGui, QtWidgets, QtCore
+from PySide6.QtCore import QThread, Signal, Qt, QRect, QTimer
 from scipy import signal, stats
 # import pyqtgraph_copy.pyqtgraph as pg
 import pyqtgraph as pg

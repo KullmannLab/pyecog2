@@ -1,6 +1,6 @@
 import sys, os
-from PySide2 import QtGui, QtCore
-from PySide2.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog, \
+from PySide6 import QtGui, QtCore
+from PySide6.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog, \
     QProgressBar, QCheckBox
 
 from pyqtgraph.parametertree import Parameter

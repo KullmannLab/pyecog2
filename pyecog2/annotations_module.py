@@ -1,6 +1,6 @@
 import json
-from PySide2 import QtCore
-from PySide2.QtCore import QObject
+from PySide6 import QtCore
+from PySide6.QtCore import QObject
 import numpy as np
 import colorsys
 from collections import OrderedDict

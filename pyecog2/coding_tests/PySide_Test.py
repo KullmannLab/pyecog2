@@ -1,5 +1,5 @@
 
-from PySide2 import QtGui, QtWidgets
+from PySide6 import QtGui, QtWidgets
 
 # Get entrypoint through which we control underlying Qt framework
 app = QtWidgets.QApplication([])
@@ -15,8 +15,8 @@ window.show()
 #
 #   QLabel('New Window').show()
 #
-# This is true for other PySide2 objects, so be careful.
+# This is true for other PySide6 objects, so be careful.
 
-# Start Qt/PySide2 application. If we don't show any windows, the
+# Start Qt/PySide6 application. If we don't show any windows, the
 # app would just loop at this point without the means to exit
 app.exec_()

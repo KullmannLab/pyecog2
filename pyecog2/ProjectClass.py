@@ -6,7 +6,7 @@ import glob, os
 from datetime import datetime
 from pyecog2.annotations_module import AnnotationPage
 from scipy import signal
-from PySide2 import QtCore
+from PySide6 import QtCore
 import pyqtgraph as pg
 from timeit import default_timer as timer
 from pyedflib import EdfReader

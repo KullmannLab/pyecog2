@@ -1,4 +1,4 @@
-from PySide2 import QtGui, QtCore, QtWidgets
+from PySide6 import QtGui, QtCore, QtWidgets
 from pyecog2.annotations_module import AnnotationPage
 from datetime import datetime
 import numpy as np
@@ -64,7 +64,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         self.connections_list = []
         self.setWindowTitle('Annotations Table')
         self.itemClass = AnnotationTableWidgetItem
-        self.setVerticalScrollMode(self.ScrollPerPixel)
+        self.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
         self.setSelectionMode(QtWidgets.QAbstractItemView.ContiguousSelection)
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         self.clear()

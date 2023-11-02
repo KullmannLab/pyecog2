@@ -3,8 +3,8 @@ import os
 import numpy as np
 import time
 from datetime import datetime
-from PySide2 import QtGui, QtCore, QtWidgets  # , uic, Qt
-from PySide2.QtGui import QPainter, QBrush, QPen
+from PySide6 import QtGui, QtCore, QtWidgets  # , uic, Qt
+from PySide6.QtGui import QPainter, QBrush, QPen
 
 from datetime import datetime
 # import pyqtgraph_copy.pyqtgraph as pg

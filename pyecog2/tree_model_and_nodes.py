@@ -1,5 +1,5 @@
 import os
-from PySide2 import QtGui, QtCore, QtWidgets
+from PySide6 import QtGui, QtCore, QtWidgets
 import numpy as np
 import json
 from pyecog2.ProjectClass import create_metafile_from_h5, load_metadata_file

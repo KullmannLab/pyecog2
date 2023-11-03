@@ -78,7 +78,7 @@ class VideoWindow(QWidget):
         self.mediaPlayer.durationChanged.connect(self.durationChanged)
         self.mediaPlayer.mediaStatusChanged.connect(self.mediaStatusChanged)
         self.mediaPlayer.errorOccurred.connect(self.handleError)
-        self.mediaPlayer.setNotifyInterval(40) # 25 fps
+        # self.mediaPlayer.setNotifyInterval(40) # 25 fps - This was used with PySide2 - checking if still needed with Pyside6
 
         # Connect main model time changes to videa seek
         if self.main_model is not None:
@@ -89,14 +89,14 @@ class VideoWindow(QWidget):
         if self.main_model is None:
             self.current_time_range = [0,0]
             self.current_file = ''
-            # self.mediaPlayer.setMedia(QMediaContent(QUrl.fromLocalFile(self.current_file)))
+            # self.mediaPlayer.setSource(QMediaContent(QUrl.fromLocalFile(self.current_file)))
             # self.playButton.setEnabled(True)
             # self.mediaPlayer.play()
         elif self.main_model.project.current_animal.video_files:
             self.current_file = self.main_model.project.current_animal.video_files[0]
             self.current_time_range = [self.main_model.project.current_animal.video_init_time[0],
                                    self.main_model.project.current_animal.video_init_time[0] + self.main_model.project.current_animal.video_duration[0]]
-            self.mediaPlayer.setMedia(QUrl.fromLocalFile(self.current_file))
+            self.mediaPlayer.setSource(QUrl.fromLocalFile(self.current_file))
             self.playButton.setEnabled(True)
         else:
             self.current_file = ''
@@ -118,11 +118,11 @@ class VideoWindow(QWidget):
                 QDir.homePath())
 
         if fileName != '':
-            self.mediaPlayer.setMedia(QUrl.fromLocalFile(fileName))
+            self.mediaPlayer.setSource(QUrl.fromLocalFile(fileName))
             self.playButton.setEnabled(True)
 
     def exitCall(self):
-        sys.exit(app.exec_())
+        sys.exit(app.exec())
 
     def play(self):
         if self.mediaPlayer.playbackState == QMediaPlayer.PlayingState:
@@ -205,14 +205,14 @@ class VideoWindow(QWidget):
                     position = (pos-self.current_time_range[0])*1000
                     self.position_on_new_file = int(position)
                     # print('Changing position_on_new_file: ', self.position_on_new_file,pos)
-                    self.mediaPlayer.setMedia(QUrl.fromLocalFile(file))
+                    self.mediaPlayer.setSource(QUrl.fromLocalFile(file))
                     self.playButton.setEnabled(True)
                     # self.duration = (arange[1]-arange[0])*1000
                     return
         logger.info(f'No video file found for current position {pos}')
         self.errorLabel.setText('No video file found for current position ' + str(pos))
         self.mediaPlayer.stop()
-        self.mediaPlayer.setMedia()
+        self.mediaPlayer.setSource(QUrl())
         self.current_file = ''
         self.current_time_range = [0, 0]
         # self.duration = 0
@@ -250,4 +250,4 @@ if __name__ == '__main__':
     player = VideoWindow()
     player.resize(640, 480)
     player.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

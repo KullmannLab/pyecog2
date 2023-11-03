@@ -121,7 +121,7 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     w = PlotControls()
     w.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 #
 # if __name__ == '__main__':
@@ -129,4 +129,4 @@ if __name__ == '__main__':
 #     player = VideoWindow()
 #     player.resize(640, 480)
 #     player.show()
-#     sys.exit(app.exec_())
+#     sys.exit(app.exec())

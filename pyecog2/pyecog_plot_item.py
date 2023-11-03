@@ -216,6 +216,7 @@ class PyecogScaleBar():
         data_range = int(drange0/data_range10)*data_range10  # keep just one significant digit
         dmax, dmin = (dmax*data_range/drange0,  dmin*data_range/drange0)
         (p, pref) = siScale(data_range)
+        self.curve_item.visible_time = self.curve_item.visible_time.ravel()  # there is some sort of inconsistency in visible_time shape
         self.bar.setPos((self.curve_item.visible_time[0]*.975 + 0.025*self.curve_item.visible_time[-1]))
         self.bar_length = data_range
         self.bar.yrange = [dmin, dmax]

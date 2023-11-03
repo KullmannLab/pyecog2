@@ -21,7 +21,7 @@ def throw_error(error_text = None):
         msgBox.setText('Error caught! \n'+str(traceback.format_exc(1)))
     else:
         msgBox.setText('Error caught! \n'+str(error_text))
-    msgBox.exec_()
+    msgBox.exec()
     return 0
 
 os.path

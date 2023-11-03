@@ -4,8 +4,8 @@ Wavelet widget for EEG signals in pyecog
 """
 
 import pyqtgraph as pg
-from PySide6 import QtCore, QtGui
-from PySide6.QtWidgets import QApplication, QWidget
+from PySide6 import QtCore
+from PySide6.QtWidgets import QApplication, QWidget, QGridLayout, QLabel
 from PySide6.QtCore import QRunnable, Slot, QThreadPool
 import numpy as np
 import scipy.signal as sg
@@ -416,8 +416,9 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         self.img.resetTransform()
         ymin = np.log10(vf[0])
         ymax = np.log10(vf[-1])
-        self.img.translate(0,ymin)
-        self.img.scale(self.dt,(ymax-ymin)/self.data.shape[0])
+        # self.img.translate(0,ymin)
+        # self.img.scale(self.dt,(ymax-ymin)/self.data.shape[0])
+        self.img.setRect(0,ymin,self.dt*self.data.shape[1],(ymax-ymin))
         self.vb.setLimits(xMin=0, xMax=self.data.shape[1]*self.dt, yMin=ymin, yMax=ymax)
         self.vb.setRange(xRange=[0,self.data.shape[1]*self.dt])
         self.p1.setLabel('bottom', 'Time', units='s')
@@ -443,12 +444,12 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
 class WaveletWindow(QWidget):
     def __init__(self, main_model = None):
         QWidget.__init__(self)
-        self.layout = QtGui.QGridLayout()
+        self.layout = QGridLayout()
         self.setLayout(self.layout)
         self.wavelet_item = WaveletWindowItem(main_model)
 
         self.controls_widget = QWidget()
-        self.controls_layout = QtGui.QGridLayout()
+        self.controls_layout = QGridLayout()
         self.controls_widget.setLayout(self.controls_layout)
         self.channel_spin = pg.SpinBox(value=0,bounds=[0,None], int=True, minStep=1, step=1,compactHeight=False)
         self.channel_spin.valueChanged.connect(self.wavelet_item.setChannel)
@@ -456,11 +457,11 @@ class WaveletWindow(QWidget):
         self.cross_channel_spin.valueChanged.connect(self.wavelet_item.setCrossChannel)
         self.R_spin = pg.SpinBox(value=14.0, bounds=[5, None],step=1,compactHeight=False)
         self.R_spin.valueChanged.connect(self.wavelet_item.setR)
-        self.controls_layout.addWidget(QtGui.QLabel('Channel'),0,0)
+        self.controls_layout.addWidget(QLabel('Channel'),0,0)
         self.controls_layout.addWidget(self.channel_spin,0,1,)
-        self.controls_layout.addWidget(QtGui.QLabel('Wavelet factor R'),0,2)
+        self.controls_layout.addWidget(QLabel('Wavelet factor R'),0,2)
         self.controls_layout.addWidget(self.R_spin,0,3)
-        self.controls_layout.addWidget(QtGui.QLabel('Cross wavelet Channel'),0,4)
+        self.controls_layout.addWidget(QLabel('Cross wavelet Channel'),0,4)
         self.controls_layout.addWidget(self.cross_channel_spin,0,5)
 
         self.layout.addWidget(self.controls_widget,1,0)
@@ -473,7 +474,7 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     w = WaveletWindow()
     w.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 #
 # if __name__ == '__main__':
@@ -481,7 +482,7 @@ if __name__ == '__main__':
 #     player = VideoWindow()
 #     player.resize(640, 480)
 #     player.show()
-#     sys.exit(app.exec_())
+#     sys.exit(app.exec())
 
 class LogAxis(pg.AxisItem):
     def tickStrings(self, values, scale, spacing):

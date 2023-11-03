@@ -267,4 +267,4 @@ if __name__ == '__main__':
     window = NDFConverterWindow()
     window.setGeometry(500, 300, 300, 200)
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

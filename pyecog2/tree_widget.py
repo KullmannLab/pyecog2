@@ -215,5 +215,5 @@ if __name__ == '__main__': # OBSOLETE???
     #splitter_h.addWidget(window)
     #splitter_h.show()
 
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
     print('closed')

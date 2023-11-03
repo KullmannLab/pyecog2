@@ -106,7 +106,7 @@ class Example(QWidget):
         self.data['example0'] = meta_data  # {}
 
         dialog = TestDialog(self.data)
-        accepted = dialog.exec_()
+        accepted = dialog.exec()
         if not accepted:
             return
         self.data = copy.deepcopy(dialog.get_data())
@@ -118,4 +118,4 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = Example()
     ex.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

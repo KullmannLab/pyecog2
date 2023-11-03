@@ -1,7 +1,7 @@
 
 from scipy.signal import stft
 from PySide6 import QtGui, QtCore
-from PySide6.QtWidgets import QApplication, QWidget
+from PySide6.QtWidgets import QApplication, QWidget, QGridLayout, QLabel
 import sys
 import numpy as np
 import pyqtgraph as pg
@@ -76,20 +76,20 @@ class FFTwindow(QWidget):
     def __init__(self, main_model = None):
         QWidget.__init__(self)
         self.main_model = main_model
-        self.layout = QtGui.QGridLayout()
+        self.layout = QGridLayout()
         self.setLayout(self.layout)
         self.fft_item = FFTWindowItem(main_model)
 
         self.controls_widget = QWidget()
-        self.controls_layout = QtGui.QGridLayout()
+        self.controls_layout = QGridLayout()
         self.controls_widget.setLayout(self.controls_layout)
         self.channel_spin = pg.SpinBox(value=0,bounds=[0,None], int=True, minStep=1, step=1,compactHeight=False)
         self.channel_spin.valueChanged.connect(self.fft_item.setChannel)
         self.nfft_spin = pg.SpinBox(value=10, bounds=[6, 16],step=1,int=True,compactHeight=False)
         self.nfft_spin.valueChanged.connect(self.fft_item.setNfft)
-        self.controls_layout.addWidget(QtGui.QLabel('Channel'),0,0)
+        self.controls_layout.addWidget(QLabel('Channel'),0,0)
         self.controls_layout.addWidget(self.channel_spin,0,1,)
-        self.controls_layout.addWidget(QtGui.QLabel('Nfft points 2^'),0,2)
+        self.controls_layout.addWidget(QLabel('Nfft points 2^'),0,2)
         self.controls_layout.addWidget(self.nfft_spin,0,3)
 
         self.layout.addWidget(self.controls_widget,1,0)

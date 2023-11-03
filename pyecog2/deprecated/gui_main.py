@@ -126,4 +126,4 @@ for i in range(3):
     pen = pg.mkPen(colours[i])
     paired_view.make_and_add_item(x=x,y=y, pen=pen)
 
-sys.exit(app.exec_())
+sys.exit(app.exec())

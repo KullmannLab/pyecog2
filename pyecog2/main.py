@@ -244,14 +244,14 @@ class MainWindow(QMainWindow):
                 msg.setText("Your license seems to be invalid. Do you have an activated PyEcogLicense.txt file?")
                 msg.setWindowTitle("Invalid License")
                 msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-                retval = msg.exec_()
+                retval = msg.exec()
                 if retval == QMessageBox.No:
                     msg2 = QMessageBox(parent=self)
                     msg2.setIcon(QMessageBox.Information)
                     msg2.setText("Would you like to create a new PyEcog License file?")
                     msg2.setWindowTitle("Generate new License")
                     msg2.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-                    retval = msg2.exec_()
+                    retval = msg2.exec()
                     if retval == QMessageBox.Yes:
                         dialog2 = QFileDialog(parent=self)
                         dialog2.setWindowTitle('Choose a directory to ssave PyEcogLicense.txt...')
@@ -270,7 +270,7 @@ class MainWindow(QMainWindow):
                             msg3.setDetailedText("File location:" + location)
                             msg3.setWindowTitle("Generate new License")
                             msg3.setStandardButtons(QMessageBox.Ok)
-                            msg3.exec_()
+                            msg3.exec()
                 else: # there is a valid license somewhere
                     dialog = QFileDialog(parent=self)
                     dialog.setWindowTitle('Load License ...')
@@ -358,7 +358,7 @@ class MainWindow(QMainWindow):
                                         )
                     msg.setWindowTitle("Load autosave")
                     msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-                    retval = msg.exec_()
+                    retval = msg.exec()
                     if retval == QMessageBox.Yes:
                         fname = fname + '_autosave'
 
@@ -371,7 +371,7 @@ class MainWindow(QMainWindow):
                 msg.setDetailedText(f"Original location: {orig_dirname}\nNew location: {new_dirname}")
                 msg.setWindowTitle("Update directory structures")
                 msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-                retval = msg.exec_()
+                retval = msg.exec()
                 if retval == QMessageBox.Yes:
                     self.main_model.project.update_folder_structure_from_new_project_location(new_dirname,orig_dirname)
 
@@ -844,7 +844,7 @@ def execute():
     screen = MainWindow(app_handle=app)
     screen.get_available_screen()
     screen.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == '__main__':

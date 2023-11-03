@@ -757,10 +757,10 @@ class OpenWindowProcess(mp.Process):
         app = QApplication(sys.argv)
         window = QMainWindow()
         window.show()
-        sys.exit(app.exec_())
+        sys.exit(app.exec())
 
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     application = GuiMain()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

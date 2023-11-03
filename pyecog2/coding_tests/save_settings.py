@@ -84,7 +84,7 @@ def main():
     app.setOrganizationDomain('ltd')
     app.setOrganizationName('Alg')
     w = Window()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 if __name__ == '__main__':
     main()

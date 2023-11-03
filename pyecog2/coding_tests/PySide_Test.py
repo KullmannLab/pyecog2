@@ -19,4 +19,4 @@ window.show()
 
 # Start Qt/PySide6 application. If we don't show any windows, the
 # app would just loop at this point without the means to exit
-app.exec_()
+app.exec()

@@ -150,7 +150,7 @@ class NDFConverterWindow(QMainWindow):
         dialog = QFileDialog(self)
         dialog.setDirectory(self.folder2convert)
         dialog.setWindowTitle('Select NDF directory')
-        dialog.setFileMode(QFileDialog.DirectoryOnly)
+        dialog.setFileMode(QFileDialog.Directory)
         # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         if dialog.exec():
@@ -196,7 +196,7 @@ class NDFConverterWindow(QMainWindow):
         dialog = QFileDialog(self)
         dialog.setDirectory(self.destination_folder)
         dialog.setWindowTitle('Select Destination directory')
-        dialog.setFileMode(QFileDialog.DirectoryOnly)
+        dialog.setFileMode(QFileDialog.Directory)
         # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         if dialog.exec():

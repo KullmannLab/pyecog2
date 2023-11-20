@@ -403,9 +403,9 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
                 # self.hist.setLevels(*self.hist_levels_cross)
 
         else:  # plotting normal wavelet
-            print('self.last_plot_was_wave:', self.last_plot_was_wave)
+            # print('self.last_plot_was_wave:', self.last_plot_was_wave)
             if not self.last_plot_was_wave:
-                print('reseting colormap')
+                # print('reseting colormap')
                 self.hist.gradient.loadPreset('viridis')
             self.last_plot_was_wave = True
             self.last_plot_was_cross = False

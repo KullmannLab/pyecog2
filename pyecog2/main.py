@@ -255,7 +255,7 @@ class MainWindow(QMainWindow):
                     if retval == QMessageBox.Yes:
                         dialog2 = QFileDialog(parent=self)
                         dialog2.setWindowTitle('Choose a directory to ssave PyEcogLicense.txt...')
-                        # dialog2.setFileMode(QFileDialog.DirectoryOnly)
+                        # dialog2.setFileMode(QFileDialog.Directory)
                         dialog2.setAcceptMode(QFileDialog.AcceptSave)
                         dialog2.selectFile(('PyEcogLicense.txt'))
                         if dialog2.exec():
@@ -442,7 +442,7 @@ class MainWindow(QMainWindow):
     def toggle_darkmode(self):
         if self.action_darkmode.isChecked():
             logger.info('Setting Dark Mode')
-            # Fusion dark palette adapted from https://gist.github.com/QuantumCD/6245215.
+            # # Fusion dark palette adapted from https://gist.github.com/QuantumCD/6245215.
             palette = QPalette()
             palette.setColor(QPalette.Window, QColor(53, 53, 53))
             palette.setColor(QPalette.WindowText, Qt.white)
@@ -460,7 +460,7 @@ class MainWindow(QMainWindow):
             palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
             palette.setColor(QPalette.HighlightedText, Qt.black)
             self.app_handle.setPalette(palette)
-            self.main_model.color_settings['pen'].setColor(QColor(255, 255, 255, 100))
+            self.main_model.color_settings['pen'].setColor(QColor(255, 255, 255, 160))
             self.main_model.color_settings['brush'].setColor(QColor(0, 0, 0, 255))
         else:
             logger.info('Setting Light Mode')
@@ -478,7 +478,7 @@ class MainWindow(QMainWindow):
         '''
         dialog = QFileDialog(parent=self)
         dialog.setWindowTitle(label_text)
-        dialog.setFileMode(QFileDialog.DirectoryOnly)
+        dialog.setFileMode(QFileDialog.Directory)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         # we might want to set home directory using settings
         # for now rely on default behaviour
@@ -710,16 +710,17 @@ class MainWindow(QMainWindow):
 
     def checkGitUpdates(self):
         current_version = pkg_resources.get_distribution('pyecog2').version
-        with request.urlopen('https://api.github.com/repos/KullmannLab/TestPublic/releases/latest', timeout=2) as f:
-            data = json.loads(f.read().decode('utf-8'))
-        latest_version = data['tag_name']
-        print(f'Current version:{current_version}\nLatest version:{latest_version}')
-        if latest_version > current_version:
-            self.update_pyecog()
-
+        try:
+            with request.urlopen('https://api.github.com/repos/KullmannLab/TestPublic/releases/latest', timeout=2) as f:
+                data = json.loads(f.read().decode('utf-8'))
+            latest_version = data['tag_name']
+            print(f'Current version:{current_version}\nLatest version:{latest_version}')
+            if latest_version > current_version:
+                self.update_pyecog()
+        except:
+            print('could not check latest version')
     def update_pyecog(self):
         print('Ask to update PyEcog')
-        print('Updating PyEcog...')
 
     def closeEvent(self, event):
         self.auto_save()
@@ -839,7 +840,7 @@ def execute():
     pg.setConfigOption('antialias', True)
     # pg.setConfigOption('useWeave', True) # deprecated?
     pg.setConfigOption('useOpenGL', True)
-    pg.setConfigOption('useNumba', True)
+    pg.setConfigOption('useNumba', False)
 
     screen = MainWindow(app_handle=app)
     screen.get_available_screen()

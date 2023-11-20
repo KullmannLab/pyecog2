@@ -160,7 +160,7 @@ class ProjectEditWindow(QMainWindow):
     def selectEEGFolder(self):
         dialog = QFileDialog(self)
         dialog.setWindowTitle('Select EEG directory')
-        dialog.setFileMode(QFileDialog.DirectoryOnly)
+        dialog.setFileMode(QFileDialog.Directory)
         # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         if dialog.exec():
@@ -175,7 +175,7 @@ class ProjectEditWindow(QMainWindow):
     def selectVideoFolder(self):
         dialog = QFileDialog(self)
         dialog.setWindowTitle('Select EEG directory')
-        dialog.setFileMode(QFileDialog.DirectoryOnly)
+        dialog.setFileMode(QFileDialog.Directory)
         # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         if dialog.exec():

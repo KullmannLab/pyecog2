@@ -1,7 +1,7 @@
 # PyQt5 Video player
 import os
 os.environ['QT_MULTIMEDIA_PREFERRED_PLUGINS'] = 'windowsmediafoundation'
-from PySide6.QtCore import QDir, Qt, QUrl, Signal
+from PySide6.QtCore import QDir, Qt, QUrl, Signal, QTimer
 from PySide6.QtMultimedia import QMediaPlayer
 from PySide6.QtMultimediaWidgets import QVideoWidget
 from PySide6.QtWidgets import (QApplication, QFileDialog, QHBoxLayout, QLabel, QInputDialog,
@@ -80,11 +80,13 @@ class VideoWindow(QWidget):
         self.mediaPlayer.errorOccurred.connect(self.handleError)
         # self.mediaPlayer.setNotifyInterval(40) # 25 fps - This was used with PySide2 - checking if still needed with Pyside6
 
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.positionChanged(self.mediaPlayer.position()))
+
         # Connect main model time changes to videa seek
         if self.main_model is not None:
             self.sigTimeChanged.connect(self.main_model.set_time_position)
             self.main_model.sigTimeChanged.connect(self.setGlobalPosition)
-
 
         if self.main_model is None:
             self.current_time_range = [0,0]
@@ -127,10 +129,12 @@ class VideoWindow(QWidget):
     def play(self):
         if self.mediaPlayer.playbackState == QMediaPlayer.PlayingState:
             self.mediaPlayer.pause()
+            self.timer.stop()
             logger.info("Video player: pausing")
         else:
             self.last_position -= 1  # take one millisecond to last position so that first position update is not skipped
             self.mediaPlayer.play()
+            self.timer.start(40) # 40 ms inter frame interval
             logger.info("Video player: playing")
 
     def mediaStateChanged(self, state):

@@ -32,7 +32,7 @@ class VideoWindow(QWidget):
         self.position_on_new_file = 0
         self.duration = -1
         self.waiting_for_file = False
-        self.media_state_before_file_transition = self.mediaPlayer.playbackState
+        self.media_state_before_file_transition = self.mediaPlayer.playbackState()
         self.video_time_offset = 0.0
 
         self.play_icon = QIcon(play_icon_file)
@@ -127,7 +127,7 @@ class VideoWindow(QWidget):
         sys.exit(app.exec())
 
     def play(self):
-        if self.mediaPlayer.playbackState == QMediaPlayer.PlayingState:
+        if self.mediaPlayer.playbackState() == QMediaPlayer.PlayingState:
             self.mediaPlayer.pause()
             self.timer.stop()
             logger.info("Video player: pausing")
@@ -138,7 +138,7 @@ class VideoWindow(QWidget):
             logger.info("Video player: playing")
 
     def mediaStateChanged(self, state):
-        if self.mediaPlayer.playbackState == QMediaPlayer.PlayingState:
+        if self.mediaPlayer.playbackState() == QMediaPlayer.PlayingState:
             self.playButton.setIcon(self.pause_icon)
         else:
             self.playButton.setIcon(self.play_icon)
@@ -185,7 +185,7 @@ class VideoWindow(QWidget):
         # print('VideoPlayer setGlobalPosition')
         if self.current_time_range[0] <= pos <= self.current_time_range[1]: # correct file opened
             position = int((pos-self.current_time_range[0])*1000)
-            if self.mediaPlayer.playbackState == QMediaPlayer.PlayingState and abs(position-self.last_position)<200:
+            if self.mediaPlayer.playbackState() == QMediaPlayer.PlayingState and abs(position-self.last_position)<200:
                 # skip position setting by signal of main model to ensure smooth video plaback
                 return
             # go to correct relative position
@@ -204,7 +204,7 @@ class VideoWindow(QWidget):
                     self.errorLabel.setText("File: " + self.current_file)
                     self.current_time_range = arange
                     self.waiting_for_file = True
-                    self.media_state_before_file_transition = self.mediaPlayer.playbackState
+                    self.media_state_before_file_transition = self.mediaPlayer.playbackState()
                     self.mediaPlayer.stop()
                     position = (pos-self.current_time_range[0])*1000
                     self.position_on_new_file = int(position)

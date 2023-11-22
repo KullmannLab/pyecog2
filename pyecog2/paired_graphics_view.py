@@ -161,7 +161,7 @@ class PairedGraphicsView():
 
         self.overviewROI = pg.RectROI(pos=(x_range[0], y_range[0]),
                                       size=(x_range[1] - x_range[0], y_range[1] - y_range[0]),
-                                      sideScalers=False, pen=pen, rotatable=False, removable=False)
+                                      sideScalers=False, pen=pen, rotatable=False, removable=False,)
         self.overviewROI.sigRegionChanged.connect(self.overviewROIchanged)
         self.overview_plot.addItem(self.overviewROI)
 

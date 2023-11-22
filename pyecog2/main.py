@@ -8,7 +8,7 @@ from PySide6 import QtCore, QtGui
 from PySide6.QtGui import QPalette, QColor, QDesktopServices
 from PySide6.QtCore import Qt, QSettings
 from PySide6.QtWidgets import QApplication, QTextBrowser, QDockWidget, QMainWindow, \
-    QFileDialog, QMessageBox
+    QFileDialog, QMessageBox,QStyleFactory
 from pyecog2.ProjectClass import Project, MainModel
 from pyecog2.annotation_table_widget import AnnotationTableWidget
 from pyecog2.annotations_module import AnnotationElement
@@ -814,7 +814,7 @@ def execute():
     app.setApplicationName('PyEcog')
     app.setOrganizationDomain('PyEcog')
     app.setOrganizationName('PyEcog')
-    app.setStyle("fusion")
+    app.setStyle("Fusion")
     # Mikail feel free to play about if you feel so inclined :P
     # Now use a palette to switch to dark colors:
     # palette = QPalette()

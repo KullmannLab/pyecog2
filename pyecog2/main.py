@@ -8,9 +8,9 @@ from PySide6 import QtCore, QtGui
 from PySide6.QtGui import QPalette, QColor, QDesktopServices
 from PySide6.QtCore import Qt, QSettings
 from PySide6.QtWidgets import QApplication, QTextBrowser, QDockWidget, QMainWindow, \
-    QFileDialog, QMessageBox,QStyleFactory
+    QFileDialog, QMessageBox
 from pyecog2.ProjectClass import Project, MainModel
-from pyecog2.annotation_table_widget import AnnotationTableWidget
+from pyecog2.ui_elements.annotation_table_widget import AnnotationTableWidget
 from pyecog2.annotations_module import AnnotationElement
 from pyecog2.ui_elements.AnnotationParameterTree import AnnotationParameterTee
 from pyecog2.ui_elements.FFTWidget import FFTwindow

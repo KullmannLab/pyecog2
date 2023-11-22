@@ -1,6 +1,7 @@
 from PySide6 import QtGui, QtCore, QtWidgets
 from pyecog2.annotations_module import AnnotationPage
 from datetime import datetime
+import time
 import numpy as np
 from timeit import default_timer as timer
 
@@ -14,7 +15,8 @@ asUnicode = str
 # __all__ = ['TableWidget']
 
 def date_fmt(item):
-    return datetime.utcfromtimestamp(item.value).strftime('%Y-%m-%d %H:%M:%S')
+    return time.strftime( '%Y-%m-%d %H:%M:%S', time.localtime(item.value))
+    # previously: datetime.utcfromtimestamp(item.value).strftime('%Y-%m-%d %H:%M:%S')
 
 def confidence_fromat(item):
     return str(item.value)

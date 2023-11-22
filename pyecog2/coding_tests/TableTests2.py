@@ -1,4 +1,4 @@
-from pyecog2.annotation_table_widget import AnnotationTableWidget
+from pyecog2.ui_elements.annotation_table_widget import AnnotationTableWidget
 from PySide6 import QtCore, QtWidgets
 import numpy as np
 from pyecog2.annotations_module import AnnotationElement, AnnotationPage

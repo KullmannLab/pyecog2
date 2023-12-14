@@ -7,7 +7,6 @@ from PySide6 import QtGui, QtCore, QtWidgets  # , uic, Qt
 from PySide6.QtGui import QPainter, QBrush, QPen
 
 from datetime import datetime
-# import pyqtgraph_copy.pyqtgraph as pg
 import pyqtgraph as pg
 import pyqtgraph.widgets.RemoteGraphicsView as RemoteGraphicsView
 import colorsys
@@ -373,7 +372,7 @@ class PairedGraphicsView():
 
     def add_annotaion_plot(self, annotation):
         color = self.main_model.annotations.label_color_dict[
-            annotation.getLabel()]  # circle hue with constant luminosity an saturation
+            annotation.getLabel()]  # circle hue with constant luminosity and saturation
         brush = pg.functions.mkBrush(color=(*color, 25))
         pen = pg.functions.mkPen(color=(*color, 200))
         channel_range = self.main_model.annotations.label_channel_range_dict[annotation.getLabel()]
@@ -394,8 +393,8 @@ class PairedGraphicsView():
             self.function_generator_link_delete(self.main_model.annotations, annotation))
         annotation.sigAnnotationElementChanged.connect(
             self.function_generator_link_annotaions_to_graphs(annotation, annotation_graph_i))
-        self.overview_plot.addItem(annotation_graph_o)
-        self.insetview_plot.addItem(annotation_graph_i)
+        self.overview_plot.addItem(annotation_graph_o,ignoreBounds=True)
+        self.insetview_plot.addItem(annotation_graph_i,ignoreBounds=True)
         self.inset_annotations.append(annotation_graph_i)  # lists to easily keep track of annotations
         self.overview_annotations.append(annotation_graph_o)
         self.plotted_annotations.append(annotation)

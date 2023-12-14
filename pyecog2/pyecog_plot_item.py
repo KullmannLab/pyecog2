@@ -1,9 +1,9 @@
 from PySide6 import QtGui, QtWidgets, QtCore
 from PySide6.QtCore import QThread, Signal, Qt, QRect, QTimer
 from scipy import signal, stats
-# import pyqtgraph_copy.pyqtgraph as pg
 import pyqtgraph as pg
 from pyqtgraph.functions import siScale, siFormat
+import weakref
 import numpy as np
 from scipy import signal
 from pyecog2.ProjectClass import intervals_overlap
@@ -284,7 +284,8 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
         self.lines[0].sigDragged.connect(self.sigClicked.emit)
         self.lines[1].sigDragged.connect(self.sigClicked.emit)
 
-
+        if pen is None:
+            pen = QtGui.QPen(QtGui.QColor(0, 0, 255, 150))
         if brush is None:
             brush = QtGui.QBrush(QtGui.QColor(0, 0, 255, 50))
         self.setBrush(brush)
@@ -411,8 +412,8 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
 
         rng = self.getRegion()
         try:
-            print('boundingRect0:', rng, br.left(), br.right(), self._boundingRectCache.left(),
-              self._boundingRectCache.right())
+            print('boundingRect0:', int(rng[0]), int(rng[1]), int(br.left()), int(br.right()),
+                  int(self._boundingRectCache.left()), int(self._boundingRectCache.right()))
         except:
             pass
 
@@ -440,8 +441,17 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
             self._boundingRectCache = br
             self.prepareGeometryChange()
 
-        print('boundingRect1:',rng, br.left(),br.right(),self._boundingRectCache.left() ,self._boundingRectCache.right() )
+        print('boundingRect1:',int(rng[0]),int(rng[1]), int(br.left()),int(br.right()),
+              int(self._boundingRectCache.left()) ,int(self._boundingRectCache.right() ))
         return br
+
+    def paint(self, p, *args):
+        # profiler = debug.Profiler()  # noqa: profiler does prints on GC
+        p.setBrush(self.currentBrush)
+        p.setBrush(QtGui.QBrush(QtGui.QColor(0, 255, 0, 100)))
+        p.setPen(QtGui.QPen(QtGui.QColor(0, 255, 0, 0)))
+        print('painting:',int(self.boundingRect().left()),int(self.boundingRect().right()))
+        p.drawRect(self.boundingRect())
 
     def update_fields(self,pos,label,color_brush,color_pen):
         self.setRegion(pos)

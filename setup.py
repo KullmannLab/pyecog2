@@ -20,7 +20,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
   python_requires='>=3.8',
-  install_requires=['scipy==1.5.4',
+  install_requires=['scipy==1.10.0',
                     'numpy==1.21.6',
                     'pandas==1.1.5',
                     'matplotlib==3.3.3',

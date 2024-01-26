@@ -129,6 +129,7 @@ class PairedGraphicsView():
         # self.insetview_plot.setLabel('bottom', text='Time', units='s')
         self.insetview_plot.setLabel('bottom', units=None)
 
+        # What is this for??
         self.insetview_plot.vb.state['autoRange'] = [False, False]
         self.overview_plot.vb.state['autoRange'] = [False, False]
         self.timeline_plot.vb.state['autoRange'] = [False, False]
@@ -727,7 +728,6 @@ class DateAxis(pg.AxisItem):
             string = '%Y'
             label1 = ''
             label2 = ''
-
         for x in values:
             try:
                 strns.append(datetime.strftime(datetime.fromtimestamp(x), string))

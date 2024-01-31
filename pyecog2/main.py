@@ -840,7 +840,7 @@ def execute():
     pg.setConfigOption('antialias', True)
     # pg.setConfigOption('useWeave', True) # deprecated?
     pg.setConfigOption('useOpenGL', True)
-    pg.setConfigOption('useNumba', False)
+    pg.setConfigOption('useNumba', True)
 
     screen = MainWindow(app_handle=app)
     screen.get_available_screen()

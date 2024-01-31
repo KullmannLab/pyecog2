@@ -411,12 +411,12 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
             self._updateClipItemBounds()
 
         rng = self.getRegion()
-        try:
-            print('boundingRect0 - rng:', int(rng[0]), int(rng[1]),
-                  '\n                 br:', int(br.left()), int(br.right()),
-                  '\n           br_cahce:', int(self._boundingRectCache.left()), int(self._boundingRectCache.right()))
-        except:
-            pass
+        # try:
+        #     print('boundingRect0 - rng:', int(rng[0]), int(rng[1]),
+        #           '\n                 br:', int(br.left()), int(br.right()),
+        #           '\n           br_cahce:', int(self._boundingRectCache.left()), int(self._boundingRectCache.right()))
+        # except:
+        #     pass
 
         if self.orientation in ('vertical', PyecogLinearRegionItem.Vertical):
             br.setLeft(rng[0])
@@ -442,9 +442,9 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
             self._boundingRectCache = br
             self.prepareGeometryChange()
 
-        print('boundingRect0 - rng:',int(rng[0]),int(rng[1]),
-              '\n                 br:', int(br.left()), int(br.right()),
-              '\n           br_cahce:', int(self._boundingRectCache.left()) ,int(self._boundingRectCache.right() ))
+        # print('boundingRect0 - rng:',int(rng[0]),int(rng[1]),
+        #       '\n                 br:', int(br.left()), int(br.right()),
+        #       '\n           br_cahce:', int(self._boundingRectCache.left()) ,int(self._boundingRectCache.right() ))
         return br
 
     def paint(self, p, *args):
@@ -452,7 +452,7 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
         p.setBrush(self.currentBrush)
         p.setBrush(QtGui.QBrush(QtGui.QColor(0, 255, 0, 100)))
         p.setPen(QtGui.QPen(QtGui.QColor(0, 255, 0, 0)))
-        print('painting:           ',int(self.boundingRect().left()),int(self.boundingRect().right()))
+        # print('painting:           ',int(self.boundingRect().left()),int(self.boundingRect().right()))
         p.drawRect(self.boundingRect())
 
     def update_fields(self,pos,label,color_brush,color_pen):

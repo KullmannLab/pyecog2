@@ -312,7 +312,6 @@ class PairedGraphicsView():
         self.insetview_plot.vb.setXRange(overview_range[0],
                                          overview_range[0] + min(30, overview_range[1] - overview_range[0]), padding=0)
 
-
         end_t = timer()
         logger.info(f'Paired graphics view plot annotations + etc. in {end_t - start_t} seconds')
 

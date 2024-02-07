@@ -7,6 +7,8 @@ import numpy as np
 import scipy.signal as sg
 from timeit import default_timer as timer
 import traceback, inspect, sys
+import logging
+logger = logging.getLogger(__name__)
 
 class TableModel(QtCore.QAbstractTableModel):
     def __init__(self, data):
@@ -17,6 +19,8 @@ class TableModel(QtCore.QAbstractTableModel):
         if role == Qt.DisplayRole:
             # Note: self._data[index.row()][index.column()] will also work
             value = self._data[index.row(), index.column()]
+            if value == 0:
+                value = int(value)
             return str(value)
 
     def setData(self, index, value, role):
@@ -33,16 +37,18 @@ class TableModel(QtCore.QAbstractTableModel):
     def flags(self, index):
         return Qt.ItemIsSelectable|Qt.ItemIsEnabled|Qt.ItemIsEditable
 
-class ChannelSelectorWindow(QMainWindow):
+class MontageEditorWindow(QMainWindow):
     def __init__(self, main_model):
         super().__init__()
 
         self.table = QTableView()
-        channel_selection = np.zeros((60,1),dtype=bool)
-        self.model = TableModel(channel_selection)
+        montage_matrix = np.identity(main_model.project.file_buffer.get_nchannels())
+        self.model = TableModel(montage_matrix)
         self.table.setModel(self.model)
 
         self.setCentralWidget(self.table)
+        self.setWindowTitle('PyEcog Montage Editor')
+        self.show()
 
 
 class PlotControls(QWidget):
@@ -86,31 +92,30 @@ class PlotControls(QWidget):
         self.range_controls_layout.addWidget(self.Xrange_spin_i,1,1)
         self.layout.addWidget(self.range_controls_widget,1,0)
 
-        self.channel_selector_butotn = QPushButton('Channel Selector (coming soon...)', self)
-        self.channel_selector_butotn.clicked.connect(self.launch_channel_selector)
+        self.channel_selector_butotn = QPushButton('Montage Editor', self)
+        self.channel_selector_butotn.clicked.connect(self.launch_montage_editor)
         self.layout.addWidget(self.channel_selector_butotn,2,0)
 
 
 
     def update_filter(self):
-        # print('Plot controls',self.filter_check.checkState()>0,self.hp_spin.value(),self.lp_spin.value())
-        self.sigUpdateFilter.emit((self.filter_check.checkState()>0,self.hp_spin.value(),self.lp_spin.value()))
+        # logger.info(f'Plot controls {self.filter_check.checkState()>0} {self.hp_spin.value()} {self.lp_spin.value()}')
+        self.sigUpdateFilter.emit((self.filter_check.isChecked(),self.hp_spin.value(),self.lp_spin.value()))
         return
 
     def update_Xrange_o(self):
-        print(self.Xrange_spin_o.value())
+        logger.info(f'Xrange overview value: {self.Xrange_spin_o.value()}')
         self.sigUpdateXrange_o.emit((self.Xrange_spin_o.value()))
         return
 
     def update_Xrange_i(self):
-        print(self.Xrange_spin_i.value())
+        logger.info(f'Xrange inset value: {self.Xrange_spin_i.value()}')
         self.sigUpdateXrange_i.emit((self.Xrange_spin_i.value()))
         return
 
-    def launch_channel_selector(self):
-        print('channel selector')
-        # self.channel_selector = ChannelSelectorWindow(self.main_model)
-        # self.channel_selector.show()
+    def launch_montage_editor(self):
+        self.channel_selector = MontageEditorWindow(self.main_model)
+        self.channel_selector.show()
 
     def set_values(self,filter):
         pass

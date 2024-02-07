@@ -82,7 +82,7 @@ class MainWindow(QMainWindow):
         self.live_recording_timer = QtCore.QTimer()
         self.live_recording_timer.timeout.connect(self.reload_plot)
 
-        self.check_license()
+        # self.check_license()
 
         # Populate Main window with widgets
         # self.createDockWidget()
@@ -311,7 +311,7 @@ class MainWindow(QMainWindow):
         self.show()
 
     def load_directory(self, dirname=None):
-        license.update_license_reg_file()
+        # license.update_license_reg_file()
         logger.info('Openening folder')
         if type(dirname) != str:
             dirname = self.select_directory()
@@ -324,12 +324,12 @@ class MainWindow(QMainWindow):
         os.chdir(dirname)
 
     def new_project(self):
-        license.update_license_reg_file()
+        # license.update_license_reg_file()
         self.main_model.project.__init__(main_model=self.main_model)  # = Project(self.main_model)
         self.tree_element.set_rootnode_from_project(self.main_model.project)
 
     def load_project(self, fname=None):
-        license.update_license_reg_file()
+        # license.update_license_reg_file()
         if type(fname) is not str:
             dialog = QFileDialog(parent=self)
             dialog.setWindowTitle('Load Project ...')
@@ -389,7 +389,7 @@ class MainWindow(QMainWindow):
 
     def save(self):
         logger.info('save action triggered')
-        license.update_license_reg_file()
+        # license.update_license_reg_file()
         fname = self.main_model.project.project_file
         if not os.path.isfile(fname):
             self.save_as()
@@ -399,7 +399,7 @@ class MainWindow(QMainWindow):
         self.toggle_auto_save()
 
     def save_as(self):
-        license.update_license_reg_file()
+        # license.update_license_reg_file()
         dialog = QFileDialog(parent=self)
         dialog.setWindowTitle('Save Project as ...')
         dialog.setFileMode(QFileDialog.AnyFile)
@@ -416,7 +416,7 @@ class MainWindow(QMainWindow):
         self.toggle_auto_save()
 
     def auto_save(self):
-        license.update_license_reg_file()
+        # license.update_license_reg_file()
         # print('autosave_save action triggered')
         fname = self.main_model.project.project_file
         if not os.path.isfile(fname):

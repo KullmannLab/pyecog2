@@ -837,9 +837,10 @@ def execute():
     pg.setConfigOption('foreground', 'd')
     pg.setConfigOption('background', 'w')
     # pg.setConfigOption('foreground', 'k')
-    pg.setConfigOption('antialias', True)
+    pg.setConfigOption('antialias', False)
     # pg.setConfigOption('useWeave', True) # deprecated?
-    pg.setConfigOption('useOpenGL', True)
+    pg.setConfigOption('useOpenGL', False)
+    pg.setConfigOption('enableExperimental', False)
     pg.setConfigOption('useNumba', True)
 
     screen = MainWindow(app_handle=app)

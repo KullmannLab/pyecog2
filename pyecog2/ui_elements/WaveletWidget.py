@@ -467,6 +467,9 @@ class WaveletWindow(QWidget):
         self.layout.addWidget(self.controls_widget,1,0)
         self.layout.addWidget(self.wavelet_item,0,0)
 
+    def update_data(self):
+        self.wavelet_item.update_data()
+
 ## Start Qt event loop unless running in interactive mode or using pyside.
 if __name__ == '__main__':
     import sys

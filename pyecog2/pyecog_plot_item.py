@@ -32,7 +32,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
             self.pen = pg.mkPen(pg.getConfigOption('foreground')) #(1, 1, 1, 100)
             color = self.pen.color()
             rgb = color.getRgb()
-            color.setRgb(int(rgb[0]*255/100),int(rgb[1]*255/100),int(rgb[2]*255/100),100)
+            # color.setRgb(int(rgb[0]*255/100),int(rgb[1]*255/100),int(rgb[2]*255/100),100)
             self.pen.setColor(color)
         else:
             self.pen = pen
@@ -188,13 +188,13 @@ class PyecogScaleBar():
             self.pen = pg.mkPen(pg.getConfigOption('foreground'))  # (1, 1, 1, 100)
             color = self.pen.color()
             rgb = color.getRgb()
-            color.setRgb(int(rgb[0] * 255 / 100), int(rgb[1] * 255 / 100), int(rgb[2] * 255 / 100), 200)
+            # color.setRgb(int(rgb[0] * 255 / 100), int(rgb[1] * 255 / 100), int(rgb[2] * 255 / 100), 200)
             self.pen.setColor(color)
         else:
             self.pen = pg.mkPen(pen.color())  # (1, 1, 1, 100)
             color = self.pen.color()
             rgb = color.getRgb()
-            color.setRgb(int(rgb[0] * 255 / 100), int(rgb[1] * 255 / 100), int(rgb[2] * 255 / 100), 200)
+            # color.setRgb(int(rgb[0] * 255 / 100), int(rgb[1] * 255 / 100), int(rgb[2] * 255 / 100), 200)
 
         self.pen.setWidth(5)
         super().__init__(*args, **kwds)
@@ -450,7 +450,7 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
     def paint(self, p, *args):
         # profiler = debug.Profiler()  # noqa: profiler does prints on GC
         p.setBrush(self.currentBrush)
-        p.setBrush(QtGui.QBrush(QtGui.QColor(0, 255, 0, 100)))
+        # p.setBrush(QtGui.QBrush(QtGui.QColor(0, 255, 0, 100)))
         p.setPen(QtGui.QPen(QtGui.QColor(0, 255, 0, 0)))
         # print('painting:           ',int(self.boundingRect().left()),int(self.boundingRect().right()))
         p.drawRect(self.boundingRect())

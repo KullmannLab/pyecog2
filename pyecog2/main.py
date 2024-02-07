@@ -837,7 +837,7 @@ def execute():
     pg.setConfigOption('foreground', 'd')
     pg.setConfigOption('background', 'w')
     # pg.setConfigOption('foreground', 'k')
-    pg.setConfigOption('antialias', False)
+    pg.setConfigOption('antialias', True)
     # pg.setConfigOption('useWeave', True) # deprecated?
     pg.setConfigOption('useOpenGL', False)
     pg.setConfigOption('enableExperimental', False)

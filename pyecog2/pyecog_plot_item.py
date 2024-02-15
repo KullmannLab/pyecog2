@@ -117,7 +117,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
                             self.visible_time = np.concatenate((visible_time,self.visible_time[:-len(visible_time)]))
             # end of NEVER REACHED code
 
-            if self.project.filter_settings[0]: # apply LP filter only for plots
+            if False: # self.project.filter_settings[0]: # apply LP filter only for plots
                 fs = 2/(self.visible_time[2]-self.visible_time[0])
                 nyq = 0.5 * fs[0]
                 hpcutoff = min(max(self.project.filter_settings[1] / nyq, 0.001), .5)

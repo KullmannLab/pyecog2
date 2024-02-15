@@ -357,8 +357,8 @@ class FileBuffer():  # Consider translating this to cython
     def get_t_max_for_live_plot(self):
         return max([r[1] for r in self.data_ranges])
 
-
-    def get_data_from_range(self, trange, channel=None, n_envelope=None, for_plot=False, filter_settings=(False,0,0)):
+    def get_data_from_range(self, trange, channel=None, n_envelope=None, for_plot=False, filter_settings=(False,0,0),
+                            montage=None):
         # First check if data is already buffered, most of the time this will be the case:
         if trange[0] >= self.range[0] and trange[1] <= self.range[1]:
             # if self.verbose: print('Data already in buffer')
@@ -405,7 +405,10 @@ class FileBuffer():  # Consider translating this to cython
         enveloped_data = []
         enveloped_time = []
         no_downsampling = True
+
         for i, data in enumerate(self.data):
+            if montage is None or montage.shape[1]!=data.shape[1]:
+                montage = np.eye(data.shape[1])
 
             if channel is not None and channel>=data.shape[1]:
                 continue # skip this file becuase it does not have channel with required index
@@ -419,7 +422,7 @@ class FileBuffer():  # Consider translating this to cython
             # print('Downsampling ratio:', ds,file_envlopes,sample_ranges)
             if channel is None:
                 # poor coding here, we are not computing proper envelopes, but it'll do for now because this is only
-                # used for coputing channel scallings so far
+                # used for computing channel scallings so far
                 enveloped_data.append(dV*data[start:stop:ds, :])
                 if ds != 0:
                     no_downsampling = False
@@ -468,8 +471,7 @@ class FileBuffer():  # Consider translating this to cython
 
             enveloped_time.append(np.linspace(start / fs + self.data_ranges[i][0], (stop-1) / fs + self.data_ranges[i][0],
                                               len(enveloped_data[-1])).reshape(-1, 1))
-            # enveloped_time.append(np.linspace(start / fs + self.data_ranges[i][0], (stop-1) / fs + self.data_ranges[i][0],
-            #                                   len(enveloped_data[-1])).reshape(-1, 1))
+
             if len(enveloped_time[-1]) == 0:
                 del (enveloped_time[-1])
                 del (enveloped_data[-1])
@@ -493,21 +495,21 @@ class FileBuffer():  # Consider translating this to cython
         if len(enveloped_data) > 0:
             data = np.vstack(enveloped_data)
             time = np.vstack(enveloped_time)
-            # if for_plot and filter_settings[0]: # apply LP filter only for plots
-            #     fs = 2/(time[2]-time[0])
-            #     nyq = 0.5 * fs[0]
-            #     hpcutoff = min(max(filter_settings[1] / nyq, 0.001), .5)
-            #     data = data - np.mean(data)
-            #     lpcutoff = min(max(filter_settings[2] / nyq, 0.001), 1)
-            #     # for some reason the bandpass butterworth filter is very unstable
-            #     if lpcutoff<.99:  # don't apply filter if LP cutoff freqquency is above nyquist freq.
-            #         # if self.verbose: print('applying LP filter to display data:', filter_settings, fs, nyq, lpcutoff)
-            #         b, a = signal.butter(2, lpcutoff, 'lowpass', analog=False)
-            #         data = signal.filtfilt(b, a, data,axis =0,method='gust')
-            #     if hpcutoff > .001: # don't apply filter if HP cutoff frequency too low.
-            #         # if self.verbose: print('applying HP filter to display data:', filter_settings, fs, nyq, hpcutoff)
-            #         b, a = signal.butter(2, hpcutoff, 'highpass', analog=False)
-            #         data = signal.filtfilt(b, a, data,axis =0,method='gust')
+            if for_plot and filter_settings[0]: # apply LP filter only for plots
+                fs = 2/(time[2]-time[0])
+                nyq = 0.5 * fs[0]
+                hpcutoff = min(max(filter_settings[1] / nyq, 0.001), .5)
+                data = data - np.mean(data)
+                lpcutoff = min(max(filter_settings[2] / nyq, 0.001), 1)
+                # for some reason the bandpass butterworth filter is very unstable
+                if lpcutoff<.99:  # don't apply filter if LP cutoff freqquency is above nyquist freq.
+                    # if self.verbose: print('applying LP filter to display data:', filter_settings, fs, nyq, lpcutoff)
+                    b, a = signal.butter(2, lpcutoff, 'lowpass', analog=False)
+                    data = signal.filtfilt(b, a, data,axis =0,method='gust')
+                if hpcutoff > .001: # don't apply filter if HP cutoff frequency too low.
+                    # if self.verbose: print('applying HP filter to display data:', filter_settings, fs, nyq, hpcutoff)
+                    b, a = signal.butter(2, hpcutoff, 'highpass', analog=False)
+                    data = signal.filtfilt(b, a, data,axis =0,method='gust')
         else:
             data = np.zeros((0,1))
             time = np.zeros((0,1))
@@ -604,6 +606,7 @@ class Project():
 
         if not hasattr(self,'filter_settings'):  #Backwards compatibility
             self.filter_settings = (False, 0, 1e6)
+
         self.main_model.sigProjectChanged.emit()
         return (new_dirname, orig_dirname)
 
@@ -693,7 +696,7 @@ class Project():
             # self.current_animal = animal
             self.file_buffer = FileBuffer(self.current_animal)
 
-        return self.file_buffer.get_data_from_range(trange, channel, n_envelope,for_plot,self.filter_settings)
+        return self.file_buffer.get_data_from_range(trange, channel, n_envelope,for_plot,self.filter_settings, self.montage)
 
     def updateFilterSettings(self, settings=(False,0,1e6)):
         self.filter_settings = settings

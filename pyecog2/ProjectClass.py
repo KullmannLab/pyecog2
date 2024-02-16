@@ -578,7 +578,12 @@ class Project():
         self.current_animal.annotations.copy_from(self.main_model.annotations,connect_history=False,quiet=True)
         self.main_model.annotations.copy_from(animal.annotations,quiet=True)
         self.current_animal = animal
+        apply_montage = None
+        if hasattr(self,'file_buffer'):
+            apply_montage, montage = self.file_buffer.apply_montage, self.file_buffer.montage # keep previous montage settings - poor coding practice
         self.file_buffer = FileBuffer(self.current_animal)
+        if apply_montage is not None:
+            self.file_buffer.apply_montage, self.file_buffer.montage = apply_montage, montage
         self.main_model.annotations.sigLabelsChanged.emit('')
         logger.info(f'ProjectClass set_current_animal ran in {timer()-start_t} seconds')
 

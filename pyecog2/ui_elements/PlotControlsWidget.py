@@ -11,9 +11,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 class TableModel(QtCore.QAbstractTableModel):
-    def __init__(self, data):
+    def __init__(self, data,main_model):
         super(TableModel, self).__init__()
         self._data = data
+        self.main_model = main_model
+        self.main_model.project.file_buffer.montage = self._data
 
     def data(self, index, role):
         if role == Qt.DisplayRole:
@@ -26,6 +28,7 @@ class TableModel(QtCore.QAbstractTableModel):
     def setData(self, index, value, role):
         if role == Qt.EditRole:
             self._data[index.row()][index.column()] = value
+            self.main_model.project.file_buffer.montage = self._data
             return True
 
     def rowCount(self, index):
@@ -48,7 +51,7 @@ class MontageEditorWindow(QMainWindow):
         self.main_model = main_model
         self.table = QTableView()
         self.montage_matrix = np.identity(1)
-        self.model = TableModel(self.montage_matrix) # initialize fields
+        self.model = TableModel(self.montage_matrix,self.main_model) # initialize fields
         self.table.setModel(self.model)
         self.update_montage_matrix()  # update to current plots
         self.setCentralWidget(self.table)
@@ -60,31 +63,27 @@ class MontageEditorWindow(QMainWindow):
         if n_channels != self.montage_matrix.shape[1]:
             print('Number of channels changed - reseting montage matrix')
             self.montage_matrix = np.eye(n_channels)
-            self.model = TableModel(self.montage_matrix)
+            self.model = TableModel(self.montage_matrix, self.main_model)
             self.table.setModel(self.model)
 
-
-    def set_diff_montage(self):
+    def set_montage(self,montage='Identity'):
         n_channels = self.main_model.project.file_buffer.get_nchannels()
-        self.montage_matrix = np.eye(n_channels) - np.eye(n_channels,k=1)
-        self.model = TableModel(self.montage_matrix)
-        self.table.setModel(self.model)
-
-    def set_lap_montage(self):
-        n_channels = self.main_model.project.file_buffer.get_nchannels()
-        self.montage_matrix = np.eye(n_channels) - 0.5*(np.eye(n_channels, k=1) + np.eye(n_channels, k=-1))
-        self.model = TableModel(self.montage_matrix)
-        self.table.setModel(self.model)
-    def set_avg_montage(self):
-        n_channels = self.main_model.project.file_buffer.get_nchannels()
-        self.montage_matrix = np.eye(n_channels) - 1/n_channels*(np.ones((n_channels,n_channels))-np.eye(n_channels))
-        self.model = TableModel(self.montage_matrix)
+        if montage == 'Identity':
+            self.montage_matrix = np.eye(n_channels)
+        elif montage == 'Differential':
+            self.montage_matrix = np.eye(n_channels) - np.eye(n_channels, k=1)
+        elif montage == ('Laplace'):
+            self.montage_matrix = np.eye(n_channels) - 0.5 * (np.eye(n_channels, k=1) + np.eye(n_channels, k=-1))
+        elif montage == ('Average_ref'):
+            self.montage_matrix = np.eye(n_channels) - 1/n_channels*(np.ones((n_channels,n_channels))-np.eye(n_channels))
+        else:
+            raise 'Unrecognized montage'
+        self.model = TableModel(self.montage_matrix, self.main_model)
         self.table.setModel(self.model)
 
 
 class PlotControls(QWidget):
     sigUpdateFilter = QtCore.Signal(tuple)
-    sigUpdateMontage = QtCore.Signal(tuple)
     sigUpdateXrange_i = QtCore.Signal(float)
     sigUpdateXrange_o = QtCore.Signal(float)
     def __init__(self, main_model = None):
@@ -133,16 +132,19 @@ class PlotControls(QWidget):
         self.montage_controls_layout.addWidget(self.montage_check,0,0)
         self.montage_editor_button = QPushButton('Montage Editor', self)
         self.montage_editor_button.clicked.connect(self.launch_montage_editor)
-        self.montage_controls_layout.addWidget(self.montage_editor_button,0,1,1,2)
-        self.montage_diff_button = QPushButton('Differential', self)
-        self.montage_diff_button.clicked.connect(self.montage_window.set_diff_montage)
-        self.montage_controls_layout.addWidget(self.montage_diff_button,1,0)
-        self.montage_lap_button = QPushButton('Laplace', self)
-        self.montage_lap_button.clicked.connect(self.montage_window.set_lap_montage)
-        self.montage_controls_layout.addWidget(self.montage_lap_button,1,1)
+        self.montage_controls_layout.addWidget(self.montage_editor_button,0,1,1,1)
+        self.montage_id_button = QPushButton('Identity', self)
+        self.montage_id_button.clicked.connect(self.set_id_montage)
+        self.montage_controls_layout.addWidget(self.montage_id_button,1,0)
         self.montage_avg_button = QPushButton('Average Reference', self)
-        self.montage_avg_button.clicked.connect(self.montage_window.set_avg_montage)
-        self.montage_controls_layout.addWidget(self.montage_avg_button,1,2)
+        self.montage_avg_button.clicked.connect(self.set_avg_montage)
+        self.montage_controls_layout.addWidget(self.montage_avg_button,1,1)
+        self.montage_diff_button = QPushButton('Differential', self)
+        self.montage_diff_button.clicked.connect(self.set_diff_montage)
+        self.montage_controls_layout.addWidget(self.montage_diff_button,2,0)
+        self.montage_lap_button = QPushButton('Laplace', self)
+        self.montage_lap_button.clicked.connect(self.set_lap_montage)
+        self.montage_controls_layout.addWidget(self.montage_lap_button,2,1)
         self.layout.addWidget(self.montage_controls_widget,2,0)
 
     def update_filter(self):
@@ -152,7 +154,9 @@ class PlotControls(QWidget):
 
     def update_montage(self):
         # logger.info(f'Plot controls {self.filter_check.checkState()>0} {self.hp_spin.value()} {self.lp_spin.value()}')
-        self.sigUpdateMontage.emit((self.montage_check.isChecked(),self.montage_window.montage_matrix))
+        self.main_model.project.file_buffer.apply_montage = self.montage_check.isChecked()
+        self.main_model.project.file_buffer.montage = self.montage_window.montage_matrix
+        self.sigUpdateFilter.emit((self.filter_check.isChecked(), self.hp_spin.value(), self.lp_spin.value()))
         return
 
     def update_Xrange_o(self):
@@ -171,6 +175,21 @@ class PlotControls(QWidget):
 
     def set_values(self,filter):
         pass
+    def set_id_montage(self):
+        self.montage_window.set_montage('Identity')
+        self.sigUpdateFilter.emit((self.filter_check.isChecked(), self.hp_spin.value(), self.lp_spin.value()))
+
+    def set_diff_montage(self):
+        self.montage_window.set_montage('Differential')
+        self.sigUpdateFilter.emit((self.filter_check.isChecked(), self.hp_spin.value(), self.lp_spin.value()))
+
+    def set_lap_montage(self):
+        self.montage_window.set_montage('Laplace')
+        self.sigUpdateFilter.emit((self.filter_check.isChecked(), self.hp_spin.value(), self.lp_spin.value()))
+
+    def set_avg_montage(self):
+        self.montage_window.set_montage('Average_ref')
+        self.sigUpdateFilter.emit((self.filter_check.isChecked(), self.hp_spin.value(), self.lp_spin.value()))
 
 if __name__ == '__main__':
     import sys

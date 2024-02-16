@@ -269,6 +269,8 @@ class FileBuffer():  # Consider translating this to cython
         self.eeg_init_time = eeg_init_time
         self.eeg_duration = eeg_duration
         self.verbose = verbose
+        self.montage = np.eye(1)
+        self.apply_montage = False
 
     def add_file_to_buffer(self, fname):
         if fname in self.files:  # skip if file is already buffered
@@ -357,8 +359,7 @@ class FileBuffer():  # Consider translating this to cython
     def get_t_max_for_live_plot(self):
         return max([r[1] for r in self.data_ranges])
 
-    def get_data_from_range(self, trange, channel=None, n_envelope=None, for_plot=False, filter_settings=(False,0,0),
-                            montage=None):
+    def get_data_from_range(self, trange, channel=None, n_envelope=None, for_plot=False, filter_settings=(False,0,0)):
         # First check if data is already buffered, most of the time this will be the case:
         if trange[0] >= self.range[0] and trange[1] <= self.range[1]:
             # if self.verbose: print('Data already in buffer')
@@ -407,8 +408,12 @@ class FileBuffer():  # Consider translating this to cython
         no_downsampling = True
 
         for i, data in enumerate(self.data):
-            if montage is None or montage.shape[1]!=data.shape[1]:
-                montage = np.eye(data.shape[1])
+            if self.montage.shape[1] != data.shape[1]:
+                if (self.montage == np.eye(self.montage.shape[1])).all(): # create apropriately sized matrix if it is Identity
+                    self.montage = np.eye(data.shape[1])
+                else:
+                    print('Montage shape incompatible with data shape')
+                    raise IndexError
 
             if channel is not None and channel>=data.shape[1]:
                 continue # skip this file becuase it does not have channel with required index
@@ -423,14 +428,31 @@ class FileBuffer():  # Consider translating this to cython
             if channel is None:
                 # poor coding here, we are not computing proper envelopes, but it'll do for now because this is only
                 # used for computing channel scallings so far
-                enveloped_data.append(dV*data[start:stop:ds, :])
+                if self.apply_montage and not (self.montage==np.eye(self.montage.shape[0])).all(): # avoid multiplication if montage is identity matrix
+                    enveloped_data.append(data[start:stop:ds, :]@(dV*self.montage.T))
+                else:
+                    enveloped_data.append(data[start:stop:ds, :]*dV)
                 if ds != 0:
                     no_downsampling = False
             elif ds == 1:
                 # Small enough to display with no intervention.
-                enveloped_data.append(dV*data[start:stop, channel].reshape(-1, 1))
+                if self.apply_montage:
+                    montage_channel = self.montage[channel,:]
+                    nzmi = np.nonzero(montage_channel)  # non zero indices of montage to avoid unecessary computations
+                else:
+                    montage_channel = np.zeros(data.shape[1])  # no montage is applied
+                    montage_channel[channel] = 1
+                    nzmi = np.array([channel])
+                enveloped_data.append((data[start:stop, nzmi]@(montage_channel[nzmi].T*dV)).reshape(-1, 1))
             else:
                 no_downsampling = False
+                if self.apply_montage:
+                    montage_channel = self.montage[channel, :]
+                    nzmi = np.nonzero(montage_channel)  # non zero indices of montage to avoid unecessary computations
+                else:
+                    montage_channel = np.zeros(data.shape[1])  # no montage is applied
+                    montage_channel[channel] = 1
+                    nzmi = np.array([channel])
                 # Here convert data into a down-sampled array suitable for visualizing.
                 # Must do this piecewise to limit memory usage.
                 dss = 1
@@ -449,7 +471,7 @@ class FileBuffer():  # Consider translating this to cython
                     # read data in chunks of ~1M samples
                     chunkSize = int((1e6 // ds) * ds)
                     while sourcePtr < stop - 1:
-                        chunk_data = data[sourcePtr:min(stop, sourcePtr + chunkSize):dss, channel]
+                        chunk_data = data[sourcePtr:min(stop, sourcePtr + chunkSize):dss, nzmi]@montage_channel[nzmi].T
                         sourcePtr += chunkSize
                         # reshape chunk to be integer multiple of ds
                         chunk_data = chunk_data[:(len(chunk_data) // ds) * ds].reshape(len(chunk_data) // ds, ds)
@@ -696,7 +718,7 @@ class Project():
             # self.current_animal = animal
             self.file_buffer = FileBuffer(self.current_animal)
 
-        return self.file_buffer.get_data_from_range(trange, channel, n_envelope,for_plot,self.filter_settings, self.montage)
+        return self.file_buffer.get_data_from_range(trange, channel, n_envelope,for_plot,self.filter_settings)
 
     def updateFilterSettings(self, settings=(False,0,1e6)):
         self.filter_settings = settings

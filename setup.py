@@ -25,7 +25,7 @@ setuptools.setup(
                     'pandas==2.1.2',
                     'matplotlib==3.8.1',
                     'h5py==3.10.0',
-                    'PySide6==6.6.0',
+                    'PySide6==6.6.2',
                     'pyqtgraph==0.13.3',
                     'numba==0.58.1',
                     'pyopengl==3.1.7',

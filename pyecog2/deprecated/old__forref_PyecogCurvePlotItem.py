@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 import pickle as p
 
-from PySide2 import QtGui, QtWidgets#,# uic
-from PySide2.QtCore import QThread, Signal, Qt, QRect, QTimer
+from PySide6 import QtGui, QtWidgets#,# uic
+from PySide6.QtCore import QThread, Signal, Qt, QRect, QTimer
 from scipy import signal, stats
 import pyqtgraph as pg
 import inspect
@@ -21,7 +21,7 @@ def throw_error(error_text = None):
         msgBox.setText('Error caught! \n'+str(traceback.format_exc(1)))
     else:
         msgBox.setText('Error caught! \n'+str(error_text))
-    msgBox.exec_()
+    msgBox.exec()
     return 0
 
 os.path

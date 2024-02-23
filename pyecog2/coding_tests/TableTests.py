@@ -1,14 +1,14 @@
 import sys
-from PySide2.QtWidgets import QMainWindow, QApplication, QWidget, QAction, QTableWidget, QTableWidgetItem, QVBoxLayout
-from PySide2.QtGui import QIcon, QBrush, QColor
-from PySide2.QtCore import Slot,Qt
+from PySide6.QtWidgets import QMainWindow, QApplication, QWidget, QTableWidget, QTableWidgetItem, QVBoxLayout
+from PySide6.QtGui import QIcon, QBrush, QColor
+from PySide6.QtCore import Slot,Qt
 
 
 class App(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.title = 'PySide2 table - pythonspot.com'
+        self.title = 'PySide6 table - pythonspot.com'
         self.left = 0
         self.top = 0
         self.width = 300
@@ -60,4 +60,4 @@ class App(QWidget):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = App()
-    sys.exit(app.exec_())  
+    sys.exit(app.exec())  

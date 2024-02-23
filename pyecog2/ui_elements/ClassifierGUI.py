@@ -1,6 +1,6 @@
 import sys, os
-from PySide2 import QtCore
-from PySide2.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QPushButton, QFileDialog
+from PySide6 import QtCore
+from PySide6.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QPushButton, QFileDialog
 
 from pyqtgraph.parametertree import Parameter
 from pyecog2.ui_elements.pyecogParameterTree import PyecogParameterTree
@@ -407,4 +407,4 @@ if __name__ == '__main__':
     window = ClassifierWindow()
     window.setGeometry(500, 300, 300, 200)
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

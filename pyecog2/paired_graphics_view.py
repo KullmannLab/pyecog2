@@ -3,11 +3,10 @@ import os
 import numpy as np
 import time
 from datetime import datetime
-from PySide2 import QtGui, QtCore, QtWidgets  # , uic, Qt
-from PySide2.QtGui import QPainter, QBrush, QPen
+from PySide6 import QtGui, QtCore, QtWidgets  # , uic, Qt
+from PySide6.QtGui import QPainter, QBrush, QPen
 
 from datetime import datetime
-# import pyqtgraph_copy.pyqtgraph as pg
 import pyqtgraph as pg
 import pyqtgraph.widgets.RemoteGraphicsView as RemoteGraphicsView
 import colorsys
@@ -130,6 +129,7 @@ class PairedGraphicsView():
         # self.insetview_plot.setLabel('bottom', text='Time', units='s')
         self.insetview_plot.setLabel('bottom', units=None)
 
+        # What is this for??
         self.insetview_plot.vb.state['autoRange'] = [False, False]
         self.overview_plot.vb.state['autoRange'] = [False, False]
         self.timeline_plot.vb.state['autoRange'] = [False, False]
@@ -161,7 +161,7 @@ class PairedGraphicsView():
 
         self.overviewROI = pg.RectROI(pos=(x_range[0], y_range[0]),
                                       size=(x_range[1] - x_range[0], y_range[1] - y_range[0]),
-                                      sideScalers=False, pen=pen, rotatable=False, removable=False)
+                                      sideScalers=False, pen=pen, rotatable=False, removable=False,)
         self.overviewROI.sigRegionChanged.connect(self.overviewROIchanged)
         self.overview_plot.addItem(self.overviewROI)
 
@@ -312,7 +312,6 @@ class PairedGraphicsView():
         self.insetview_plot.vb.setXRange(overview_range[0],
                                          overview_range[0] + min(30, overview_range[1] - overview_range[0]), padding=0)
 
-
         end_t = timer()
         logger.info(f'Paired graphics view plot annotations + etc. in {end_t - start_t} seconds')
 
@@ -373,7 +372,7 @@ class PairedGraphicsView():
 
     def add_annotaion_plot(self, annotation):
         color = self.main_model.annotations.label_color_dict[
-            annotation.getLabel()]  # circle hue with constant luminosity an saturation
+            annotation.getLabel()]  # circle hue with constant luminosity and saturation
         brush = pg.functions.mkBrush(color=(*color, 25))
         pen = pg.functions.mkPen(color=(*color, 200))
         channel_range = self.main_model.annotations.label_channel_range_dict[annotation.getLabel()]
@@ -394,8 +393,8 @@ class PairedGraphicsView():
             self.function_generator_link_delete(self.main_model.annotations, annotation))
         annotation.sigAnnotationElementChanged.connect(
             self.function_generator_link_annotaions_to_graphs(annotation, annotation_graph_i))
-        self.overview_plot.addItem(annotation_graph_o)
-        self.insetview_plot.addItem(annotation_graph_i)
+        self.overview_plot.addItem(annotation_graph_o,ignoreBounds=True)
+        self.insetview_plot.addItem(annotation_graph_i,ignoreBounds=True)
         self.inset_annotations.append(annotation_graph_i)  # lists to easily keep track of annotations
         self.overview_annotations.append(annotation_graph_o)
         self.plotted_annotations.append(annotation)
@@ -728,7 +727,6 @@ class DateAxis(pg.AxisItem):
             string = '%Y'
             label1 = ''
             label2 = ''
-
         for x in values:
             try:
                 strns.append(datetime.strftime(datetime.fromtimestamp(x), string))

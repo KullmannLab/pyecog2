@@ -1,5 +1,5 @@
-from pyecog2.annotation_table_widget import AnnotationTableWidget
-from PySide2 import QtCore, QtWidgets
+from pyecog2.ui_elements.annotation_table_widget import AnnotationTableWidget
+from PySide6 import QtCore, QtWidgets
 import numpy as np
 from pyecog2.annotations_module import AnnotationElement, AnnotationPage
 
@@ -27,4 +27,4 @@ if __name__ == '__main__':
     import sys
 
     if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-        QtWidgets.QApplication.instance().exec_()
+        QtWidgets.QApplication.instance().exec()

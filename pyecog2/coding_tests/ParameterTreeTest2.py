@@ -1,11 +1,11 @@
 import sys
-from PySide2 import QtCore
-from PySide2.QtWidgets import QDialog, QWidget, QApplication, QPushButton, QTreeView, QHBoxLayout, QVBoxLayout, QAbstractItemView
-from PySide2.QtGui import QStandardItem,QStandardItemModel
+from PySide6 import QtCore
+from PySide6.QtWidgets import QDialog, QWidget, QApplication, QPushButton, QTreeView, QHBoxLayout, QVBoxLayout, QAbstractItemView
+from PySide6.QtGui import QStandardItem,QStandardItemModel
 import sys
 import copy
-from PySide2.QtGui import QIcon
-from PySide2.QtCore import Qt, QSettings, QByteArray
+from PySide6.QtGui import QIcon
+from PySide6.QtCore import Qt, QSettings, QByteArray
 
 import json
 import glob
@@ -106,7 +106,7 @@ class Example(QWidget):
         self.data['example0'] = meta_data  # {}
 
         dialog = TestDialog(self.data)
-        accepted = dialog.exec_()
+        accepted = dialog.exec()
         if not accepted:
             return
         self.data = copy.deepcopy(dialog.get_data())
@@ -118,4 +118,4 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = Example()
     ex.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

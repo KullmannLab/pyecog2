@@ -13,13 +13,14 @@ import logging
 logger = logging.getLogger(__name__)
 # constructors for functions that grab the power from frequency bands
 
+
 # @jit(nopython=True)
 def rfft_band_power(fdata, fs, band):
     return np.log(np.mean(np.abs(fdata[int(len(fdata)*band[0]/fs):int(len(fdata)*band[1]/fs)]))) # todo consider making this with proper units
 
+
 def powerf(bandi, bandf, ch=0):
     return lambda fdata, fs: rfft_band_power(fdata[:,ch], fs, (bandi, bandf))
-
 
 
 def rfft_band_corr(fdata_a,fdata_b,fs,band): # Correlation of the spectra within a frequency band
@@ -28,6 +29,7 @@ def rfft_band_corr(fdata_a,fdata_b,fs,band): # Correlation of the spectra within
     cross = np.mean(np.abs((fdata_a[bi:bf] * fdata_b[bi:bf])))**2
     auto = np.mean(np.abs(fdata_a[bi:bf])**2) * np.mean(np.abs(fdata_b[bi:bf])**2)
     return np.log10(cross/auto)  # todo consider making this with proper units
+
 
 def rfft_band_icorr(fdata_a,fdata_b,fs,band): # Correlation of the spectral imaginary part within a frequency band
     bi = int(len(fdata_a)*band[0]/fs)
@@ -51,8 +53,10 @@ def reg_entropy(fdata,fs):
     fdata_x_f = fdata_x_f**2/np.sum(fdata_x_f**2)
     return -np.sum(fdata_x_f*np.log(fdata_x_f))
 
+
 def reg_entropy_ch(ch):
     return lambda fdata, fs: reg_entropy(fdata[:,ch],fs)
+
 
 # Worker funcitons to workaround the fact that lambda funcitons are not picklable for multiprocess
 # The use of global variables means that only one feature extractor can be active at a time

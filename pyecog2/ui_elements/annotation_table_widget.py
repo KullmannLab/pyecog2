@@ -1,6 +1,7 @@
-from PySide2 import QtGui, QtCore, QtWidgets
+from PySide6 import QtGui, QtCore, QtWidgets
 from pyecog2.annotations_module import AnnotationPage
 from datetime import datetime
+import time
 import numpy as np
 from timeit import default_timer as timer
 
@@ -14,7 +15,8 @@ asUnicode = str
 # __all__ = ['TableWidget']
 
 def date_fmt(item):
-    return datetime.utcfromtimestamp(item.value).strftime('%Y-%m-%d %H:%M:%S')
+    return time.strftime( '%Y-%m-%d %H:%M:%S', time.localtime(item.value))
+    # previously: datetime.utcfromtimestamp(item.value).strftime('%Y-%m-%d %H:%M:%S')
 
 def confidence_fromat(item):
     return str(item.value)
@@ -64,7 +66,7 @@ class AnnotationTableWidget(QtWidgets.QTableWidget):
         self.connections_list = []
         self.setWindowTitle('Annotations Table')
         self.itemClass = AnnotationTableWidgetItem
-        self.setVerticalScrollMode(self.ScrollPerPixel)
+        self.setVerticalScrollMode(QtWidgets.QAbstractItemView.ScrollPerPixel)
         self.setSelectionMode(QtWidgets.QAbstractItemView.ContiguousSelection)
         self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         self.clear()

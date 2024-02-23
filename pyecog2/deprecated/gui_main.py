@@ -2,7 +2,7 @@ import sys
 import os
 import numpy as np
 
-from PySide2 import QtWidgets, QtCore#,# uic
+from PySide6 import QtWidgets, QtCore#,# uic
 
 import pyqtgraph_copy.pyqtgraph as pg
 
@@ -126,4 +126,4 @@ for i in range(3):
     pen = pg.mkPen(colours[i])
     paired_view.make_and_add_item(x=x,y=y, pen=pen)
 
-sys.exit(app.exec_())
+sys.exit(app.exec())

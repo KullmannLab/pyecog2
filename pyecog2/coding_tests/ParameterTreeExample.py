@@ -156,9 +156,9 @@ t2 = ParameterTree()
 t2.setParameters(p, showTop=False)
 
 win = QtGui.QWidget()
-layout = QtGui.QGridLayout()
+layout = QGridLayout()
 win.setLayout(layout)
-layout.addWidget(QtGui.QLabel("These are two views of the same data. They should always display the same values."), 0,
+layout.addWidget(QLabel("These are two views of the same data. They should always display the same values."), 0,
                  0, 1, 2)
 layout.addWidget(t, 1, 0, 1, 1)
 layout.addWidget(t2, 1, 1, 1, 1)
@@ -174,4 +174,4 @@ if __name__ == '__main__':
     import sys
 
     if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-        QtGui.QApplication.instance().exec_()
+        QtGui.QApplication.instance().exec()

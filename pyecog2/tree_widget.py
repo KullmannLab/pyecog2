@@ -1,4 +1,4 @@
-from PySide2 import QtGui, QtWidgets, QtCore
+from PySide6 import QtGui, QtWidgets, QtCore
 
 import sys
 import os
@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 import pickle as p
 
-from PySide2 import QtGui, QtWidgets, QtCore#,# uic
-from PySide2.QtCore import QThread, Signal, Qt, QRect, QTimer
+from PySide6 import QtGui, QtWidgets, QtCore#,# uic
+from PySide6.QtCore import QThread, Signal, Qt, QRect, QTimer
 
 # import pyqtgraph_copy.pyqtgraph as pg
 import pyqtgraph as pg
@@ -215,5 +215,5 @@ if __name__ == '__main__': # OBSOLETE???
     #splitter_h.addWidget(window)
     #splitter_h.show()
 
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
     print('closed')

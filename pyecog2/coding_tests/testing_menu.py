@@ -1,5 +1,5 @@
-from PySide2 import QtCore
-from PySide2.QtWidgets import QMenuBar, QGridLayout, QApplication, QWidget, QPlainTextEdit
+from PySide6 import QtCore
+from PySide6.QtWidgets import QMenuBar, QGridLayout, QApplication, QWidget, QPlainTextEdit
 import sys
 
 class Window(QWidget):
@@ -29,4 +29,4 @@ class Window(QWidget):
 app = QApplication(sys.argv)
 screen = Window()
 screen.show()
-sys.exit(app.exec_())
+sys.exit(app.exec())

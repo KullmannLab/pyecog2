@@ -1,9 +1,9 @@
-from PySide2 import QtGui, QtWidgets, QtCore
-from PySide2.QtCore import QThread, Signal, Qt, QRect, QTimer
+from PySide6 import QtGui, QtWidgets, QtCore
+from PySide6.QtCore import QThread, Signal, Qt, QRect, QTimer
 from scipy import signal, stats
-# import pyqtgraph_copy.pyqtgraph as pg
 import pyqtgraph as pg
 from pyqtgraph.functions import siScale, siFormat
+import weakref
 import numpy as np
 from scipy import signal
 from pyecog2.ProjectClass import intervals_overlap
@@ -32,7 +32,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
             self.pen = pg.mkPen(pg.getConfigOption('foreground')) #(1, 1, 1, 100)
             color = self.pen.color()
             rgb = color.getRgb()
-            color.setRgb(int(rgb[0]*255/100),int(rgb[1]*255/100),int(rgb[2]*255/100),100)
+            # color.setRgb(int(rgb[0]*255/100),int(rgb[1]*255/100),int(rgb[2]*255/100),100)
             self.pen.setColor(color)
         else:
             self.pen = pen
@@ -117,7 +117,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
                             self.visible_time = np.concatenate((visible_time,self.visible_time[:-len(visible_time)]))
             # end of NEVER REACHED code
 
-            if self.project.filter_settings[0]: # apply LP filter only for plots
+            if False: # self.project.filter_settings[0]: # apply LP filter only for plots
                 fs = 2/(self.visible_time[2]-self.visible_time[0])
                 nyq = 0.5 * fs[0]
                 hpcutoff = min(max(self.project.filter_settings[1] / nyq, 0.001), .5)
@@ -188,13 +188,13 @@ class PyecogScaleBar():
             self.pen = pg.mkPen(pg.getConfigOption('foreground'))  # (1, 1, 1, 100)
             color = self.pen.color()
             rgb = color.getRgb()
-            color.setRgb(int(rgb[0] * 255 / 100), int(rgb[1] * 255 / 100), int(rgb[2] * 255 / 100), 200)
+            # color.setRgb(int(rgb[0] * 255 / 100), int(rgb[1] * 255 / 100), int(rgb[2] * 255 / 100), 200)
             self.pen.setColor(color)
         else:
             self.pen = pg.mkPen(pen.color())  # (1, 1, 1, 100)
             color = self.pen.color()
             rgb = color.getRgb()
-            color.setRgb(int(rgb[0] * 255 / 100), int(rgb[1] * 255 / 100), int(rgb[2] * 255 / 100), 200)
+            # color.setRgb(int(rgb[0] * 255 / 100), int(rgb[1] * 255 / 100), int(rgb[2] * 255 / 100), 200)
 
         self.pen.setWidth(5)
         super().__init__(*args, **kwds)
@@ -216,6 +216,7 @@ class PyecogScaleBar():
         data_range = int(drange0/data_range10)*data_range10  # keep just one significant digit
         dmax, dmin = (dmax*data_range/drange0,  dmin*data_range/drange0)
         (p, pref) = siScale(data_range)
+        self.curve_item.visible_time = self.curve_item.visible_time.ravel()  # there is some sort of inconsistency in visible_time shape
         self.bar.setPos((self.curve_item.visible_time[0]*.975 + 0.025*self.curve_item.visible_time[-1]))
         self.bar_length = data_range
         self.bar.yrange = [dmin, dmax]
@@ -233,15 +234,15 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
     sigRemoveRequested = QtCore.Signal(object)
     sigClicked = QtCore.Signal(object)
 
-    def __init__(self, values=(0, 1), orientation='vertical', brush=None, pen=None,
-                 hoverBrush=None, hoverPen=None, movable=True, bounds=None,
-                 span=(0, 1), swapMode='sort',label = '', id = None, removable=True, channel_range = None,movable_lines = False):
+    def __init__(self, values=(0, 1), orientation='vertical', brush=None, pen=None, hoverBrush=None, hoverPen=None,
+                 movable=True, bounds=None, span=(0, 1), swapMode='sort', label='', id=None, removable=True,
+                 channel_range=None, movable_lines=False, clipItem=None):
 
         # pg.LinearRegionItem.__init__(self, values=values, orientation=orientation, brush=brush, pen=pen,
         #                              hoverBrush=hoverBrush, hoverPen=hoverPen, movable=movable, bounds=bounds,
         #                              span=span, swapMode=swapMode)
 
-        # Copied from pg.LinearRegionItem to avoid creation of infinite lines, and made to be only vertical
+        # Copied from pg.LinearRegionItem to so that infinite lines are PyecogInfiniteLine
         pg.GraphicsObject.__init__(self)
         self.orientation = orientation
         self.bounds = QtCore.QRectF()
@@ -251,6 +252,10 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
         self.span = span
         self.swapMode = swapMode
         self._bounds = None
+        self.clipItem = clipItem
+
+        self._boundingRectCache = None
+        self._clipItemBoundsCache = None
 
         lineKwds = dict(
             movable=movable or movable_lines,
@@ -279,7 +284,8 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
         self.lines[0].sigDragged.connect(self.sigClicked.emit)
         self.lines[1].sigDragged.connect(self.sigClicked.emit)
 
-
+        if pen is None:
+            pen = QtGui.QPen(QtGui.QColor(0, 0, 255, 150))
         if brush is None:
             brush = QtGui.QBrush(QtGui.QColor(0, 0, 255, 50))
         self.setBrush(brush)
@@ -289,6 +295,7 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
             c.setAlpha(min(c.alpha() * 2, 255))
             hoverBrush = pg.functions.mkBrush(c)
         self.setHoverBrush(hoverBrush)
+
         # self.label = label  # Label of the annotation
         self.id = id  # field to identify corresponding annotation in the annotations object
         self.label_text = pg.TextItem(label, anchor=(0, -1), color=pen.color())
@@ -351,7 +358,7 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
         self.sigRegionChanged.emit(self)
 
     def mouseDragEvent(self, ev):
-        if not self.movable or int(ev.button() & QtCore.Qt.LeftButton) == 0:
+        if not self.movable or int(ev.button() == QtCore.Qt.LeftButton) == 0:
             return
         ev.accept()
 
@@ -399,8 +406,18 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
 
     # Only plot over relevant channels
     def boundingRect(self):
-        br = self.viewRect()  # bounds of containing ViewBox mapped to local coords.
+        br = QtCore.QRectF(self.viewRect())  # bounds of containing ViewBox mapped to local coords.
+        if self.clipItem is not None:
+            self._updateClipItemBounds()
+
         rng = self.getRegion()
+        # try:
+        #     print('boundingRect0 - rng:', int(rng[0]), int(rng[1]),
+        #           '\n                 br:', int(br.left()), int(br.right()),
+        #           '\n           br_cahce:', int(self._boundingRectCache.left()), int(self._boundingRectCache.right()))
+        # except:
+        #     pass
+
         if self.orientation in ('vertical', PyecogLinearRegionItem.Vertical):
             br.setLeft(rng[0])
             br.setRight(rng[1])
@@ -409,14 +426,9 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
                 br.setBottom(br.top() + length * self.span[1])
                 br.setTop(br.top() + length * self.span[0])
             else:
-                # print('bottom original arg = ', br.top() + length * self.span[1])
-                # print(self.channel_range[0]-.5)
-                # print('top original arg = ', br.top() + length * self.span[0])
-                # print(self.channel_range[1]+.5)
-                br.setBottom(min(br.top() + length * self.span[1], self.channel_range[1])) # For some reason Top and bottom are switched in pyqtgraph code
+                # For some reason Top and bottom are switched in pyqtgraph code
+                br.setBottom(min(br.top() + length * self.span[1], self.channel_range[1]))
                 br.setTop(max(br.top() + length * self.span[0], self.channel_range[0]))
-
-
         else:
             br.setTop(rng[0])
             br.setBottom(rng[1])
@@ -426,11 +438,22 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
 
         br = br.normalized()
 
-        if self._bounds != br:
-            self._bounds = br
+        if self._boundingRectCache != br:
+            self._boundingRectCache = br
             self.prepareGeometryChange()
 
+        # print('boundingRect0 - rng:',int(rng[0]),int(rng[1]),
+        #       '\n                 br:', int(br.left()), int(br.right()),
+        #       '\n           br_cahce:', int(self._boundingRectCache.left()) ,int(self._boundingRectCache.right() ))
         return br
+
+    def paint(self, p, *args):
+        # profiler = debug.Profiler()  # noqa: profiler does prints on GC
+        p.setBrush(self.currentBrush)
+        # p.setBrush(QtGui.QBrush(QtGui.QColor(0, 255, 0, 100)))
+        p.setPen(QtGui.QPen(QtGui.QColor(0, 255, 0, 0)))
+        # print('painting:           ',int(self.boundingRect().left()),int(self.boundingRect().right()))
+        p.drawRect(self.boundingRect())
 
     def update_fields(self,pos,label,color_brush,color_pen):
         self.setRegion(pos)
@@ -440,6 +463,10 @@ class PyecogLinearRegionItem(pg.LinearRegionItem):
         self.lines[0].pen.setColor(pg.functions.mkColor(color_pen))
         self.lines[1].pen.setColor(pg.functions.mkColor(color_pen))
         self.update()
+
+    def prepareGeometryChange(self):
+        self._qtBaseClass.prepareGeometryChange(self)
+        self.informViewBoundsChanged()
 
 
 class PyecogCursorItem(pg.InfiniteLine):

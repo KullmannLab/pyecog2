@@ -10,7 +10,7 @@ For alpha testing:
 - clone the repository to your local machine
 - create a dedicated python 3.8 environment for pyecog2 (e.g. a [conda](https://www.anaconda.com/products/individual) environment)
 ```shell
-conda create --name pyecog2 python=3.8 
+conda create --name pyecog2 python=3.11 
 ```
 - activate the environment with `activate pyecog2` in Windows or `source activate pyecog2` in MacOS/Linux
 - run pip install with the development option :

@@ -4,13 +4,13 @@ os.environ['QT_MULTIMEDIA_PREFERRED_PLUGINS'] = 'windowsmediafoundation'
 import sys
 
 import numpy as np
-from PySide2 import QtCore, QtGui
-from PySide2.QtGui import QPalette, QColor, QDesktopServices
-from PySide2.QtCore import Qt, QSettings
-from PySide2.QtWidgets import QApplication, QTextBrowser, QDockWidget, QMainWindow, \
+from PySide6 import QtCore, QtGui
+from PySide6.QtGui import QPalette, QColor, QDesktopServices
+from PySide6.QtCore import Qt, QSettings
+from PySide6.QtWidgets import QApplication, QTextBrowser, QDockWidget, QMainWindow, \
     QFileDialog, QMessageBox
 from pyecog2.ProjectClass import Project, MainModel
-from pyecog2.annotation_table_widget import AnnotationTableWidget
+from pyecog2.ui_elements.annotation_table_widget import AnnotationTableWidget
 from pyecog2.annotations_module import AnnotationElement
 from pyecog2.ui_elements.AnnotationParameterTree import AnnotationParameterTee
 from pyecog2.ui_elements.FFTWidget import FFTwindow
@@ -27,6 +27,7 @@ from datetime import datetime
 import pyqtgraph as pg
 from pyqtgraph.console import ConsoleWidget
 import pkg_resources
+import importlib.resources
 from pyecog2 import license
 from multiprocessing import freeze_support
 from urllib import request
@@ -35,7 +36,7 @@ import logging
 from pyecog2.logging_aux import LoggerWriter # DefaultStreamHandler
 
 # Initialize logging
-log_fname = pkg_resources.resource_filename('pyecog2', '/') + 'pyecog.log'
+log_fname = importlib.resources.files('pyecog2') / 'pyecog.log'
 logging.basicConfig(filename=log_fname, filemode='w', level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 logger.info(f'Session start: {datetime.now()}')
@@ -81,7 +82,7 @@ class MainWindow(QMainWindow):
         self.live_recording_timer = QtCore.QTimer()
         self.live_recording_timer.timeout.connect(self.reload_plot)
 
-        self.check_license()
+        # self.check_license()
 
         # Populate Main window with widgets
         # self.createDockWidget()
@@ -243,18 +244,18 @@ class MainWindow(QMainWindow):
                 msg.setText("Your license seems to be invalid. Do you have an activated PyEcogLicense.txt file?")
                 msg.setWindowTitle("Invalid License")
                 msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-                retval = msg.exec_()
+                retval = msg.exec()
                 if retval == QMessageBox.No:
                     msg2 = QMessageBox(parent=self)
                     msg2.setIcon(QMessageBox.Information)
                     msg2.setText("Would you like to create a new PyEcog License file?")
                     msg2.setWindowTitle("Generate new License")
                     msg2.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-                    retval = msg2.exec_()
+                    retval = msg2.exec()
                     if retval == QMessageBox.Yes:
                         dialog2 = QFileDialog(parent=self)
                         dialog2.setWindowTitle('Choose a directory to ssave PyEcogLicense.txt...')
-                        # dialog2.setFileMode(QFileDialog.DirectoryOnly)
+                        # dialog2.setFileMode(QFileDialog.Directory)
                         dialog2.setAcceptMode(QFileDialog.AcceptSave)
                         dialog2.selectFile(('PyEcogLicense.txt'))
                         if dialog2.exec():
@@ -269,7 +270,7 @@ class MainWindow(QMainWindow):
                             msg3.setDetailedText("File location:" + location)
                             msg3.setWindowTitle("Generate new License")
                             msg3.setStandardButtons(QMessageBox.Ok)
-                            msg3.exec_()
+                            msg3.exec()
                 else: # there is a valid license somewhere
                     dialog = QFileDialog(parent=self)
                     dialog.setWindowTitle('Load License ...')
@@ -310,7 +311,7 @@ class MainWindow(QMainWindow):
         self.show()
 
     def load_directory(self, dirname=None):
-        license.update_license_reg_file()
+        # license.update_license_reg_file()
         logger.info('Openening folder')
         if type(dirname) != str:
             dirname = self.select_directory()
@@ -323,12 +324,12 @@ class MainWindow(QMainWindow):
         os.chdir(dirname)
 
     def new_project(self):
-        license.update_license_reg_file()
+        # license.update_license_reg_file()
         self.main_model.project.__init__(main_model=self.main_model)  # = Project(self.main_model)
         self.tree_element.set_rootnode_from_project(self.main_model.project)
 
     def load_project(self, fname=None):
-        license.update_license_reg_file()
+        # license.update_license_reg_file()
         if type(fname) is not str:
             dialog = QFileDialog(parent=self)
             dialog.setWindowTitle('Load Project ...')
@@ -357,7 +358,7 @@ class MainWindow(QMainWindow):
                                         )
                     msg.setWindowTitle("Load autosave")
                     msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-                    retval = msg.exec_()
+                    retval = msg.exec()
                     if retval == QMessageBox.Yes:
                         fname = fname + '_autosave'
 
@@ -370,7 +371,7 @@ class MainWindow(QMainWindow):
                 msg.setDetailedText(f"Original location: {orig_dirname}\nNew location: {new_dirname}")
                 msg.setWindowTitle("Update directory structures")
                 msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-                retval = msg.exec_()
+                retval = msg.exec()
                 if retval == QMessageBox.Yes:
                     self.main_model.project.update_folder_structure_from_new_project_location(new_dirname,orig_dirname)
 
@@ -388,7 +389,7 @@ class MainWindow(QMainWindow):
 
     def save(self):
         logger.info('save action triggered')
-        license.update_license_reg_file()
+        # license.update_license_reg_file()
         fname = self.main_model.project.project_file
         if not os.path.isfile(fname):
             self.save_as()
@@ -398,7 +399,7 @@ class MainWindow(QMainWindow):
         self.toggle_auto_save()
 
     def save_as(self):
-        license.update_license_reg_file()
+        # license.update_license_reg_file()
         dialog = QFileDialog(parent=self)
         dialog.setWindowTitle('Save Project as ...')
         dialog.setFileMode(QFileDialog.AnyFile)
@@ -415,7 +416,7 @@ class MainWindow(QMainWindow):
         self.toggle_auto_save()
 
     def auto_save(self):
-        license.update_license_reg_file()
+        # license.update_license_reg_file()
         # print('autosave_save action triggered')
         fname = self.main_model.project.project_file
         if not os.path.isfile(fname):
@@ -441,7 +442,7 @@ class MainWindow(QMainWindow):
     def toggle_darkmode(self):
         if self.action_darkmode.isChecked():
             logger.info('Setting Dark Mode')
-            # Fusion dark palette adapted from https://gist.github.com/QuantumCD/6245215.
+            # # Fusion dark palette adapted from https://gist.github.com/QuantumCD/6245215.
             palette = QPalette()
             palette.setColor(QPalette.Window, QColor(53, 53, 53))
             palette.setColor(QPalette.WindowText, Qt.white)
@@ -459,7 +460,7 @@ class MainWindow(QMainWindow):
             palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
             palette.setColor(QPalette.HighlightedText, Qt.black)
             self.app_handle.setPalette(palette)
-            self.main_model.color_settings['pen'].setColor(QColor(255, 255, 255, 100))
+            self.main_model.color_settings['pen'].setColor(QColor(255, 255, 255, 160))
             self.main_model.color_settings['brush'].setColor(QColor(0, 0, 0, 255))
         else:
             logger.info('Setting Light Mode')
@@ -477,7 +478,7 @@ class MainWindow(QMainWindow):
         '''
         dialog = QFileDialog(parent=self)
         dialog.setWindowTitle(label_text)
-        dialog.setFileMode(QFileDialog.DirectoryOnly)
+        dialog.setFileMode(QFileDialog.Directory)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         # we might want to set home directory using settings
         # for now rely on default behaviour
@@ -709,16 +710,17 @@ class MainWindow(QMainWindow):
 
     def checkGitUpdates(self):
         current_version = pkg_resources.get_distribution('pyecog2').version
-        with request.urlopen('https://api.github.com/repos/KullmannLab/TestPublic/releases/latest', timeout=2) as f:
-            data = json.loads(f.read().decode('utf-8'))
-        latest_version = data['tag_name']
-        print(f'Current version:{current_version}\nLatest version:{latest_version}')
-        if latest_version > current_version:
-            self.update_pyecog()
-
+        try:
+            with request.urlopen('https://api.github.com/repos/KullmannLab/TestPublic/releases/latest', timeout=2) as f:
+                data = json.loads(f.read().decode('utf-8'))
+            latest_version = data['tag_name']
+            print(f'Current version:{current_version}\nLatest version:{latest_version}')
+            if latest_version > current_version:
+                self.update_pyecog()
+        except:
+            print('could not check latest version')
     def update_pyecog(self):
         print('Ask to update PyEcog')
-        print('Updating PyEcog...')
 
     def closeEvent(self, event):
         self.auto_save()
@@ -812,7 +814,7 @@ def execute():
     app.setApplicationName('PyEcog')
     app.setOrganizationDomain('PyEcog')
     app.setOrganizationName('PyEcog')
-    app.setStyle("fusion")
+    app.setStyle("Fusion")
     # Mikail feel free to play about if you feel so inclined :P
     # Now use a palette to switch to dark colors:
     # palette = QPalette()
@@ -836,14 +838,15 @@ def execute():
     pg.setConfigOption('background', 'w')
     # pg.setConfigOption('foreground', 'k')
     pg.setConfigOption('antialias', True)
-
-    pg.setConfigOption('useWeave', True)
-    # pg.setConfigOption('useOpenGL', True)
+    # pg.setConfigOption('useWeave', True) # deprecated?
+    pg.setConfigOption('useOpenGL', False)
+    pg.setConfigOption('enableExperimental', False)
+    pg.setConfigOption('useNumba', True)
 
     screen = MainWindow(app_handle=app)
     screen.get_available_screen()
     screen.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == '__main__':

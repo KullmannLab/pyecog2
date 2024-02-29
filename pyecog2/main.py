@@ -43,6 +43,7 @@ from pyecog2.logging_aux import LoggerWriter # DefaultStreamHandler
 
 # Initialize logging
 log_fname = importlib.resources.files('pyecog2') / 'pyecog.log'
+print('Log filename:', log_fname)
 logging.basicConfig(filename=log_fname, filemode='w', level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 logger.info(f'Session start: {datetime.now()}')

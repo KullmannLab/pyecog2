@@ -217,7 +217,7 @@ class Animal():
                 self.eeg_files[i] = f
             else:
                 if not already_warned:
-                    logger.warning('EEG file name does not start with given prefix')
+                    logger.warning(f'EEG file name does not start with given prefix: {f}')
                     already_warned = True
 
     def substitute_video_folder_prefix(self,old_prefix,new_prefix):

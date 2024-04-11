@@ -239,7 +239,7 @@ class FeatureExtractor():
         window = get_window(self.settings['window'],1)
         for i, window_init in enumerate(window_starts):
             data, time = file_buffer.get_data_from_range([window_init, window_init + self.settings['window_length']]) # get all data from time window
-            data += np.random.randn(*data.shape).astype(data.dtype)*2**(-16) # add a bit of regularizing noise, bellow 24 bit noise floors
+            data += (np.random.randn(*data.shape)*2**(-16)).astype(data.dtype) # add a bit of regularizing noise, bellow 24 bit noise floors
             if len(data) != len(window):
                 window = get_window(self.settings['window'],len(data))
             window.shape = (data.shape[0],1)

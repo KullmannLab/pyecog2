@@ -11,7 +11,11 @@ from pyecog2.ui_elements.WaveletWidget import Worker
 from pyqtgraph.console import ConsoleWidget
 import numpy as np
 import json
+import logging
+import faulthandler
 
+faulthandler.enable()
+logger = logging.getLogger(__name__)
 
 class OutputWrapper(QtCore.QObject):
     outputWritten = QtCore.Signal(object, object)
@@ -191,10 +195,10 @@ class ClassifierWindow(QMainWindow):
         layout.addWidget(self.button)
         layout.addWidget(self.terminal)
         layout.setRowMinimumHeight(2,300)
-        stdout = OutputWrapper(self, True)
-        stdout.outputWritten.connect(self.handleOutput)
-        stderr = OutputWrapper(self, False)
-        stderr.outputWritten.connect(self.handleOutput)
+        # stdout = OutputWrapper(self, True)
+        # stdout.outputWritten.connect(self.handleOutput)
+        # stderr = OutputWrapper(self, False)
+        # stderr.outputWritten.connect(self.handleOutput)
 
         self.project.main_model.annotations.sigLabelsChanged.connect(self.updateLabels)
         self.project.main_model.sigProjectChanged.connect(self.update_settings)
@@ -315,6 +319,7 @@ class ClassifierWindow(QMainWindow):
 
     def trainClassifier(self,animal_id,pbar=None):
         print('Training', animal_id)
+        logger.info(f'Training {animal_id}')
         if pbar is not None:
             pbar.setValue(0.1)
         worker = Worker(self.classifier.train_animal,animal_id,pbar,self.getLables2train(), self.getFeatures2use())

@@ -75,7 +75,7 @@ class MontageEditorWindow(QMainWindow):
         elif montage == ('Laplace'):
             self.montage_matrix = np.eye(n_channels) - 0.5 * (np.eye(n_channels, k=1) + np.eye(n_channels, k=-1))
         elif montage == ('Average_ref'):
-            self.montage_matrix = np.eye(n_channels) - 1/n_channels*(np.ones((n_channels,n_channels))-np.eye(n_channels))
+            self.montage_matrix = np.eye(n_channels) - 1/n_channels*(np.ones((n_channels,n_channels)))
         else:
             raise 'Unrecognized montage'
         self.model = TableModel(self.montage_matrix, self.main_model)

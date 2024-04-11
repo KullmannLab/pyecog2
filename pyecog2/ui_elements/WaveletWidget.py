@@ -50,7 +50,7 @@ def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), progress_signal = 
     vf = ((1 + alfa) ** np.arange(0, Nf)) * minf
     result = np.zeros((Nf, Ns), dtype='complex')
 
-    if multi_proc:
+    if multi_proc or mp.cpu_count()>=24:
 
         def par_sgconvolve(input):
             N, signal = input
@@ -137,9 +137,10 @@ def morlet_wavelet_fft(input_signal, dt=1, R=7, freq_interval=(), progress_signa
 
     Ni = len(input_signal)
 
-    if multi_proc:
-        n_cores = max(int(np.ceil(mp.cpu_count()/4))-1,1)
-        # print(f'Wavelet using multiproc with {n_cores} cores')
+    if multi_proc or mp.cpu_count()>=24:
+        # n_cores = max(int(np.ceil(mp.cpu_count()/4))-1,1)
+        n_cores = max(int(np.ceil(mp.cpu_count()/2))-1,1)
+        print(f'Wavelet using multiproc with {n_cores} cores')
         for k0 in range(0,Nf,n_cores):
             input_signal_list = [input_signalf]*n_cores
             if cross_data is not None:

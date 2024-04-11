@@ -133,6 +133,7 @@ class ProjectClassifier():
                                                                       self.feature_extractor,
                                                                       self.global_classifier.labels2classify))
                                             for a in self.project.animal_list])  # generate classifiers for all animals
+
         if not os.path.isdir(classifier_dir):
             logger.info('No classifiers saved for current project yet')
             print('No classifiers saved for current project yet')

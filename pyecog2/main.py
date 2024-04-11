@@ -2,6 +2,12 @@ import os
 
 os.environ['QT_MULTIMEDIA_PREFERRED_PLUGINS'] = 'windowsmediafoundation'
 import sys
+try:
+    import pyi_splash
+    # Update the text on the splash screen
+    pyi_splash.update_text("PyEcog2 (C) Marco Leite, UCL")
+except Exception:
+    print('Could not load splashscreen')
 
 import numpy as np
 from PySide6 import QtCore, QtGui
@@ -37,6 +43,7 @@ from pyecog2.logging_aux import LoggerWriter # DefaultStreamHandler
 
 # Initialize logging
 log_fname = importlib.resources.files('pyecog2') / 'pyecog.log'
+print('Log filename:', log_fname)
 logging.basicConfig(filename=log_fname, filemode='w', level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 logger.info(f'Session start: {datetime.now()}')
@@ -211,6 +218,12 @@ class MainWindow(QMainWindow):
 
         self.action_darkmode.setChecked(self.settings.value("darkMode", type=bool))
         self.toggle_darkmode()  # pre toggle darkmode to make sure project loading dialogs are made with the correct color pallete
+
+        try:
+            pyi_splash.close()
+        except Exception:
+            print('Could not close splash screen')
+
         try:
             settings = QSettings("PyEcog", "PyEcog")
             settings.beginGroup("ProjectSettings")
@@ -231,6 +244,7 @@ class MainWindow(QMainWindow):
         self.action_autosave.setChecked(self.settings.value("autoSave", type=bool))
         self.toggle_auto_save()
         self.checkGitUpdates()
+
 
     def check_license(self):
         # Check if license is valid

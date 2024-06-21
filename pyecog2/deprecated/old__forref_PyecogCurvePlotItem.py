@@ -24,8 +24,6 @@ def throw_error(error_text = None):
     msgBox.exec()
     return 0
 
-os.path
-
 class HDF5PlotCurveItem(pg.PlotCurveItem):
     """
     Create a subclass of PlotCurveItem for displaying a very large

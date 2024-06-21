@@ -579,6 +579,7 @@ class Project():
         self.main_model.annotations.copy_from(animal.annotations,quiet=True)
         self.current_animal = animal
         apply_montage = None
+        montage = None
         if hasattr(self,'file_buffer') and hasattr(self.file_buffer,'file_buffer'):
             apply_montage, montage = self.file_buffer.apply_montage, self.file_buffer.montage # keep previous montage settings - poor coding practice
         self.file_buffer = FileBuffer(self.current_animal)

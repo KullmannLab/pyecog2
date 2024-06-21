@@ -67,7 +67,7 @@ tree_window = QtWidgets.QWidget()
 tree_window.setGeometry(0,0, size.width()*0.25, size.height()*0.5)
 tree_layout = QtWidgets.QVBoxLayout()
 
-menu_bar = QtWidgets.QMenuBar();
+menu_bar = QtWidgets.QMenuBar()
 file_menu = QtWidgets.QMenu("File")
 menu_bar.addMenu(file_menu)
 file_menu.addAction("Load Directory")

@@ -21,8 +21,6 @@ logger = logging.getLogger(__name__)
 
 # Interpret image data as row-major instead of col-major
 pg.setConfigOptions(imageAxisOrder='row-major')
-hues = np.linspace(0,1,256)
-
 hues = np.linspace(0,1,7)
 colors = [tuple([*colorsys.hsv_to_rgb(h,1,255),255]) for h in hues]
 hsvcolormap = pg.ColorMap(hues,colors)
@@ -68,7 +66,6 @@ def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), progress_signal = 
             arg_list = zip(N_list,input_signal_list)
             with mp.Pool(n_cores)as p:
                 batch = p.map(par_sgconvolve,arg_list)
-            result[k_list[0]:k_list[-1], :]
             if progress_signal is not None:
                 progress_signal.emit(int(100*k_list[-1]/Nf))
 
@@ -93,14 +90,9 @@ def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), progress_signal = 
     return (result, mask, vf, kill_switch)
 
 
-def par_fftconvolve(input):
-    if len(input) == 5:  # no cross wave
-        dt, R, v, N, signal_f = input  # compute cross-wavelet
-    elif len(input) == 6:
-        dt, R, v, N, signal_f, cross_signalf = input
-
+def par_fftconvolve(dt, R, v, N, signal_f, cross_signalf = None):
     env = 2 * np.exp(-(np.arange(N) / N / dt - v) ** 2 / (2 * (v / R) ** 2))  # / np.pi
-    if len(input) == 5:
+    if cross_signalf is None:
         return np.fft.ifft(signal_f * env)
     else:
         return (np.fft.ifft(signal_f * env), np.fft.ifft(cross_signalf * env))
@@ -133,6 +125,7 @@ def morlet_wavelet_fft(input_signal, dt=1, R=7, freq_interval=(), progress_signa
         result_cross = np.zeros((Nf, Ns), dtype='complex')
         cross_dataf = np.fft.fft(cross_data)
     else:
+        cross_dataf = None
         result_cross = None
 
     Ni = len(input_signal)
@@ -143,6 +136,7 @@ def morlet_wavelet_fft(input_signal, dt=1, R=7, freq_interval=(), progress_signa
         print(f'Wavelet using multiproc with {n_cores} cores')
         for k0 in range(0,Nf,n_cores):
             input_signal_list = [input_signalf]*n_cores
+            input_cross_signal_list = None
             if cross_data is not None:
                 input_cross_signal_list = [cross_dataf]*n_cores
             if kill_switch[0]:
@@ -310,6 +304,7 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             if self.main_model is None:
                 data = np.random.randn(300*250)
                 data[200:800] += np.sin(np.arange(600)*10)
+                cross_data = None
                 time = np.arange(300*250)/250
                 print('random data')
             else:

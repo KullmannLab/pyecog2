@@ -727,6 +727,10 @@ class DateAxis(pg.AxisItem):
             string = '%Y'
             label1 = ''
             label2 = ''
+        else:
+            string = ''
+            label1 = ''
+            label2 = ''
         for x in values:
             try:
                 strns.append(datetime.strftime(datetime.fromtimestamp(x), string))

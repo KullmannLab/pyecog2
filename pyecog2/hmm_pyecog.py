@@ -312,7 +312,7 @@ class HMM_LL():
         T1[:, 0] = log_phi[:, 0] + np.log(stationary_dist)
         T2 = np.zeros((k,N),dtype='uint8')  # most probable sequence of states that end up at state k at time t
         most_likely_path = np.zeros((1,N), dtype ='uint8')
-
+        t = 0
         for t in np.arange(1, N):
             for k1 in range(k):
                 T1[k1,t] = np.max(T1[:,t-1] + logA[:,k1]) + log_phi[k1,t]

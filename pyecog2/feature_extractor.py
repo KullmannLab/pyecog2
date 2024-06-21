@@ -1,6 +1,5 @@
 import numpy as np
 import os
-import numpy as np
 import scipy.stats as stats
 from collections import OrderedDict
 import json
@@ -247,6 +246,7 @@ class FeatureExtractor():
             fs = 1/(time[1]-time[0])
             dataf = np.fft.rfft(data*window,axis=0)/len(data)
             # for j,func in enumerate(self.feature_time_functions):
+            j = 0
             for j,func in enumerate(_time_flist):
                 features[i,j] = func(data)
             n = j

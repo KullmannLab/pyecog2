@@ -1,7 +1,6 @@
 import numpy as np
 from pyecog2.ProjectClass import FileBuffer
 import os
-import numpy as np
 from scipy import linalg
 import scipy.stats as stats
 from collections import OrderedDict
@@ -305,6 +304,7 @@ class GaussianClassifier():
         if animal_list is None:
             animal_list = self.project.animal_list
         Nanimals = len(animal_list)
+        labeled_positions = {}
         for ianimal, animal in enumerate(animal_list):
             '''
             recieving animal list to possibly allow to lump different datasets into a single GC, but usually the animal 
@@ -316,7 +316,6 @@ class GaussianClassifier():
 
             print(f'Training with animal: {animal.id}')
             print(f'Training with classes: {self.labels2classify}')
-            labeled_positions = {}
             for label in self.labels2classify:
                 labeled_positions[label] = np.array([a.getPos() for a in animal.annotations.get_all_with_label(label)])
                 for a in animal.annotations.get_all_with_label(label):
@@ -464,7 +463,7 @@ class GaussianClassifier():
         ab = ab - ab.max(axis=1, keepdims=True)
         log_not_posterior = np.log(np.exp(ab) @ (np.ones((ab.shape[1], ab.shape[1])) - np.eye(ab.shape[1]))) \
                             - np.log(np.exp(ab) @ (np.ones((ab.shape[1], ab.shape[1]))))
-
+        MLpath = None
         if viterbi:
             MLpath,_,_ = hmm.viterbi(LLv_reg.T)
 

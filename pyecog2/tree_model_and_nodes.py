@@ -162,6 +162,7 @@ class TreeModel(QtCore.QAbstractItemModel):
         parent_node = self.get_node(parent)
         self.beginInsertRows(parent, position, position+rows-1)
         #rows is a count, not index, hence -1 emit signal that is handled by the views
+        success = None
         for i in range(rows):
             #print(self.columnCount)
             child_node = Node('Untitled:')
@@ -176,7 +177,7 @@ class TreeModel(QtCore.QAbstractItemModel):
         parent_node = self.get_node(parent)
         self.beginRemoveRows(parent, position, position+rows-1)
         #rows is a count, not index, hence -1 emit signal that is handled by the views
-
+        success = None
         for i in range(rows):
             #print(self.columnCount)
             success = parent_node.remove_child(position)

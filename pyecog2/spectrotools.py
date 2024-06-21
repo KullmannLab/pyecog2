@@ -10,7 +10,7 @@ import scipy.signal as sg
 import matplotlib.font_manager as fm
 
 arial_path = 'C:\Windows\Fonts\Arial.ttf'
-prop = fm.FontProperties(fname=arial_path, size =14)
+# prop = fm.FontProperties(fname=arial_path, size =14)
 prop = fm.FontProperties(size =14)
 fontproperties = prop
 
@@ -50,8 +50,8 @@ def morlet_wavelet(input_signal, dt=1, R=7, freq_interval=(), drawplot=1, eps=.0
     except Exception:
         Nf = int(np.ceil(np.log(maxf / minf) / np.log(1 / R + 1)))  # make spacing aproximately equal to sigma f
     
-    alfa = (maxf / minf) ** (1 / Nf) - 1;  # According to the expression achived by fn = ((1+1/R)^n)*f0 where 1/R = alfa
-    vf = ((1 + alfa) ** np.arange(0, Nf)) * minf;
+    alfa = (maxf / minf) ** (1 / Nf) - 1  # According to the expression achived by fn = ((1+1/R)^n)*f0 where 1/R = alfa
+    vf = ((1 + alfa) ** np.arange(0, Nf)) * minf
     result = np.zeros((Nf, Ns), dtype='complex')
 
     # These for loops reaaally should be paralelied...
@@ -85,8 +85,8 @@ def plot_wavelet(result, dt=1, R=7, freq_interval=(), eps=.0001,COI = True,norm_
     except Exception:
         Nf = int(np.ceil(np.log(maxf / minf) / np.log(1 / R + 1)))  # make spacing aproximately equal to sigma f
 
-    alfa = (maxf / minf) ** (1 / Nf) - 1;  # According to the expression achived by fn = ((1+1/R)^n)*f0 where 1/R = alfa
-    vf = ((1 + alfa) ** np.arange(0, Nf)) * minf;
+    alfa = (maxf / minf) ** (1 / Nf) - 1 # According to the expression achived by fn = ((1+1/R)^n)*f0 where 1/R = alfa
+    vf = ((1 + alfa) ** np.arange(0, Nf)) * minf
 
     exp_range_base10 = range(int(np.floor(np.log10(minf))), int(np.floor(np.log10(maxf) + 1)))
     base10_ticks = [[10 ** i + j * 10 ** i for j in range(9)] for i in exp_range_base10]
@@ -150,8 +150,8 @@ def plot_crosswavelet(result, dt=1, R=7, freq_interval=(), eps=.0001, COI = True
     except Exception:
         Nf = int(np.ceil(np.log(maxf / minf) / np.log(1 / R + 1)))  # make spacing aproximately equal to sigma f
 
-    alfa = (maxf / minf) ** (1 / Nf) - 1;  # According to the expression achived by fn = ((1+1/R)^n)*f0 where 1/R = alfa
-    vf = ((1 + alfa) ** np.arange(0, Nf)) * minf;
+    alfa = (maxf / minf) ** (1 / Nf) - 1  # According to the expression achived by fn = ((1+1/R)^n)*f0 where 1/R = alfa
+    vf = ((1 + alfa) ** np.arange(0, Nf)) * minf
 
     hsvim = plt.cm.hsv(np.angle(result)/2/np.pi + .5)
     intensity = np.abs(result)[:, :, np.newaxis]

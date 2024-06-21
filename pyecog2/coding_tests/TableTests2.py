@@ -12,7 +12,7 @@ data = np.array([
     (443, 1e-12, 'w'),
 ], dtype=[('Column 1', int), ('Column 2', float), ('Column 3', object)])
 
-annotations = AnnotationPage(list=[AnnotationElement(label='seizure', start=1, end=10),
+annotations = AnnotationPage(alist=[AnnotationElement(label='seizure', start=1, end=10),
                                                            AnnotationElement(label='seizure', start=14, end=22),
                                                            AnnotationElement(label='spike', start=23, end=25),
                                                            AnnotationElement(label='artefact', start=26, end=26.5)]*10)

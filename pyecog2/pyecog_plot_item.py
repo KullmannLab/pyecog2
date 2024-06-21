@@ -81,7 +81,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
                 previousXRange = [self.visible_time[0], self.visible_time[-1]]
                 ds = self.visible_time[1]-self.visible_time[0]
                 if ds==0:
-                    self.visible_time[2] - self.visible_time[0]
+                    print(self.visible_time[2] - self.visible_time[0])
 
                 if newXRange[1]>previousXRange[1]:
                     n_new_points = int(((newXRange[1]-self.visible_time[-1])*n)/(newXRange[1]-newXRange[0]))

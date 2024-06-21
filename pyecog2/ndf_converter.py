@@ -584,6 +584,8 @@ class DataHandler:
             files = [f for f in self.fullpath_listdir(ndf_dir) if f.endswith('.ndf')]
         elif type(ndf_dir) is list:
             files = [f for f in ndf_dir if f.endswith('.ndf')]
+        else:
+            files = []
 
         if type(tids) == 'tid': tids = tids.strip(' ')
 

@@ -292,6 +292,7 @@ class MainWindow(QMainWindow):
                     # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
                     dialog.setAcceptMode(QFileDialog.AcceptOpen)
                     dialog.setNameFilter('*.txt')
+                    fname = ''
                     if dialog.exec():
                         fname = dialog.selectedFiles()[0]
                     license.copy_activated_license(fname)

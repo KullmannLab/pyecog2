@@ -760,6 +760,29 @@ class Project():
             animal.eeg_duration.append(metadata['duration'])
             self.add_animal(animal)
 
+    def homogenize_labels(self, labels):
+        homogenized_labels = {label:False for label in labels}
+        for label in labels:
+            if homogenized_labels[label]:
+                continue
+            for animal in self.project.animal_list:
+                annotation_page = animal.annotations
+                for label1 in annotation_page.labels:
+                    if label1 == label:
+                        homogenized_labels[label] = True
+                        for animal2 in self.project.animal_list:
+                            if label not in animal2.annotations.labels:
+                                animal2.annotations.add_label(label,annotation_page.label_color_dict[label])
+                            else:
+                                animal2.annotations.label_color_dict[label] = annotation_page.label_color_dict[label] # if annotation exists copy color
+        for label in labels: # add inexisting labels
+            if not homogenized_labels[label]:
+                color = None
+                for animal in self.project.animal_list:
+                    animal.annotations.add_label(label, color)
+                    color = animal.annotations.label_color_dict[label]
+
+
 class MainModel(QtCore.QObject):
     sigTimeChanged      = QtCore.Signal(object)
     sigWindowChanged    = QtCore.Signal(object)

@@ -282,16 +282,18 @@ class ClassifierWindow(QMainWindow):
 
     def homogenize_labels(self):
         labels = self.getLables2train()
-        for animal in self.project.animal_list:
-            annotation_page = animal.annotations
-            for label in annotation_page.labels:
-                if label not in labels:  # only copy labels that are ticked to train
-                    continue
-                for animal2 in self.project.animal_list:
-                    if label not in animal2.annotations.labels:
-                        animal2.annotations.add_label(label,annotation_page.label_color_dict[label])
-                    else:
-                        animal2.annotations.label_color_dict[label] = annotation_page.label_color_dict[label] # if annotation exists copy color
+        self.project.homogenize_labels(labels)
+        #  --- previous code ---
+        # for animal in self.project.animal_list:
+        #     annotation_page = animal.annotations
+        #     for label in annotation_page.labels:
+        #         if label not in labels:  # only copy labels that are ticked to train
+        #             continue
+        #         for animal2 in self.project.animal_list:
+        #             if label not in animal2.annotations.labels:
+        #                 animal2.annotations.add_label(label,annotation_page.label_color_dict[label])
+        #             else:
+        #                 animal2.annotations.label_color_dict[label] = annotation_page.label_color_dict[label] # if annotation exists copy color
 
     def import_classifier(self):
         dialog = QFileDialog(parent=self)

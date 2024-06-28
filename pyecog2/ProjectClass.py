@@ -765,12 +765,12 @@ class Project():
         for label in labels:
             if homogenized_labels[label]:
                 continue
-            for animal in self.project.animal_list:
+            for animal in self.animal_list:
                 annotation_page = animal.annotations
                 for label1 in annotation_page.labels:
                     if label1 == label:
                         homogenized_labels[label] = True
-                        for animal2 in self.project.animal_list:
+                        for animal2 in self.animal_list:
                             if label not in animal2.annotations.labels:
                                 animal2.annotations.add_label(label,annotation_page.label_color_dict[label])
                             else:
@@ -778,7 +778,7 @@ class Project():
         for label in labels: # add inexisting labels
             if not homogenized_labels[label]:
                 color = None
-                for animal in self.project.animal_list:
+                for animal in self.animal_list:
                     animal.annotations.add_label(label, color)
                     color = animal.annotations.label_color_dict[label]
 

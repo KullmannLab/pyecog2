@@ -49,7 +49,12 @@ def LL2prob(LL):
 def reg_invcov(M,n):
     # return np.linalg.inv(M*n/(n+1) + np.eye(len(M))*M.diagonal()/(n+1))  # regularize with 1/n
     # np.linalg.inv(M*np.sqrt(n)/(np.sqrt(n)+1) + np.eye(len(M))*M.diagonal()/(np.sqrt(n)+1))  # regularize with sqrt(1/n)
-    return np.linalg.inv(M*np.sqrt(n)/(np.sqrt(n)+1) + np.eye(len(M))*M.diagonal()/(np.sqrt(n)+1))
+    # M0 = M*np.sqrt(n)/(np.sqrt(n)+1) + np.diag(M.diagonal()/(np.sqrt(n)+1))
+    # np.savez('/Users/marcoleite/4Aaron/RAPTOR 111223-181223/test_mat.npz',M0)
+    # np.savez('/Users/marcoleite/4Aaron/RAPTOR 111223-181223/input_mat.npz',M)
+    # np.savez('/Users/marcoleite/4Aaron/RAPTOR 111223-181223/n.npz',n)
+    # logger.info(M0)
+    return np.linalg.pinv(M*np.sqrt(n)/(np.sqrt(n)+1) + np.diag(M.diagonal()/(np.sqrt(n)+1)))
 
 
 def average_mu_and_cov(mu1,cov1,n1,mu2,cov2,n2):

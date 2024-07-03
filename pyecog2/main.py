@@ -89,7 +89,7 @@ class MainWindow(QMainWindow):
         self.live_recording_timer = QtCore.QTimer()
         self.live_recording_timer.timeout.connect(self.reload_plot)
 
-        # self.check_license()
+        # self.check_license()  # Used when Pyecog was close source
 
         # Populate Main window with widgets
         # self.createDockWidget()

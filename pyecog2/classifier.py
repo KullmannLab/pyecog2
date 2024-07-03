@@ -411,7 +411,8 @@ class GaussianClassifier():
         logger.info(f'Transitions:\n {self.transitions_matrix}')
         print('Transitions:\n', self.transitions_matrix)
         if progress_bar is not None:
-            progress_bar.setValue(100)
+            progress_bar.setValue(int(100))
+            # print(f'finished animal {animal.id}')
         # self.hmm.A = tansitions2rates(T, self.blank_npoints, self.class_npoints)
         # print('HMM.A:\n',self.hmm.A)
 
@@ -570,8 +571,8 @@ class GaussianClassifier():
 
     def copy_from(self,gaussian_classifier):
         for key in self.__dict__.keys():
-            # if key not in ['project','labels2classify','features','Ndim','FeatureExtractorNdim']:
-            if key not in ['project']:
+            if key not in ['project','Ndim','FeatureExtractorNdim']:
+            # if key not in ['project']:
                 try:
                     self.__dict__[key] = gaussian_classifier.__dict__[key].copy()
                 except:

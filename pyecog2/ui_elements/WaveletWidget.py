@@ -147,13 +147,13 @@ def morlet_wavelet_fft(input_signal, dt=1, R=7, freq_interval=(), progress_signa
             v_list = vf[k_list[0]:k_list[-1]+1]
             N_list = [Ni] * len(k_list)
             if cross_data is None:
-                arg_list = list(zip(dt_list,R_list,v_list,N_list,input_signal_list))
+                arg_list = zip(dt_list,R_list,v_list,N_list,input_signal_list)
             else:
-                arg_list = list(zip(v_list,N_list,input_signal_list,input_cross_signal_list))
+                arg_list = zip(v_list,N_list,input_signal_list,input_cross_signal_list)
 
             # print(f'Wabelet processing klist:{k_list}',end=' ')
             with mp.Pool(n_cores)as p:
-                batch = p.map(par_fftconvolve,arg_list)
+                batch = p.starmap(par_fftconvolve,arg_list)
                 if cross_data is not None:
                     batch, batchcross = zip(*batch)
             result[k_list[0]:k_list[-1]+1, :] = batch

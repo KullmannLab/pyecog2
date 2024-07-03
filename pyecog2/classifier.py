@@ -166,7 +166,7 @@ class ProjectClassifier():
 
     def import_classifier(self,fname):
         # Perform checks to see if imported classfier is compatible with current project
-        temp_classifier = GaussianClassifier()
+        temp_classifier = GaussianClassifier(self.project,self.feature_extractor)
         temp_classifier.load(fname)
         imported_fe = FeatureExtractor()
         ife_settings = os.path.join(os.path.dirname(fname),'_feature_extractor.json')

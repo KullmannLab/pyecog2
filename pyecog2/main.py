@@ -772,7 +772,7 @@ class MainWindow(QMainWindow):
 
 
     def keyPressEvent(self, evt):
-        logger.info(f'Key press captured by Main {evt.key()}')
+        logger.info(f'Key press captured by Main {evt.key(),evt.modifiers()==QtCore.Qt.ShiftModifier,evt.modifiers()}')
         modifiers = evt.modifiers()
         if evt.key() == QtCore.Qt.Key_Space:
             logger.info('Space pressed')
@@ -780,14 +780,14 @@ class MainWindow(QMainWindow):
             return
 
         if evt.key() == QtCore.Qt.Key_Left:
-            if modifiers == QtCore.Qt.ShiftModifier:
+            if modifiers & QtCore.Qt.ShiftModifier:
                 self.paired_graphics_view.overview_page_left()
             else:
                 self.paired_graphics_view.insetview_page_left()
             return
 
         if evt.key() == QtCore.Qt.Key_Right:
-            if modifiers == QtCore.Qt.ShiftModifier:
+            if modifiers & QtCore.Qt.ShiftModifier:
                 self.paired_graphics_view.overview_page_right()
             else:
                 self.paired_graphics_view.insetview_page_right()

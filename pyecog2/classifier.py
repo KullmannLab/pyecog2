@@ -474,6 +474,7 @@ class GaussianClassifier():
         # Now will regularize LLv for extreme values and compensate HMMfor repeated observations because of overlap of Feature extractor
         LLv_reg = np.maximum(LLth, LLv)*(1-self.overlap)*.5 # TEMPORARY 0.5 FACTOR!
         R2v = np.vstack(R2v)
+        timev.append([t[-1]+dt]) # add the end time of the last sample so that later ends vector does not go out of bounds
         timev = np.hstack(timev)
         logger.info('\nRunning HMM...')
         print('\nRunning HMM...')
@@ -555,7 +556,7 @@ class GaussianClassifier():
 
         if progress_bar is not None:
             progress_bar.setValue(100)   # Done
-        return (LLv,R2v,pf,timev)
+        return (LLv,R2v,pf,timev[:-1]) # remove last timev  element that was used only for ends
 
     def save(self,filename):
         project = self.project

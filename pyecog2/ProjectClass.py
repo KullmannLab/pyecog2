@@ -631,6 +631,7 @@ class Project():
                 self.project_file = fname.strip('_autosave') # when recovering autosaves, make the project file the original project file
             else:
                 logger.info('Project file changed directories - asking if user wants to update EEG and/or Video directories as well')
+                self.project_file = fname.strip('_autosave')
 
         if not hasattr(self,'filter_settings'):  #Backwards compatibility
             self.filter_settings = (False, 0, 1e6)

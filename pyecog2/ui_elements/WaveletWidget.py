@@ -10,12 +10,10 @@ from PySide6.QtCore import QRunnable, Slot, QThreadPool
 import numpy as np
 import scipy.signal as sg
 from timeit import default_timer as timer
-import traceback, inspect, sys
+import traceback, inspect
 from pyecog2.pyecog_plot_item import PyecogCursorItem
 import colorsys
 import multiprocessing as mp
-import concurrent
-from concurrent.futures.process import ProcessPoolExecutor
 import logging
 logger = logging.getLogger(__name__)
 

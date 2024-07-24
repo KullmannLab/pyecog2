@@ -166,7 +166,7 @@ class ProjectClassifier():
 
     def import_classifier(self,fname):
         # Perform checks to see if imported classfier is compatible with current project
-        temp_classifier = GaussianClassifier()
+        temp_classifier = GaussianClassifier(self.project,self.feature_extractor)
         temp_classifier.load(fname)
         imported_fe = FeatureExtractor()
         ife_settings = os.path.join(os.path.dirname(fname),'_feature_extractor.json')
@@ -411,7 +411,8 @@ class GaussianClassifier():
         logger.info(f'Transitions:\n {self.transitions_matrix}')
         print('Transitions:\n', self.transitions_matrix)
         if progress_bar is not None:
-            progress_bar.setValue(100)
+            progress_bar.setValue(int(100))
+            # print(f'finished animal {animal.id}')
         # self.hmm.A = tansitions2rates(T, self.blank_npoints, self.class_npoints)
         # print('HMM.A:\n',self.hmm.A)
 
@@ -473,6 +474,7 @@ class GaussianClassifier():
         # Now will regularize LLv for extreme values and compensate HMMfor repeated observations because of overlap of Feature extractor
         LLv_reg = np.maximum(LLth, LLv)*(1-self.overlap)*.5 # TEMPORARY 0.5 FACTOR!
         R2v = np.vstack(R2v)
+        timev.append([t[-1]+dt]) # add the end time of the last sample so that later ends vector does not go out of bounds
         timev = np.hstack(timev)
         logger.info('\nRunning HMM...')
         print('\nRunning HMM...')
@@ -554,7 +556,7 @@ class GaussianClassifier():
 
         if progress_bar is not None:
             progress_bar.setValue(100)   # Done
-        return (LLv,R2v,pf,timev)
+        return (LLv,R2v,pf,timev[:-1]) # remove last timev  element that was used only for ends
 
     def save(self,filename):
         project = self.project
@@ -570,8 +572,8 @@ class GaussianClassifier():
 
     def copy_from(self,gaussian_classifier):
         for key in self.__dict__.keys():
-            # if key not in ['project','labels2classify','features','Ndim','FeatureExtractorNdim']:
-            if key not in ['project']:
+            if key not in ['project','Ndim','FeatureExtractorNdim']:
+            # if key not in ['project']:
                 try:
                     self.__dict__[key] = gaussian_classifier.__dict__[key].copy()
                 except:

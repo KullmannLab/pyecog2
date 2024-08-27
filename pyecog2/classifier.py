@@ -211,7 +211,8 @@ class ProjectClassifier():
         gc.save(os.path.join(self.project.project_file + '_classifier',animal_id+'.npz'))
         logger.info(f'finished training of animal {animal_id}')
 
-    def classify_animal_with_global(self, animal, progress_bar=None,max_annotations=-1,labels2annotate=None, prob_th=0.5, outlier_th = 1, viterbi=False):
+    def classify_animal_with_global(self, animal, progress_bar=None,max_annotations=-1,labels2annotate=None, prob_th=0.5,
+                                    outlier_th = 1, viterbi=False, maxapost=False):
         gc = GaussianClassifier(self.project,self.feature_extractor,self.global_classifier.labels2classify)
         if self.animal_classifier_dict[animal.id].blank_npoints ==0:
             progress_bar.setValue(0.1)
@@ -225,7 +226,8 @@ class ProjectClassifier():
         #     print('Training animal specific classifier first...')
         #     gc.train([animal])
         gc.copy_re_normalized_classifier(self.global_classifier)
-        gc.classify_animal(animal,progress_bar,max_annotations,labels2annotate, prob_th=prob_th, outlier_th = outlier_th,viterbi=viterbi)
+        gc.classify_animal(animal,progress_bar,max_annotations,labels2annotate, prob_th=prob_th, outlier_th = outlier_th,
+                           viterbi=viterbi, maxapost=maxapost)
 
 
 
@@ -429,7 +431,7 @@ class GaussianClassifier():
         return LL
 
     def classify_animal(self, animal, progress_bar=None, max_annotations=-1, labels2annotate=None, prob_th=0.5,
-                        outlier_th = 1, viterbi=False):
+                        outlier_th = 1, viterbi=False, maxapost=False):
         if self.blank_npoints == 0:
             logger.info('Classifier needs to be trained first')
             print('Classifier needs to be trained first')
@@ -492,6 +494,9 @@ class GaussianClassifier():
         MLpath = None
         if viterbi:
             MLpath,_,_ = hmm.viterbi(LLv_reg.T)
+        elif maxapost:
+            MLpath = np.argmax(LLv_reg.T, axis = 0, keepdims=True)
+            # print(MLpath.shape,LLv_reg.shape)
 
         if progress_bar is not None:
             progress_bar.setValue(99)   # Almost done...
@@ -507,7 +512,7 @@ class GaussianClassifier():
             i = i2+1
             print(i,label)
 
-            if viterbi:
+            if viterbi or maxapost:
                 starts = np.nonzero(np.diff((MLpath == i).astype('int'), prepend=0) > 0)[1]
                 ends = np.nonzero(np.diff((MLpath == i).astype('int'), append=0) < 0)[1] + 1
             else:

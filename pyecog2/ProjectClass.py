@@ -644,11 +644,13 @@ class Project():
         logger.info(f'Updating project folders, from: {old_project_path}, to:{new_project_path}')
         old_project_path_n = old_project_path.replace('\\', '/')
         new_project_path_n = new_project_path.replace('\\', '/')
-        commonsuffix =  os.path.commonprefix([old_project_path_n[::-1],new_project_path_n[::-1]])[::-1]
-        new_prefix = new_project_path_n[:-len(commonsuffix)+1]
-        old_prefix = old_project_path_n[:-len(commonsuffix)+1]
+        logger.info(f'Updating project folders normalized, from: {old_project_path_n}, to:{new_project_path_n}')
+        commonsuffix = os.path.commonprefix([old_project_path_n[::-1],new_project_path_n[::-1]])[::-1]
+        new_prefix = new_project_path_n[:len(new_project_path_n)-len(commonsuffix)]
+        old_prefix = old_project_path_n[:len(old_project_path_n)-len(commonsuffix)]
+        logger.info(f'common_suffix:{len(commonsuffix)}, new_prefix: {new_prefix}, old_prefix:{old_prefix}')
         for a in self.animal_list:
-            logger.info(f'Updating project folders for animal {a.id}')
+            logger.info(f'Updating project folders for animal {a.id},old:{old_prefix}, new:{new_prefix},common:{commonsuffix}')
             if update_eeg:
                 a.substitute_eeg_folder_prefix(old_prefix,new_prefix)
             if update_video:

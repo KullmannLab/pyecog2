@@ -127,6 +127,7 @@ class MainWindow(QMainWindow):
         text = open(hints_file).read()
         text = text.replace('icons/banner_small.png',
                             pkg_resources.resource_filename('pyecog2', 'icons/banner_small.png'))
+        text += f'\n Log file location: {log_fname}'
         self.text_edit.setMarkdown(text)
         self.dock_list['Hints'].setWidget(self.text_edit)
         self.dock_list['Hints'].setObjectName("Hints")
@@ -526,6 +527,7 @@ class MainWindow(QMainWindow):
             self.live_recording_timer.start(100)
         else:
             self.live_recording_timer.stop()
+
 
     def open_git_url(self):
         QDesktopServices.openUrl('https://github.com/KullmannLab/pyecog2')

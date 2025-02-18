@@ -618,7 +618,8 @@ class DataHandler:
         # # run parallel conversion
         pool = multiprocessing.Pool(n_cores)
         l = len(files)
-        self.printProgress(0, l, prefix='Progress:', suffix='Complete', barLength=50)
+        if l>0:
+            self.printProgress(0, l, prefix='Progress:', suffix='Complete', barLength=50)
         for i, _ in enumerate(pool.imap(self.convert_ndf, files), 1):
             self.printProgress(i, l, prefix='Progress:', suffix='Complete', barLength=50)
             if progress_bar is not None:

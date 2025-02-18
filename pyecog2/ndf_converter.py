@@ -105,7 +105,7 @@ class NdfFile:
         if self.file_length is None and fs == 'auto':
             self.file_length = 3600
 
-        self.micro_volt_div = 0.4 # this is the dac units
+        # self.micro_volt_div = 0.4 # this is the dac units
 
         # firmware dependent:
         self.clock_tick_cycle = 7.8125e-3  # the "big" clock messages are 128Hz, 1/128 = 7.8125e-3
@@ -153,7 +153,7 @@ class NdfFile:
         self._e_bit_reads = np.fromfile(f, dtype = 'u1')
         self.transmitter_id_bytes = self._e_bit_reads[::4+self.payload]
         tid_message_counts = pd.Series(self.transmitter_id_bytes).value_counts()  # count how many different ids exist
-        for tid, count in tid_message_counts.iteritems():
+        for tid, count in tid_message_counts.items():
             if count > message_threshold and tid != 0:
                 if self.fs == 'auto':
                     possible_freqs = [256, 512, 1024]
@@ -283,10 +283,11 @@ class NdfFile:
                                 glitch_count += 1
                                 removed = 'True'
 
-                            if self._plot_each_glitch:
-                                ax1.plot(self.time_to_deglitch[i1 - 64:i1 + 64],
-                                         self.data_to_deglitch[i1 - 64:i1 + 64], 'k-', zorder = 1, label = 'Glitch removed :'+removed)
-                                ax1.legend(loc = 1)
+                            # if self._plot_each_glitch:
+                            #     ax1.plot(self.time_to_deglitch[i1 - 64:i1 + 64],
+                            #              self.data_to_deglitch[i1 - 64:i1 + 64], 'k-', zorder = 1, label = 'Glitch removed :'+removed)
+                            #     ax1.legend(loc = 1)
+
                         except IndexError:
                             print('IndexError')
                             pass
@@ -412,7 +413,8 @@ class NdfFile:
              auto_glitch_removal = True,
              auto_resampling = True,
              auto_filter = True,
-             subtract_offset =True):
+             subtract_offset =True,
+             dynamic_range = 0.027):
         '''
         Notes:
             1. You should run glitch removal before high pass filtering and the auto resampling.
@@ -434,6 +436,7 @@ class NdfFile:
         '''
         f = open(self.filepath, 'rb')
         f.seek(self.data_address)
+        micro_volt_div = 1e6*dynamic_range/2**16  # micro volts per bit
 
         # initally read in self.get_valid_tids_and_fs
         self.t_stamps_8bit = self._e_bit_reads[3::4+self.payload]
@@ -457,7 +460,7 @@ class NdfFile:
             if read_id not in self.tid_set:
                 invalid_ids.append(read_id)
             else:
-                self.tid_raw_data_time_dict[read_id]['data'] = self.voltage_messages[self.transmitter_id_bytes == read_id] * self.micro_volt_div
+                self.tid_raw_data_time_dict[read_id]['data'] = self.voltage_messages[self.transmitter_id_bytes == read_id] * micro_volt_div
                 self.tid_raw_data_time_dict[read_id]['time'] = self.time_array[self.transmitter_id_bytes == read_id]
 
         for invalid_id in invalid_ids:
@@ -558,7 +561,8 @@ class DataHandler:
                                     fs='auto',
                                     glitch_detection=True,
                                     high_pass_filter=True,
-                                    gui_object=False):
+                                    dynamic_range=0.027,
+                                    progress_bar=None):
         """
         Converts a folder of ndf files to h5 files
 
@@ -575,9 +579,7 @@ class DataHandler:
         self.glitch_detection_flag_for_parallel_conversion = glitch_detection
         self.high_pass_filter_flag_for_parallel_conversion = high_pass_filter
         self.fs_for_parallel_conversion = fs
-
-        if gui_object:  # if been called from the gui
-            gui_object = gui_object
+        self.dynamic_range_for_parallel_conversion = dynamic_range
 
         # allow ndf_dir to be a list of files
         if type(ndf_dir) is str:
@@ -610,12 +612,8 @@ class DataHandler:
         self.savedir_for_parallel_conversion = save_dir
 
         # update gui labels if called from gui
-        if gui_object:
-            gui_object.set_max_progress.emit(str(len(files)))
-            gui_object.update_hidden_label.emit(
-                str(len(files)) + ' Files for conversion. Transmitters: ' + str(self.tids_for_parallel_conversion))
-            gui_object.set_progress_bar.emit(str(0))
-            gui_object.update_progress_label.emit('Progress: ' + str(0) + ' / ' + str(len(files)))
+        if progress_bar is not None:
+            progress_bar.setValue(0)
 
         # # run parallel conversion
         pool = multiprocessing.Pool(n_cores)
@@ -623,9 +621,10 @@ class DataHandler:
         self.printProgress(0, l, prefix='Progress:', suffix='Complete', barLength=50)
         for i, _ in enumerate(pool.imap(self.convert_ndf, files), 1):
             self.printProgress(i, l, prefix='Progress:', suffix='Complete', barLength=50)
-            if gui_object:
-                gui_object.set_progress_bar.emit(str(i))
-                gui_object.update_progress_label.emit('Progress: ' + str(i) + ' / ' + str(len(files)))
+            if progress_bar is not None:
+                progress_bar.setValue((100*(i+1))//len(files))  # might not work... didn't realise this was parallel
+        if progress_bar is not None:
+            progress_bar.setValue(100)
         pool.close()
         pool.join()
 
@@ -633,9 +632,6 @@ class DataHandler:
         # for file in files:
         #     self.convert_ndf(file)
 
-        if gui_object:
-            gui_object.update_progress_label.emit('Progress: Done')
-        self.gui_object = False
 
 
     def convert_ndf(self, filename):
@@ -645,6 +641,7 @@ class DataHandler:
         fs = self.fs_for_parallel_conversion
         glitch_detection_flag = self.glitch_detection_flag_for_parallel_conversion
         high_pass_filter_flag = self.high_pass_filter_flag_for_parallel_conversion
+        dynamic_range_flag = self.dynamic_range_for_parallel_conversion
 
         # convert m name
         ndf_time =  self.get_time_from_filename_with_mcode(filename)
@@ -658,7 +655,8 @@ class DataHandler:
                 return
             ndf.load(tids,
                      auto_glitch_removal=glitch_detection_flag,
-                     auto_filter=high_pass_filter_flag)
+                     auto_filter=high_pass_filter_flag,
+                     dynamic_range=dynamic_range_flag)
             abs_savename = os.path.join(savedir, os.path.split(filename)[-1][:-4]+'_'+ndf_time+'_tids_'+str(ndf.read_ids))
             ndf.save(save_file_name= abs_savename)
             ndf.set_modified_time_to_old()

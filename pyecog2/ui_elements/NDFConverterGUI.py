@@ -69,6 +69,10 @@ class NDFConverterWindow(QMainWindow):
                              'H5dir': os.getcwd(),
                              'start': '1971-01-01 00:00:00',
                              'end': '2999-01-01 00:00:00',
+                             'filter': True,
+                             'glitch': True,
+                             'DynamicRange':'27 mV (OSI Default)',
+                             'ManualDynamicRange':27e-3,
                              'AnimalDictList':[{'id': 'Animal 1',
                                                 'tidfs': '[0],auto'}]
                              }
@@ -105,9 +109,16 @@ class NDFConverterWindow(QMainWindow):
                 {'name': 'Start', 'type': 'str', 'value': self.settings['start'] },
                 {'name': 'End', 'type': 'str', 'value': self.settings['end']},
                 ]},
+            {'name': 'Converter Extra Settings', 'type': 'group', 'children': [
+                {'name': '1Hz high pass filter', 'type': 'bool', 'value': self.settings['filter']},
+                {'name': 'Glitch Remover', 'type': 'bool', 'value': self.settings['glitch']},
+                {'name': 'Dynamic Range', 'type': 'list', 'value': self.settings['DynamicRange'],
+                    'values': ['27 mV (OSI Default)', '270 mV (OSI High Dynamic Range)', 'Manual']},
+                {'name': 'Manual Dynamic Range (V)', 'type': 'float', 'value': self.settings['ManualDynamicRange']}
+            ]},
             ScalableGroup(name='Animal id: [TID1,TID2,...],fs', children=self.animal_dict)]
 
-        ## Create tree of Parameter objects
+        # Create tree of Parameter objects
         self.p = Parameter.create(name='params', type='group', children=self.params)
         self.p.param('Directories', 'Select NDF directory').sigActivated.connect(self.selectNDFFolder)
         self.p.param('Directories', 'Select NDF directory','NDF directory:').sigValueChanged.connect(self.setNDFFolder)
@@ -238,6 +249,17 @@ class NDFConverterWindow(QMainWindow):
         self.settings['end'] = end_string
         self.settings['AnimalDictList'] = [{'id': a.name(),
                                              'tidfs': a.value()} for a in self.p.param('Animal id: [TID1,TID2,...],fs').children()]
+        self.settings['filter'] = self.p.param('Converter Extra Settings', '1Hz high pass filter').value()
+        self.settings['glitch'] = self.p.param('Converter Extra Settings', 'Glitch Remover').value()
+
+        self.settings['DynamicRange'] = self.p.param('Converter Extra Settings', 'Dynamic Range').value()
+        if self.settings['DynamicRange'] == '27 mV (OSI Default)':
+            self.settings['ManualDynamicRange'] = 27e-3
+        elif self.settings['DynamicRange'] == '270 mV (OSI High Dynamic Range)':
+            self.settings['ManualDynamicRange'] = 270e-3
+        else:
+            self.settings['ManualDynamicRange'] = self.p.param('Converter Extra Settings', 'Manual Dynamic Range (V)').value()
+
         self.files2convert = [os.path.join(self.folder2convert, f) for f in os.listdir(self.folder2convert)
                               if (f.endswith('.ndf') and start_time <= int(f[1:-4]) <= end_time)]
         print(len(self.files2convert), 'files between:', start_time, 'and', end_time)
@@ -255,8 +277,12 @@ class NDFConverterWindow(QMainWindow):
                 os.mkdir(self.destination_folder)
             if not os.path.isdir(animal_destination_folder):
                 os.mkdir(animal_destination_folder)
-            dh.convert_ndf_directory_to_h5(self.files2convert,tids=tids,save_dir=animal_destination_folder,fs=fs)
-        return (1,1) # wavelet worker expects to emit tuple when done...
+            dh.convert_ndf_directory_to_h5(self.files2convert,tids=tids,save_dir=animal_destination_folder,fs=fs,
+                                           glitch_detection=self.settings['glitch'],
+                                           high_pass_filter=self.settings['filter'],
+                                           dynamic_range=self.settings['ManualDynamicRange']
+                                           )
+        return 1, 1  # wavelet worker expects to emit tuple when done...
 
 
 

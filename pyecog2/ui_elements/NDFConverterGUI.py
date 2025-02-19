@@ -62,21 +62,28 @@ class NDFConverterWindow(QMainWindow):
     def __init__(self,parent = None):
         QMainWindow.__init__(self,parent = parent)
         self.settings = None
+        settings = {'NDFdir': os.getcwd(),
+                    'H5dir': os.getcwd(),
+                    'start': '1971-01-01 00:00:00',
+                    'end': '2999-01-01 00:00:00',
+                    'filter': True,
+                    'glitch': True,
+                    'DynamicRange': '27 mV (OSI Default)',
+                    'ManualDynamicRange': 27e-3,
+                    'AnimalDictList': [{'id': 'Animal 1',
+                                        'tidfs': '[0],auto'}]
+                    }
         if hasattr(parent.main_model.project,'ndf_converter_settings'): # For backwards compatibility
             self.settings = parent.main_model.project.ndf_converter_settings
         if self.settings is None:
-            self.settings = {'NDFdir': os.getcwd(),
-                             'H5dir': os.getcwd(),
-                             'start': '1971-01-01 00:00:00',
-                             'end': '2999-01-01 00:00:00',
-                             'filter': True,
-                             'glitch': True,
-                             'DynamicRange':'27 mV (OSI Default)',
-                             'ManualDynamicRange':27e-3,
-                             'AnimalDictList':[{'id': 'Animal 1',
-                                                'tidfs': '[0],auto'}]
-                             }
-            parent.main_model.project.ndf_converter_settings = self.settings
+            self.settings = settings
+        else:
+            # implement backwards compatibility
+            for k in settings.keys():
+                if k not in self.settings.keys():
+                    self.settings[k] = settings[k]
+
+        parent.main_model.project.ndf_converter_settings = self.settings
 
         widget = QWidget(self)
         layout = QGridLayout(widget)

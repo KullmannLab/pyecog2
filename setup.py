@@ -31,7 +31,6 @@ setuptools.setup(
                     'pyopengl==3.1.1a1',
                     'pyopengl-accelerate==3.1.3b1',
                     'rsa',
-                    'jupyter',
                     ],
    include_package_data = True
   )

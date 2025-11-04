@@ -194,7 +194,7 @@ class Animal():
 
     def update_video_folder(self,video_folder):
         self.video_folder = os.path.normpath(video_folder)
-        self.video_files = glob.glob(video_folder + os.path.sep + '*.mp4')
+        self.video_files = glob.glob(video_folder + os.path.sep + '*.mp4') + glob.glob(video_folder + os.path.sep + '*.mkv')
         self.video_init_time = [float(os.path.split(fname)[-1][1:-4]) if os.path.split(fname)[-1].startswith('V') else
                                 datetime(*map(int, [fname[-18:-14], fname[-14:-12], fname[-12:-10], fname[-10:-8],
                                                     fname[-8:-6], fname[-6:-4]])).timestamp()

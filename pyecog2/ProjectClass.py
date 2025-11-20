@@ -194,11 +194,20 @@ class Animal():
 
     def update_video_folder(self,video_folder):
         self.video_folder = os.path.normpath(video_folder)
-        self.video_files = glob.glob(video_folder + os.path.sep + '*.mp4')
-        self.video_init_time = [float(os.path.split(fname)[-1][1:-4]) if os.path.split(fname)[-1].startswith('V') else
-                                datetime(*map(int, [fname[-18:-14], fname[-14:-12], fname[-12:-10], fname[-10:-8],
-                                                    fname[-8:-6], fname[-6:-4]])).timestamp()
-                                for fname in self.video_files]
+        mp4_files = glob.glob(video_folder + os.path.sep + '*.mp4')
+        mkv_files = glob.glob(video_folder + os.path.sep + '*.mkv')
+        self.video_files = mp4_files + mkv_files
+        self.video_init_time = [
+            (lambda name_no_ext: 
+                datetime(*map(int, [name_no_ext[-17:-13], name_no_ext[-13:-11], name_no_ext[-11:-9], 
+                                name_no_ext[-9:-7], name_no_ext[-7:-5], name_no_ext[-5:-3]]), 
+                        int(name_no_ext[-3:]) * 1000).timestamp() 
+                if len(name_no_ext) >= 17 else
+                datetime(*map(int, [name_no_ext[-14:-10], name_no_ext[-10:-8], name_no_ext[-8:-6],
+                                name_no_ext[-6:-4], name_no_ext[-4:-2], name_no_ext[-2:]])).timestamp()
+            )(os.path.splitext(os.path.split(fname)[-1])[0])
+            for fname in self.video_files
+            ]   
         self.video_duration = [15 * 60 for file in
                                self.video_files]  # this should be replaced in the future to account flexible video duration or remove this field completely
 

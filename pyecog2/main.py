@@ -630,7 +630,7 @@ class MainWindow(QMainWindow):
             fname = dialog.selectedFiles()[0]
             logger.info(f'Exporting trace to:{fname}')
             # Grab data from window
-            data, _ = self.main_model.project.get_data_from_range(self.main_model.window, channel=self.channel)
+            data, _ = self.main_model.project.get_data_from_range(self.main_model.window)
             # Save the array to a CSV file
             np.savetxt(fname, data, delimiter=',')
 
@@ -723,7 +723,7 @@ class MainWindow(QMainWindow):
         self.action_open_console_window = self.menu_tools.addAction("Console")
         self.action_open_console_window.triggered.connect(self.open_console_window)
 
-        self.action_open_console_window = self.menu_tools.addAction("Export signal trace")
+        self.action_open_console_window = self.menu_tools.addAction("Export signal trace to CSV")
         self.action_open_console_window.triggered.connect(self.export_signal_trace)
 
         # HELP section

@@ -217,7 +217,6 @@ class NDFConverterWindow(QMainWindow):
         dialog.setWindowTitle('Import Animal Settings from CSV file')
         dialog.setFileMode(QFileDialog.AnyFile)
         # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
-        dialog.setAcceptMode(QFileDialog.AcceptSave)
         dialog.setNameFilter('*.csv')
         if dialog.exec():
             fname = dialog.selectedFiles()[0]
@@ -226,7 +225,10 @@ class NDFConverterWindow(QMainWindow):
         with open(fname, 'r') as f:
             line = f.readline()
             while line!='':
-                animal_id, tid, fs = line.split(',')
+                l = line.split(',')
+                animal_id = l[0]
+                tid = ','.join(l[1:-1])
+                fs = l[-1]
                 self.animal_dict.append({'name': animal_id,
                                          'type': 'str',
                                          'value': tid + ',' + str(fs),

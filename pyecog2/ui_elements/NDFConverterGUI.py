@@ -110,7 +110,9 @@ class NDFConverterWindow(QMainWindow):
                 {'name': 'Select Destination directory', 'type': 'action', 'children': [
                     {'name': 'Destination directory:', 'type': 'str', 'value': self.destination_folder }
                 ]},
-                {'name': 'Update fields from directories', 'type': 'action'}
+                {'name': 'Update fields from directories', 'type': 'action'},
+
+                {'name': 'Set Animal fields from CSV', 'type': 'action'}
             ]},
             {'name': 'Date Range', 'type': 'group', 'children': [
                 {'name': 'Start', 'type': 'str', 'value': self.settings['start'] },
@@ -133,6 +135,7 @@ class NDFConverterWindow(QMainWindow):
         self.p.param('Directories', 'Select Destination directory', 'Destination directory:').sigValueChanged.connect(
             self.setDestinationFolder)
         self.p.param('Directories', 'Update fields from directories').sigActivated.connect(self.updateFieldsFromDirectories)
+        self.p.param('Directories', 'Set Animal fields from CSV').sigActivated.connect(self.updateAnimalsFromCSV)
 
         self.t = PyecogParameterTree()
         self.t.setParameters(self.p, showTop=False)
@@ -209,6 +212,30 @@ class NDFConverterWindow(QMainWindow):
         self.p.param('Animal id: [TID1,TID2,...],fs').clearChildren()
         self.p.param('Animal id: [TID1,TID2,...],fs').addChildren(self.animal_dict)
 
+    def updateAnimalsFromCSV(self):
+        dialog = QFileDialog(parent=self)
+        dialog.setWindowTitle('Import Animal Settings from CSV file')
+        dialog.setFileMode(QFileDialog.AnyFile)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setAcceptMode(QFileDialog.AcceptSave)
+        dialog.setNameFilter('*.csv')
+        if dialog.exec():
+            fname = dialog.selectedFiles()[0]
+        self.animal_dict.clear()
+
+        with open(fname, 'r') as f:
+            line = f.readline()
+            while line!='':
+                animal_id, tid, fs = line.split(',')
+                self.animal_dict.append({'name': animal_id,
+                                         'type': 'str',
+                                         'value': tid + ',' + str(fs),
+                                         'renamable': True,
+                                         'removable': True})
+                line = f.readline()
+
+        self.p.param('Animal id: [TID1,TID2,...],fs').clearChildren()
+        self.p.param('Animal id: [TID1,TID2,...],fs').addChildren(self.animal_dict)
 
     def selectDestinationFolder(self):
         dialog = QFileDialog(self)

@@ -4,7 +4,7 @@ from collections import OrderedDict
 from pyecog2.h5loader import H5File
 import glob, os
 from datetime import datetime
-from pyecog2.annotations_module import AnnotationPage
+from pyecog2.annotations_module import AnnotationPage, AnnotationElement
 from scipy import signal
 from PySide6 import QtCore
 import pyqtgraph as pg
@@ -664,6 +664,16 @@ class Project():
                 for a in animal.annotations.annotations_list:
                     f.write(animal.id + ',' + a.getLabel() + ',' + str(a.getStart()) + ',' + str(a.getEnd()) +
                             ',' + str(a.getConfidence()) +  ',' + str(a.getNotes()) + '\n')
+        return
+
+    def import_annotations(self, fname):
+        with open(fname, 'r') as f:
+            line = f.readline()
+            while line!='':
+                animal_id, label, start, end, confidence, notes = line.split(',')
+                self.get_animal(animal_id).annotations.add_annotation(
+                    AnnotationElement(label=label, start=float(start), end=float(end), confidence=float(confidence), notes=notes))
+                line = f.readline()
         return
 
     def get_animal(self, animal_id):

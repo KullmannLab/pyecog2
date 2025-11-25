@@ -610,12 +610,13 @@ class MainWindow(QMainWindow):
         dialog.setWindowTitle('Import annotations from CSV file')
         dialog.setFileMode(QFileDialog.AnyFile)
         # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
-        dialog.setAcceptMode(QFileDialog.AcceptSave)
+        # dialog.setAcceptMode(QFileDialog.AcceptSave)
         dialog.setNameFilter('*.csv')
         if dialog.exec():
             fname = dialog.selectedFiles()[0]
             logger.info(f'Importing annotations from:{fname}')
             self.main_model.project.import_annotations(fname)
+
 
     def export_signal_trace(self):
         # Consider how to implement other file formats

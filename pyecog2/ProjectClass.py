@@ -669,11 +669,13 @@ class Project():
     def import_annotations(self, fname):
         with open(fname, 'r') as f:
             line = f.readline()
+            line = f.readline()
             while line!='':
                 animal_id, label, start, end, confidence, notes = line.split(',')
                 self.get_animal(animal_id).annotations.add_annotation(
                     AnnotationElement(label=label, start=float(start), end=float(end), confidence=float(confidence), notes=notes))
                 line = f.readline()
+        self.main_model.annotations.sigLabelsChanged.emit('')
         return
 
     def get_animal(self, animal_id):

@@ -5,7 +5,7 @@ Wavelet widget for EEG signals in pyecog
 
 import pyqtgraph as pg
 from PySide6 import QtCore
-from PySide6.QtWidgets import QApplication, QWidget, QGridLayout, QLabel
+from PySide6.QtWidgets import QApplication, QWidget, QGridLayout, QLabel, QPushButton
 from PySide6.QtCore import QRunnable, Slot, QThreadPool
 import numpy as np
 import scipy.signal as sg
@@ -275,6 +275,11 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         self.hist.setLevels(self.data.min(), self.data.max())
         self.main_model.sigWindowChanged.connect(self.update_data)
 
+    def auto_histogram_levels(self):
+        self.hist.autoHistogramRange()
+        self.hist_levels = self.hist.getLevels()
+        print('Wavelet Auto Levels',self.hist_levels)
+
     def setR(self,r):
         self.R = r
         logger.info(f'Waelet R set to {r}')
@@ -451,12 +456,16 @@ class WaveletWindow(QWidget):
         self.cross_channel_spin.valueChanged.connect(self.wavelet_item.setCrossChannel)
         self.R_spin = pg.SpinBox(value=14.0, bounds=[5, None],step=1,compactHeight=False)
         self.R_spin.valueChanged.connect(self.wavelet_item.setR)
+
+        self.hist_levels_button =  QPushButton('Histogram Auto Levels', self)
+        self.hist_levels_button.clicked.connect(self.wavelet_item.auto_histogram_levels)
         self.controls_layout.addWidget(QLabel('Channel'),0,0)
         self.controls_layout.addWidget(self.channel_spin,0,1,)
         self.controls_layout.addWidget(QLabel('Wavelet factor R'),0,2)
         self.controls_layout.addWidget(self.R_spin,0,3)
         self.controls_layout.addWidget(QLabel('Cross wavelet Channel'),0,4)
         self.controls_layout.addWidget(self.cross_channel_spin,0,5)
+        self.controls_layout.addWidget( self.hist_levels_button, 0, 6)
 
         self.layout.addWidget(self.controls_widget,1,0)
         self.layout.addWidget(self.wavelet_item,0,0)

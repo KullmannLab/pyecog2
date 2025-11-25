@@ -695,7 +695,7 @@ class MainWindow(QMainWindow):
         self.annotations_redo.triggered.connect(self.main_model.annotations.step_forward_in_history)
         self.action_export_annotations = self.menu_annotations.addAction("Export to CSV")
         self.action_export_annotations.triggered.connect(self.export_annotations)
-        self.action_import_annotations = self.menu_annotations.addAction("Import annotations")
+        self.action_import_annotations = self.menu_annotations.addAction("Import from CSV")
         self.action_import_annotations.triggered.connect(self.import_annotations)
         # self.action_import_annotations.setDisabled(True)
 
@@ -723,7 +723,7 @@ class MainWindow(QMainWindow):
         self.action_open_console_window = self.menu_tools.addAction("Console")
         self.action_open_console_window.triggered.connect(self.open_console_window)
 
-        self.action_open_console_window = self.menu_tools.addAction("Export signal trace to CSV")
+        self.action_open_console_window = self.menu_tools.addAction("Export selection window trace to CSV")
         self.action_open_console_window.triggered.connect(self.export_signal_trace)
 
         # HELP section

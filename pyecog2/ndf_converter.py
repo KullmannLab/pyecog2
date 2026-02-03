@@ -148,9 +148,10 @@ class NdfFile:
         - Here work out which t_ids are in the file and their
           sampling frequency. Arbitrary threshold of at least 20,000 datapoints!
         """
-        f = open(self.filepath, 'rb')
-        f.seek(self.data_address)
-        self._e_bit_reads = np.fromfile(f, dtype = 'u1')
+        with open(self.filepath, 'rb') as f:
+            f.seek(self.data_address)
+            self._e_bit_reads = np.fromfile(f, dtype = 'u1')
+
         self.transmitter_id_bytes = self._e_bit_reads[::4+self.payload]
         tid_message_counts = pd.Series(self.transmitter_id_bytes).value_counts()  # count how many different ids exist
         for tid, count in tid_message_counts.items():
@@ -434,8 +435,8 @@ class NdfFile:
             data and time is stored in self.tid_data_time_dict attribute. Access data via obj[tid]['data'].
 
         '''
-        f = open(self.filepath, 'rb')
-        f.seek(self.data_address)
+        # f = open(self.filepath, 'rb')
+        # f.seek(self.data_address)
         micro_volt_div = 1e6*dynamic_range/2**16  # micro volts per bit
 
         # initally read in self.get_valid_tids_and_fs

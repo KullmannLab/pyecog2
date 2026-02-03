@@ -522,6 +522,7 @@ class MainWindow(QMainWindow):
             # print('called set xrange')
             self.paired_graphics_view.insetview_plot.vb.setXRange(buffer_x_max - x_range, buffer_x_max, padding=0)
 
+
     def load_live_recording(self):
         if self.actionLiveUpdate.isChecked():
             self.live_recording_timer.start(100)
@@ -604,6 +605,35 @@ class MainWindow(QMainWindow):
             logger.info(f'Exporting annotations to:{fname}')
             self.main_model.project.export_annotations(fname)
 
+    def import_annotations(self):
+        dialog = QFileDialog(parent=self)
+        dialog.setWindowTitle('Import annotations from CSV file')
+        dialog.setFileMode(QFileDialog.AnyFile)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        # dialog.setAcceptMode(QFileDialog.AcceptSave)
+        dialog.setNameFilter('*.csv')
+        if dialog.exec():
+            fname = dialog.selectedFiles()[0]
+            logger.info(f'Importing annotations from:{fname}')
+            self.main_model.project.import_annotations(fname)
+
+
+    def export_signal_trace(self):
+        # Consider how to implement other file formats
+        dialog = QFileDialog(parent=self)
+        dialog.setWindowTitle('Export trace to CSV file')
+        dialog.setFileMode(QFileDialog.AnyFile)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setAcceptMode(QFileDialog.AcceptSave)
+        dialog.setNameFilter('*.csv')
+        if dialog.exec():
+            fname = dialog.selectedFiles()[0]
+            logger.info(f'Exporting trace to:{fname}')
+            # Grab data from window
+            data, _ = self.main_model.project.get_data_from_range(self.main_model.window)
+            # Save the array to a CSV file
+            np.savetxt(fname, data, delimiter=',')
+
     # def reset_video(self):
     #     self.video_element.reset()
     #     self.video_element.sigTimeChanged.connect(self.main_model.set_time_position)
@@ -617,6 +647,7 @@ class MainWindow(QMainWindow):
         self.action_NDF_converter = self.menu_file.addAction("Open NDF converter")
         self.menu_file.addSeparator()
         self.action_load_directory = self.menu_file.addAction("Load directory")
+        self.action_load_directory.setShortcut('Ctrl+D')
         self.menu_file.addSeparator()
         self.actionLiveUpdate = self.menu_file.addAction("Live Recording")
         self.actionLiveUpdate.setCheckable(True)
@@ -664,8 +695,9 @@ class MainWindow(QMainWindow):
         self.annotations_redo.triggered.connect(self.main_model.annotations.step_forward_in_history)
         self.action_export_annotations = self.menu_annotations.addAction("Export to CSV")
         self.action_export_annotations.triggered.connect(self.export_annotations)
-        self.action_import_annotations = self.menu_annotations.addAction("Import annotations")
-        self.action_import_annotations.setDisabled(True)
+        self.action_import_annotations = self.menu_annotations.addAction("Import from CSV")
+        self.action_import_annotations.triggered.connect(self.import_annotations)
+        # self.action_import_annotations.setDisabled(True)
 
         # CLASSIFIER section
         self.menu_classifier = self.menu_bar.addMenu("Classifier")
@@ -690,6 +722,9 @@ class MainWindow(QMainWindow):
 
         self.action_open_console_window = self.menu_tools.addAction("Console")
         self.action_open_console_window.triggered.connect(self.open_console_window)
+
+        self.action_open_console_window = self.menu_tools.addAction("Export selection window trace to CSV")
+        self.action_open_console_window.triggered.connect(self.export_signal_trace)
 
         # HELP section
         self.menu_help = self.menu_bar.addMenu("Help")

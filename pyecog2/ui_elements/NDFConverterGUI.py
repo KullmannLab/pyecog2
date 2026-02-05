@@ -338,12 +338,14 @@ class NDFConverterWindow(QMainWindow):
             animal_destination_folder = self.destination_folder + os.sep + a.name()
             if not os.path.isdir(self.destination_folder):
                 os.mkdir(self.destination_folder)
+                logger.info('Created destination folder: ' + self.destination_folder)
             if not os.path.isdir(animal_destination_folder):
                 os.mkdir(animal_destination_folder)
+                logger.info('Created animal destination folder: ' + animal_destination_folder)
             
             # we will use these variables in the convert_ndf_directory_to_h5 function to save different TIDs in different folders
             destination_folder_dict[animal_destination_folder] = tids
-            all_tids.append(tids)
+            all_tids += eval(tids)
             for tid in tids:
                 all_fs[tid] = fs
 

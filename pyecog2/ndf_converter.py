@@ -621,11 +621,13 @@ class DataHandler:
             for dir in save_dir.keys():
                 if not os.path.exists(save_dir[dir]):
                     os.makedirs(save_dir[dir])
+                    print('Made directory: '+str(save_dir[dir]))
         else:
             if save_dir == 'same_level':
                 save_dir = ndf_dir + '_converted_h5s'
             if not os.path.exists(save_dir):
                 os.makedirs(save_dir)
+                print('Made directory: '+str(save_dir))
         self.savedir_for_parallel_conversion = save_dir
 
         # update gui labels if called from gui

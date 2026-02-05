@@ -105,5 +105,4 @@ venv.bak/
 
 # ML - license reg file
 pyecog2/license/license_reg.txt
-
 .DS_Store

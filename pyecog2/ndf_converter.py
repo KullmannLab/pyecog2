@@ -19,6 +19,7 @@ except Exception:
 
 import multiprocessing
 import traceback
+from memory_profiler import profile
 
 class NdfFile:
     """
@@ -148,6 +149,7 @@ class NdfFile:
             else:
                 print('meta data not found')
 
+    @profile
     def get_valid_tids_and_fs(self, message_threshold=20000):
         """
         - Here work out which t_ids are in the file and their
@@ -184,6 +186,7 @@ class NdfFile:
         logging.info('Valid ids and freq are: '+str(self.tid_to_fs_dict))
 
     #@lprofile()
+    @profile
     def glitch_removal(self, plot_glitches=False, print_output=False, plot_sub_glitches = False):
         """
         The idea is to identify large transients in the data
@@ -315,6 +318,7 @@ class NdfFile:
         self._glitch_count += glitch_count
 
 
+    @profile
     def correct_sampling_frequency(self):
         '''
         Remeber, this is acting on the modified data (bad message and glitch already)
@@ -428,6 +432,7 @@ class NdfFile:
         return 0
 
     #@lprofile()
+    @profile
     def load(self, read_ids = [],
              auto_glitch_removal = True,
              auto_resampling = True,
@@ -509,6 +514,7 @@ class NdfFile:
             data = self.tid_data_time_dict[read_id]['data']
             self.tid_data_time_dict[read_id]['data'] = data - np.mean(data)
 
+    @profile
     def highpass_filter(self, cutoff_hz = 1):
         '''
         Implements high pass digital butterworth filter, order 2.
@@ -529,6 +535,7 @@ class NdfFile:
             self.tid_data_time_dict[read_id]['data'] = filtered_data
 
     #@lprofile()
+    @profile
     def correct_bad_messages(self): #new
         '''
         Method uses short inter-message-intervals and previous message value to identify bad messages
@@ -622,7 +629,8 @@ class DataHandler:
 
         # set n_cores
         if n_cores == -1:
-            n_cores = max(1, multiprocessing.cpu_count() - 1) # leave one core free for the gui
+            n_cores = max(1, int(multiprocessing.cpu_count()//2) - 1) # leave one core free for the gui
+            n_cores = 1 # for debugging
 
         # Make save directory
         if type(save_dir) == dict:
@@ -643,19 +651,22 @@ class DataHandler:
         if progress_bar is not None:
             progress_bar.setValue(0)
 
-        # # run parallel conversion
-        pool = multiprocessing.Pool(n_cores)
-        l = len(files)
-        if l>0:
-            self.printProgress(0, l, prefix='Progress:', suffix='Complete', barLength=50)
-        for i, _ in enumerate(pool.imap(self.convert_ndf, files), 1):
-            self.printProgress(i, l, prefix='Progress:', suffix='Complete', barLength=50)
+
+        with multiprocessing.Pool(n_cores) as pool:
+            l = len(files)
+            if l>0:
+                self.printProgress(0, l, prefix='Progress:', suffix='Complete', barLength=50)
+
+            # pool.map(self.convert_ndf, files)
+            # self.printProgress(100, l, prefix='Progress:', suffix='Complete', barLength=50)
+            for i, _ in enumerate(pool.imap(self.convert_ndf, files), 1):
+                self.printProgress(i, l, prefix='Progress:', suffix='Complete', barLength=50)
+                if progress_bar is not None:
+                    progress_bar.setValue((100*(i+1))//len(files))  # might not work... didn't realise this was parallel
             if progress_bar is not None:
-                progress_bar.setValue((100*(i+1))//len(files))  # might not work... didn't realise this was parallel
-        if progress_bar is not None:
-            progress_bar.setValue(100)
-        pool.close()
-        pool.join()
+                progress_bar.setValue(100)
+            pool.close()
+            pool.join()
 
         # run sequential conversion for debugging purposes
         # for file in files:

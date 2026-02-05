@@ -161,13 +161,21 @@ class NdfFile:
         tid_message_counts = pd.Series(self.transmitter_id_bytes).value_counts()  # count how many different ids exist
         for tid, count in tid_message_counts.items():
             if count > message_threshold and tid != 0:
-                if self.fs == 'auto':
+                if type(self.fs) is dict:
+                    if tid in self.fs.keys():
+                        fs = self.fs[tid]
+                    else:
+                        fs = 'auto'
+                else:
+                    fs = self.fs
+
+                if fs == 'auto':
                     possible_freqs = [256, 512, 1024]
                     error = [abs(self.file_length - count / fs) for fs in possible_freqs]
                     self.tid_to_fs_dict[tid] = possible_freqs[np.argmin(error)]
-                elif type(self.fs) is not dict:
-                    self.fs = float(self.fs)
-                    self.tid_to_fs_dict[tid] = self.fs
+                else:
+                    fs = float(fs)
+                    self.tid_to_fs_dict[tid] = fs
                 self.tid_set.add(tid)
                 self.tid_raw_data_time_dict[tid] = {}
                 self.tid_data_time_dict[tid] = {}
@@ -618,10 +626,11 @@ class DataHandler:
 
         # Make save directory
         if type(save_dir) == dict:
-            for dir in save_dir.keys():
-                if not os.path.exists(save_dir[dir]):
-                    os.makedirs(save_dir[dir])
-                    print('Made directory: '+str(save_dir[dir]))
+            pass # assume directories already made, as this is for more complex use cases. If you want to make directories, just do it yourself before calling this method.
+            # for dir in save_dir.keys():
+            #     if not os.path.exists(save_dir[dir]):
+            #         os.makedirs(save_dir[dir])
+            #         print('Made directory: '+str(save_dir[dir]))
         else:
             if save_dir == 'same_level':
                 save_dir = ndf_dir + '_converted_h5s'
@@ -680,7 +689,7 @@ class DataHandler:
             
             for animal_savedir in savedir.keys():
                 abs_savename = os.path.join(animal_savedir, os.path.split(filename)[-1][:-4]+'_'+ndf_time+'_tids_'+str(savedir[animal_savedir]))
-            ndf.save(save_file_name= abs_savename,tids = savedir[animal_savedir])
+                ndf.save(save_file_name= abs_savename,tids = savedir[animal_savedir])
             ndf.set_modified_time_to_old()
 
         except Exception:

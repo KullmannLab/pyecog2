@@ -79,7 +79,13 @@ class NdfFile:
         self.file_access_time   = os.path.getatime(self.filepath)
 
         self.tid_set = set()
-        self.tid_to_fs_dict = {}
+        
+        self.fs = fs
+        if type(fs)==dict:
+            self.tid_to_fs_dict = fs
+        else:
+            self.tid_to_fs_dict = {}
+
         self.tid_raw_data_time_dict = {}
         self.tid_data_time_dict = {}
         self.resampled = False
@@ -92,7 +98,6 @@ class NdfFile:
 
         self.t_stamps = None
         self.read_ids = None
-        self.fs = fs
 
         self._n_possible_glitches = None
         self._glitch_count        = None
@@ -160,7 +165,7 @@ class NdfFile:
                     possible_freqs = [256, 512, 1024]
                     error = [abs(self.file_length - count / fs) for fs in possible_freqs]
                     self.tid_to_fs_dict[tid] = possible_freqs[np.argmin(error)]
-                else:
+                elif type(self.fs) is not dict:
                     self.fs = float(self.fs)
                     self.tid_to_fs_dict[tid] = self.fs
                 self.tid_set.add(tid)
@@ -339,26 +344,31 @@ class NdfFile:
         self._resampled = True
 
 
-    def save(self, save_file_name = None):
+    def save(self, save_file_name = None, tids = 'all'):
         """
         Saves file in h5 format. Will only save the tid/tids that have loaded.
         Args:
             save_file_name:
         """
+        if tids == 'all':
+            tids = self.read_ids
+
         if not save_file_name:
-            hdf5_filename = self.filepath.strip('.ndf')+'_Tid_'+''.join(str([tid for tid in self.read_ids]))+ '.h5'
+            hdf5_filename = self.filepath.strip('.ndf')+'_Tid_'+''.join(str([tid for tid in tids]))+ '.h5'
         else:
             if not save_file_name.endswith('.h5'):
                 save_file_name += '.h5'
             hdf5_filename = save_file_name
 
+
+
         with h5py.File(hdf5_filename, 'w') as f:
-            f.attrs['num_channels'] = len(self.read_ids)
-            f.attrs['t_ids'] = list(self.read_ids)
-            f.attrs['fs_dict'] = str({tid:self.tid_to_fs_dict[tid] for tid in self.read_ids})
+            f.attrs['num_channels'] = len(tids)
+            f.attrs['t_ids'] = list(tids)
+            f.attrs['fs_dict'] = str({tid:self.tid_to_fs_dict[tid] for tid in tids})
             file_group = f.create_group(os.path.split(self.filepath)[1][:-4])
 
-            for tid in self.read_ids:
+            for tid in tids:
                 try:
                     transmitter_group = file_group.create_group(str(tid))
                 except Exception:
@@ -570,7 +580,8 @@ class DataHandler:
         Args:
             ndf_dir  : Directory to convert, or list of files
             tids     : Transmitter ids to convert. Default is 'all'. Pass integer or list of integers.
-            save_dir : optional save directory, will default to appending converted_h5s after current ndf
+            save_dir : optional save directory, will default to appending converted_h5s after current ndf,
+                       can be dictionary of folders and TIDs if you want to save different TIDs in different folders
             n_cores  : number of cores to use, -1 will use all cores.
             fs       : 'auto' or frequency in hz. Recommended to specify
             gui_object : this is actally a qthread object not gui object. Also no need to make object attribute, c
@@ -595,7 +606,7 @@ class DataHandler:
         if not tids == 'all':
             if type(tids) == str:
                 tids = eval(tids)
-            if not hasattr(tids, '__iter__'):
+            if not hasattr(tids, '__iter__'): # make sure tids is iterable
                 tids = [tids]
         self.tids_for_parallel_conversion = tids
 
@@ -603,13 +614,18 @@ class DataHandler:
 
         # set n_cores
         if n_cores == -1:
-            n_cores = multiprocessing.cpu_count()
+            n_cores = max(1, multiprocessing.cpu_count() - 1) # leave one core free for the gui
 
         # Make save directory
-        if save_dir == 'same_level':
-            save_dir = ndf_dir + '_converted_h5s'
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
+        if type(save_dir) == dict:
+            for dir in save_dir.keys():
+                if not os.path.exists(save_dir[dir]):
+                    os.makedirs(save_dir[dir])
+        else:
+            if save_dir == 'same_level':
+                save_dir = ndf_dir + '_converted_h5s'
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
         self.savedir_for_parallel_conversion = save_dir
 
         # update gui labels if called from gui
@@ -659,8 +675,10 @@ class DataHandler:
                      auto_glitch_removal=glitch_detection_flag,
                      auto_filter=high_pass_filter_flag,
                      dynamic_range=dynamic_range_flag)
-            abs_savename = os.path.join(savedir, os.path.split(filename)[-1][:-4]+'_'+ndf_time+'_tids_'+str(ndf.read_ids))
-            ndf.save(save_file_name= abs_savename)
+            
+            for animal_savedir in savedir.keys():
+                abs_savename = os.path.join(animal_savedir, os.path.split(filename)[-1][:-4]+'_'+ndf_time+'_tids_'+str(savedir[animal_savedir]))
+            ndf.save(save_file_name= abs_savename,tids = savedir[animal_savedir])
             ndf.set_modified_time_to_old()
 
         except Exception:
@@ -732,37 +750,3 @@ class DataHandler:
         if iteration == total:
             sys.stdout.write('\n')
         sys.stdout.flush()
-
-
-import multiprocessing as mp
-from PySide6 import QtCore
-from PySide6.QtWidgets import QMenuBar, QGridLayout, QApplication, QWidget, QPlainTextEdit, QMainWindow
-import sys
-
-class GuiMain(QMainWindow):
-    ...
-    # Main window with several functions. When a button is clicked, executes
-    # self.button_pressed()
-
-    def button_pressed(self):
-        proc1 = OpenWindowProcess()
-        proc1.start()
-
-
-class OpenWindowProcess(mp.Process):
-    def __init__(self):
-        mp.Process.__init__(self)
-        print("Process PID: " + self.pid)
-
-    def run(self):
-        print("Opening window...")
-        app = QApplication(sys.argv)
-        window = QMainWindow()
-        window.show()
-        sys.exit(app.exec())
-
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    application = GuiMain()
-    sys.exit(app.exec())

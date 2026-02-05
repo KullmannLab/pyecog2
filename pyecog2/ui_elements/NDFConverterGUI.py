@@ -318,25 +318,44 @@ class NDFConverterWindow(QMainWindow):
         self.files2convert = [os.path.join(self.folder2convert, f) for f in os.listdir(self.folder2convert)
                               if (f.endswith('.ndf') and start_time <= int(f[1:-4]) <= end_time)]
         print(len(self.files2convert), 'files between:', start_time, 'and', end_time)
+
+
+        destination_folder_dict = {} 
+        all_tids = []
+        all_fs = {}
+
+        # Transfer this loop int dh.convert_ndf_directory_to_h5
         for a in self.p.param('Animal id: [TID1,TID2,...],fs').children():
-            dh = DataHandler()
-            print('***\n Starting to convert', a.name(), a.value(),'\n***')
+            
+            print('\n Preparing directory structure for ', a.name(), a.value(),'\n')
             tidfs = a.value().split(']')
             tids = tidfs[0]+']'
             if len(tidfs)>1:
                 fs = tidfs[1][1:] # remove the coma
             else:
                 fs = 'auto'
+
             animal_destination_folder = self.destination_folder + os.sep + a.name()
             if not os.path.isdir(self.destination_folder):
                 os.mkdir(self.destination_folder)
             if not os.path.isdir(animal_destination_folder):
                 os.mkdir(animal_destination_folder)
-            dh.convert_ndf_directory_to_h5(self.files2convert,tids=tids,save_dir=animal_destination_folder,fs=fs,
-                                           glitch_detection=self.settings['glitch'],
-                                           high_pass_filter=self.settings['filter'],
-                                           dynamic_range=self.settings['ManualDynamicRange']
-                                           )
+            
+            # we will use these variables in the convert_ndf_directory_to_h5 function to save different TIDs in different folders
+            destination_folder_dict[animal_destination_folder] = tids
+            all_tids.append(tids)
+            for tid in tids:
+                all_fs[tid] = fs
+
+        print('***\n STARTING CONVERSION \n***')
+        dh = DataHandler()
+        dh.convert_ndf_directory_to_h5(self.files2convert,tids=all_tids,
+                                       save_dir=destination_folder_dict,
+                                       fs=all_fs,
+                                       glitch_detection=self.settings['glitch'],
+                                       high_pass_filter=self.settings['filter'],
+                                       dynamic_range=self.settings['ManualDynamicRange'])
+        
         return 1, 1  # wavelet worker expects to emit tuple when done...
 
 

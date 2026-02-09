@@ -471,8 +471,8 @@ class GaussianClassifier():
 
         LLv = np.vstack(LLv)
         _, _, total_npoints = self.all_mu_and_cov()
-        th = chi2.isf(1/total_npoints,self.Ndim,scale=0.5)
-        LLth = np.diag(self.log_likelyhoods(np.vstack((self.blank_means, self.class_means)), bias=False)) - th
+        th = chi2.isf(1/total_npoints,self.Ndim,scale=0.5) #Sum of squares for the minimum acceptable probability of 1/total_npoints
+        LLth = np.diag(self.log_likelyhoods(np.vstack((self.blank_means, self.class_means)), bias=False)) - th # Log likelyhoods for the minimum acceptable probability on each class
         # Now will regularize LLv for extreme values and compensate HMMfor repeated observations because of overlap of Feature extractor
         LLv_reg = np.maximum(LLth, LLv)*(1-self.overlap)*.5 # TEMPORARY 0.5 FACTOR!
         R2v = np.vstack(R2v)

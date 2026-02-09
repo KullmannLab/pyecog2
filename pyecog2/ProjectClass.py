@@ -4,7 +4,7 @@ from collections import OrderedDict
 from pyecog2.h5loader import H5File
 import glob, os
 from datetime import datetime
-from pyecog2.annotations_module import AnnotationPage
+from pyecog2.annotations_module import AnnotationPage, AnnotationElement
 from scipy import signal
 from PySide6 import QtCore
 import pyqtgraph as pg
@@ -194,6 +194,7 @@ class Animal():
 
     def update_video_folder(self,video_folder):
         self.video_folder = os.path.normpath(video_folder)
+
         mp4_files = glob.glob(video_folder + os.path.sep + '*.mp4')
         mkv_files = glob.glob(video_folder + os.path.sep + '*.mkv')
         self.video_files = mp4_files + mkv_files
@@ -208,6 +209,7 @@ class Animal():
             )(os.path.splitext(os.path.split(fname)[-1])[0])
             for fname in self.video_files
             ]   
+
         self.video_duration = [15 * 60 for file in
                                self.video_files]  # this should be replaced in the future to account flexible video duration or remove this field completely
 
@@ -673,6 +675,18 @@ class Project():
                 for a in animal.annotations.annotations_list:
                     f.write(animal.id + ',' + a.getLabel() + ',' + str(a.getStart()) + ',' + str(a.getEnd()) +
                             ',' + str(a.getConfidence()) +  ',' + str(a.getNotes()) + '\n')
+        return
+
+    def import_annotations(self, fname):
+        with open(fname, 'r') as f:
+            line = f.readline()
+            line = f.readline()
+            while line!='':
+                animal_id, label, start, end, confidence, notes = line.split(',')
+                self.get_animal(animal_id).annotations.add_annotation(
+                    AnnotationElement(label=label, start=float(start), end=float(end), confidence=float(confidence), notes=notes))
+                line = f.readline()
+        self.main_model.annotations.sigLabelsChanged.emit('')
         return
 
     def get_animal(self, animal_id):

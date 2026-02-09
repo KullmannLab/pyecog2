@@ -110,7 +110,9 @@ class NDFConverterWindow(QMainWindow):
                 {'name': 'Select Destination directory', 'type': 'action', 'children': [
                     {'name': 'Destination directory:', 'type': 'str', 'value': self.destination_folder }
                 ]},
-                {'name': 'Update fields from directories', 'type': 'action'}
+                {'name': 'Update fields from directories', 'type': 'action'},
+                {'name': 'Set Animal fields from CSV', 'type': 'action'},
+                {'name': 'Export Animal fields to CSV', 'type': 'action'}
             ]},
             {'name': 'Date Range', 'type': 'group', 'children': [
                 {'name': 'Start', 'type': 'str', 'value': self.settings['start'] },
@@ -133,6 +135,8 @@ class NDFConverterWindow(QMainWindow):
         self.p.param('Directories', 'Select Destination directory', 'Destination directory:').sigValueChanged.connect(
             self.setDestinationFolder)
         self.p.param('Directories', 'Update fields from directories').sigActivated.connect(self.updateFieldsFromDirectories)
+        self.p.param('Directories', 'Set Animal fields from CSV').sigActivated.connect(self.updateAnimalsFromCSV)
+        self.p.param('Directories', 'Export Animal fields to CSV').sigActivated.connect(self.exportAnimalsToCSV)
 
         self.t = PyecogParameterTree()
         self.t.setParameters(self.p, showTop=False)
@@ -209,6 +213,50 @@ class NDFConverterWindow(QMainWindow):
         self.p.param('Animal id: [TID1,TID2,...],fs').clearChildren()
         self.p.param('Animal id: [TID1,TID2,...],fs').addChildren(self.animal_dict)
 
+    def updateAnimalsFromCSV(self):
+        dialog = QFileDialog(parent=self)
+        dialog.setWindowTitle('Import Animal Settings from CSV file')
+        dialog.setFileMode(QFileDialog.AnyFile)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setNameFilter('*.csv')
+        if dialog.exec():
+            fname = dialog.selectedFiles()[0]
+        self.animal_dict.clear()
+
+        with open(fname, 'r') as f:
+            line = f.readline()
+            while line!='':
+                l = line.split(',')
+                animal_id = l[0]
+                tid = ','.join(l[1:-1])
+                fs = l[-1]
+                self.animal_dict.append({'name': animal_id,
+                                         'type': 'str',
+                                         'value': tid + ',' + str(fs),
+                                         'renamable': True,
+                                         'removable': True})
+                line = f.readline()
+
+        self.p.param('Animal id: [TID1,TID2,...],fs').clearChildren()
+        self.p.param('Animal id: [TID1,TID2,...],fs').addChildren(self.animal_dict)
+
+    def exportAnimalsToCSV(self):
+        dialog = QFileDialog(parent=self)
+        dialog.setWindowTitle('Import Animal Settings from CSV file')
+        dialog.setFileMode(QFileDialog.AnyFile)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setAcceptMode(QFileDialog.AcceptSave)
+        dialog.setNameFilter('*.csv')
+        if dialog.exec():
+            fname = dialog.selectedFiles()[0]
+
+        if not fname.endswith('.csv'):
+            fname+='.csv'
+        with open(fname, 'w') as f:
+            for a in self.p.param('Animal id: [TID1,TID2,...],fs').children():
+                f.write( a.name() + ',' + a.value() + '\n')
+
+
 
     def selectDestinationFolder(self):
         dialog = QFileDialog(self)
@@ -270,25 +318,46 @@ class NDFConverterWindow(QMainWindow):
         self.files2convert = [os.path.join(self.folder2convert, f) for f in os.listdir(self.folder2convert)
                               if (f.endswith('.ndf') and start_time <= int(f[1:-4]) <= end_time)]
         print(len(self.files2convert), 'files between:', start_time, 'and', end_time)
+
+
+        destination_folder_dict = {} 
+        all_tids = []
+        all_fs = {}
+
+        # Transfer this loop int dh.convert_ndf_directory_to_h5
         for a in self.p.param('Animal id: [TID1,TID2,...],fs').children():
-            dh = DataHandler()
-            print('***\n Starting to convert', a.name(), a.value(),'\n***')
+            
+            print('\n Preparing directory structure for ', a.name(), a.value(),'\n')
             tidfs = a.value().split(']')
             tids = tidfs[0]+']'
             if len(tidfs)>1:
                 fs = tidfs[1][1:] # remove the coma
             else:
                 fs = 'auto'
+
             animal_destination_folder = self.destination_folder + os.sep + a.name()
             if not os.path.isdir(self.destination_folder):
                 os.mkdir(self.destination_folder)
+                logger.info('Created destination folder: ' + self.destination_folder)
             if not os.path.isdir(animal_destination_folder):
                 os.mkdir(animal_destination_folder)
-            dh.convert_ndf_directory_to_h5(self.files2convert,tids=tids,save_dir=animal_destination_folder,fs=fs,
-                                           glitch_detection=self.settings['glitch'],
-                                           high_pass_filter=self.settings['filter'],
-                                           dynamic_range=self.settings['ManualDynamicRange']
-                                           )
+                logger.info('Created animal destination folder: ' + animal_destination_folder)
+            
+            # we will use these variables in the convert_ndf_directory_to_h5 function to save different TIDs in different folders
+            destination_folder_dict[animal_destination_folder] = eval(tids)
+            all_tids += eval(tids)
+            for tid in eval(tids):
+                all_fs[tid] = fs
+
+        print('***\n STARTING CONVERSION \n***')
+        dh = DataHandler()
+        dh.convert_ndf_directory_to_h5(self.files2convert,tids=all_tids,
+                                       save_dir=destination_folder_dict,
+                                       fs=all_fs,
+                                       glitch_detection=self.settings['glitch'],
+                                       high_pass_filter=self.settings['filter'],
+                                       dynamic_range=self.settings['ManualDynamicRange'])
+        
         return 1, 1  # wavelet worker expects to emit tuple when done...
 
 

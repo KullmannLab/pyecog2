@@ -10,6 +10,7 @@ from PySide6 import QtCore
 import pyqtgraph as pg
 from timeit import default_timer as timer
 from pyedflib import EdfReader
+import re
 
 import logging
 logger = logging.getLogger(__name__)
@@ -18,6 +19,10 @@ logger = logging.getLogger(__name__)
 def clip(x, a, b):  # utility funciton for file buffer
     return min(max(int(x), a), b)
 
+def natural_sort_key(s):
+    # Splits the string into a list of text and integers
+    # e.g., "Animal 11" becomes ['Animal ', 11]
+    return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
 
 def intervals_overlap(a,b):
     # return (a[0] <= b[0] < a[1]) or (a[0] <= b[1] < a[1]) or (b[0] <= a[0] < b[1]) or (b[0] <= a[1] < b[1])
@@ -731,7 +736,7 @@ class Project():
         existing_eeg_dir = [animal.eeg_folder for animal in self.animal_list]
         eeg_dir_list = glob.glob(self.eeg_root_folder + os.path.sep + '*' + os.path.sep)  # then check for new animals
         video_dir_list = glob.glob(self.video_root_folder + os.path.sep + '*' + os.path.sep)
-        for directory in eeg_dir_list:
+        for directory in sorted(eeg_dir_list,key=natural_sort_key):
             if directory not in existing_eeg_dir:
                 id = directory.split(os.path.sep)[-2]
                 logger.info(f'Creating animal from directory:{directory}')

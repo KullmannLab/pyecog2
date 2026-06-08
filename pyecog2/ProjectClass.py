@@ -47,22 +47,40 @@ def create_metafile_from_h5(file,duration = 3600):
 
 def create_metafile_from_edf(file):
     assert file.endswith('.edf')
-    edf_file = EdfReader(file)
-    fsv = edf_file.getSampleFrequencies()
-    assert all([f == fsv[0] for f in fsv]) #check all channels have the same sampling frequency
-    dimension_dict = {'V': 1, 'mV': 1-3, 'uV': 1-6, 'nV': 1-9}
-    metadata = OrderedDict(fs=fsv[0],
-                           no_channels=len(fsv),
-                           data_format='edf',
-                           volts_per_bit=dimension_dict[edf_file.getPhysicalDimension(0)],
-                           transmitter_id=edf_file.getSignalHeader(0)['label'],
-                           start_timestamp_unix=int(edf_file.getStartdatetime().timestamp()),
-                           duration=int(edf_file.getFileDuration()),  # assume all h5 files have 1hr duration
-                           channel_labels=[edf_file.getSignalHeader(ch)['label'] for ch in range(len(fsv))],
-                           experiment_metadata_str=edf_file.getRecordingAdditional())
-    metafile = file[:-3] + 'meta'
+    with EdfReader(file) as edf_file:
+        fsv = edf_file.getSampleFrequencies()
+        assert all([f == fsv[0] for f in fsv]) #check all channels have the same sampling frequency
+        dimension_dict = {'V': 1, 'mV': 1e-3, 'uV': 1e-6, 'nV': 1e-9}
+        metadata = OrderedDict(fs=fsv[0],
+                               no_channels=len(fsv),
+                               data_format='edf',
+                               volts_per_bit=dimension_dict[edf_file.getPhysicalDimension(0)],
+                               transmitter_id=edf_file.getSignalHeader(0)['label'],
+                               start_timestamp_unix=int(edf_file.getStartdatetime().timestamp()),
+                               duration=int(edf_file.getFileDuration()),  # assume all h5 files have 1hr duration
+                               channel_labels=[edf_file.getSignalHeader(ch)['label'] for ch in range(len(fsv))],
+                               experiment_metadata_str=edf_file.getRecordingAdditional())
+        metafile = file[:-3] + 'meta'
     with open(metafile, 'w') as json_file:
         json.dump(metadata, json_file, indent=2, sort_keys=True)
+
+def edf_chinfo_from_metadata(metafile_name):
+    metadata = load_metadata_file(metafile_name)
+    n_channels = metadata['no_channels']
+    ch_info_list = []
+    for label in metadata['channel_labels']:
+        channel_info = {
+            'label': label,
+            'dimension': 'V',
+            'sample_rate': metadata['fs'],
+            'physical_max': metadata['volts_per_bit'] * 8,
+            'physical_min': -metadata['volts_per_bit'] * 8,
+            'digital_max': 32767,
+            'digital_min': -32768,
+            'transducer': '',
+            'prefilter': ''
+        }
+        ch_info_list.append(channel_info)
 
 
 def read_neuropixels_metadata(fname):
@@ -299,16 +317,17 @@ class FileBuffer():  # Consider translating this to cython
             self.data.append(arr)
         elif metadata['data_format'] == 'edf':
             try:
-                edf_file = EdfReader(fname[:-4] + 'edf')
+                with EdfReader(fname[:-4] + 'edf') as edf_file:
+                    channels = []
+                    duration = metadata['duration']
+                    for ch in range(metadata['no_channels']):
+                        channels.append(edf_file.readSignal(ch))
+                    arr = np.vstack(channels).T
+                    self.data.append(arr)
             except:
                 logger.warning(f'error trying to open {fname[:-4]} edf')
                 raise
-            channels = []
-            duration = metadata['duration']
-            for ch in range(metadata['no_channels']):
-                channels.append(edf_file.readSignal(ch))
-            arr = np.vstack(channels).T
-            self.data.append(arr)
+
         else:  # it is a bin file and can be mememaped
             try:
                 if self.verbose: logger.info(f'opening binary file: {metadata["binaryfilename"]}')

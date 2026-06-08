@@ -149,7 +149,7 @@ class NdfFile:
             else:
                 print('meta data not found')
 
-    @profile
+    #@profile
     def get_valid_tids_and_fs(self, message_threshold=20000):
         """
         - Here work out which t_ids are in the file and their
@@ -186,7 +186,7 @@ class NdfFile:
         logging.info('Valid ids and freq are: '+str(self.tid_to_fs_dict))
 
     #@lprofile()
-    @profile
+    #@profile
     def glitch_removal(self, plot_glitches=False, print_output=False, plot_sub_glitches = False):
         """
         The idea is to identify large transients in the data
@@ -318,7 +318,7 @@ class NdfFile:
         self._glitch_count += glitch_count
 
 
-    @profile
+    #@profile
     def correct_sampling_frequency(self):
         '''
         Remeber, this is acting on the modified data (bad message and glitch already)
@@ -432,7 +432,7 @@ class NdfFile:
         return 0
 
     #@lprofile()
-    @profile
+    #@profile
     def load(self, read_ids = [],
              auto_glitch_removal = True,
              auto_resampling = True,
@@ -514,7 +514,7 @@ class NdfFile:
             data = self.tid_data_time_dict[read_id]['data']
             self.tid_data_time_dict[read_id]['data'] = data - np.mean(data)
 
-    @profile
+    #@profile
     def highpass_filter(self, cutoff_hz = 1):
         '''
         Implements high pass digital butterworth filter, order 2.
@@ -535,7 +535,7 @@ class NdfFile:
             self.tid_data_time_dict[read_id]['data'] = filtered_data
 
     #@lprofile()
-    @profile
+    #@profile
     def correct_bad_messages(self): #new
         '''
         Method uses short inter-message-intervals and previous message value to identify bad messages
@@ -659,8 +659,12 @@ class DataHandler:
 
             # pool.map(self.convert_ndf, files)
             # self.printProgress(100, l, prefix='Progress:', suffix='Complete', barLength=50)
+            t0 = time.time()
             for i, _ in enumerate(pool.imap(self.convert_ndf, files), 1):
-                self.printProgress(i, l, prefix='Progress:', suffix='Complete', barLength=50)
+                ti = time.time()
+                dt = ti - t0
+                t0 = ti
+                self.printProgress(i, l, prefix='Progress:', suffix=f'Complete (aprox time left:{int(dt*(l-i))} seconds)', barLength=50)
                 if progress_bar is not None:
                     progress_bar.setValue((100*(i+1))//len(files))  # might not work... didn't realise this was parallel
             if progress_bar is not None:

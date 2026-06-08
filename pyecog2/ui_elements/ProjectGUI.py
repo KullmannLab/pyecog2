@@ -1,4 +1,6 @@
 import sys
+import time
+
 from PySide6 import QtGui, QtCore
 from PySide6.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog
 
@@ -8,6 +10,7 @@ from pyecog2.ProjectClass import Animal
 
 from pyqtgraph.parametertree import Parameter
 from pyecog2.ui_elements.pyecogParameterTree import PyecogParameterTree,PyecogGroupParameter
+from pyecog2.ui_elements.WaveletWidget import Worker
 
 import logging
 logger = logging.getLogger(__name__)
@@ -194,8 +197,12 @@ class ProjectEditWindow(QMainWindow):
         # self.project.eeg_root_folder = eeg_root_folder.value(0)
 
     def update_project_settings(self):
-        logger.info('Project update started')
-        print('Project update started...')
+        logger.info('Starting project update...')
+        print('Starting project update...')
+        worker = Worker(self.update_project_settings_worker)
+        self.threadpool.start(worker)
+
+    def update_project_settings_worker(self):
         animal_param_list = self.p.param('Animal list:').getValues()
         old_animal_list = [a.id for a in self.project.animal_list]
         deleted_animals = list(set(old_animal_list)-set(animal_param_list))
@@ -224,6 +231,7 @@ class ProjectEditWindow(QMainWindow):
         print('Project update finished')
 
 
+
     def update_project_from_roots(self):
         self.project.eeg_root_folder = self.p.param('Global Settings', 'Select EEG root directory','EEG root directory:').value()
         self.project.video_root_folder = self.p.param('Global Settings', 'Select Video root directory','Video root directory:').value()
@@ -231,13 +239,17 @@ class ProjectEditWindow(QMainWindow):
         logger.info(f'Processing {self.project.eeg_root_folder}...')
         print('Updating project from root directories...')
         print(f'Processing {self.project.eeg_root_folder}...')
-        self.project.update_project_from_root_directories()
+        worker = Worker(self.project.update_project_from_root_directories)
+        worker.signals.finished.connect(self.print_finished)
+        self.threadpool.start(worker)
 
         # update animal list in GUI
         self.animal_dict = [Animal2Parameter(animal) for animal in self.project.animal_list]
         self.p.param('Animal list:').clearChildren()
         self.p.param('Animal list:').addChildren(self.animal_dict)
 
+    def print_finished(self):
+        print('Finished project update')
 
 if __name__ == '__main__':  # OBSOLETE ???
     app = QApplication(sys.argv)

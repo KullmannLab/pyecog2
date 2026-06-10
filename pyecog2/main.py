@@ -1,5 +1,9 @@
 import os
 
+from future.backports.email import header
+from pyedflib import EdfReader
+from pyedflib.highlevel import write_edf
+
 os.environ['QT_MULTIMEDIA_PREFERRED_PLUGINS'] = 'windowsmediafoundation'
 import sys
 try:
@@ -634,6 +638,48 @@ class MainWindow(QMainWindow):
             # Save the array to a CSV file
             np.savetxt(fname, data, delimiter=',')
 
+
+    def export_signal_trace_edf(self):
+        # Consider how to implement other file formats
+        dialog = QFileDialog(parent=self)
+        dialog.setWindowTitle('Export trace to EDF file')
+        dialog.setFileMode(QFileDialog.AnyFile)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setAcceptMode(QFileDialog.AcceptSave)
+        dialog.setNameFilter('*.edf')
+        if dialog.exec():
+            fname = dialog.selectedFiles()[0]
+            if not fname.endswith('.edf'):
+                fname = fname + '.edf'
+            logger.info(f'Exporting trace to:{fname}')
+            # Grab data from window
+            data, _ = self.main_model.project.get_data_from_range(self.main_model.window)
+            print(f'Data shape {data.shape}')
+            # Save the array to an EDF file
+            metadata, files = self.main_model.project.get_data_from_range(self.main_model.window,return_filedata_only = True)
+            if not metadata[0]['data_format'] == 'edf':
+                print('EDF export only available for EDF data')
+                return
+            # Create EDF file
+
+            dimension_dict = {'V': 1, 'mV': 1e-3, 'uV': 1e-6, 'nV': 1e-9}
+
+            with EdfReader(files[0][:-4]+'edf') as f:
+                header = f.getHeader()
+                header['startdate'] = datetime.fromtimestamp(self.main_model.window[0])
+                channel_info = f.getSignalHeaders()
+                n_channels = len(channel_info)
+                signal_headers = []
+                for ch in range(n_channels):
+                    ch_header = channel_info[ch]
+                    signal_headers.append(ch_header)
+
+                write_edf(fname, [data[:, i].ravel()/dimension_dict[channel_info[i]['dimension']] for i in range(data.shape[1])], signal_headers, header=header,
+                          digital=False, file_type=-1)
+
+
+
+
     # def reset_video(self):
     #     self.video_element.reset()
     #     self.video_element.sigTimeChanged.connect(self.main_model.set_time_position)
@@ -725,6 +771,9 @@ class MainWindow(QMainWindow):
 
         self.action_open_console_window = self.menu_tools.addAction("Export selection window trace to CSV")
         self.action_open_console_window.triggered.connect(self.export_signal_trace)
+
+        self.action_open_console_window = self.menu_tools.addAction("Export selection window trace to EDF")
+        self.action_open_console_window.triggered.connect(self.export_signal_trace_edf)
 
         # HELP section
         self.menu_help = self.menu_bar.addMenu("Help")

@@ -84,7 +84,7 @@ class PairedGraphicsView():
         self.splitter.setSizePolicy(sizePolicy)
         # self.splitter.setChildrenCollapsible(False)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None,plot_controls=None):
         # todo clean this method up!
         self.parent = parent
         self.build_splitter()
@@ -93,6 +93,7 @@ class PairedGraphicsView():
         self.main_model = parent.main_model
         self.main_pen = self.main_model.color_settings['pen']
         self.main_brush = self.main_model.color_settings['brush']
+        self.plot_controls = plot_controls
 
         self.inset_annotations = []
         self.overview_annotations = []
@@ -626,6 +627,7 @@ class PairedGraphicsView():
         x_range, _ = self.overview_plot.viewRange()
         self.set_scenes_plot_annotations_data(self.main_model.annotations, reset=False, pos=x_range)
         self.timeline_cursor.setPos(np.mean(x_range))
+        self.plot_controls.update_Xrange_o_from_paired_graphics(x_range[1]-x_range[0])
         # self.insetview_plot.removeItem(annotation_graph_i)
 
     def insetview_range_changed(self, mask=None):
@@ -639,6 +641,8 @@ class PairedGraphicsView():
             self.overview_plot.vb.setXRange(x_range[0], x_range[0] + ox_range[1] - ox_range[0], padding=0)
         elif x_range[1] > ox_range[1]:
             self.overview_plot.vb.setXRange(x_range[1] - (ox_range[1] - ox_range[0]), x_range[1], padding=0)
+
+        self.plot_controls.update_Xrange_i_from_paired_graphics(x_range[1]-x_range[0])
 
     def insetview_page_left(self):
         xmin, xmax = self.insetview_plot.viewRange()[0]

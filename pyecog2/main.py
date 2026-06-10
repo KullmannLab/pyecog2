@@ -4,6 +4,8 @@ from future.backports.email import header
 from pyedflib import EdfReader
 from pyedflib.highlevel import write_edf
 
+from build.lib.pyecog2.coding_tests import plot_controls
+
 os.environ['QT_MULTIMEDIA_PREFERRED_PLUGINS'] = 'windowsmediafoundation'
 import sys
 try:
@@ -98,7 +100,6 @@ class MainWindow(QMainWindow):
         # Populate Main window with widgets
         # self.createDockWidget()
         self.dock_list = {}
-        self.paired_graphics_view = PairedGraphicsView(parent=self)
 
         self.tree_element = FileTreeElement(parent=self)
         self.main_model.sigProjectChanged.connect(
@@ -112,6 +113,7 @@ class MainWindow(QMainWindow):
         self.dock_list['File Tree'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
         self.plot_controls = PlotControls(self.main_model)
+        self.paired_graphics_view = PairedGraphicsView(parent=self,plot_controls=self.plot_controls)
         self.plot_controls.sigUpdateXrange_i.connect(self.paired_graphics_view.insetview_set_xrange)
         self.plot_controls.sigUpdateXrange_o.connect(self.paired_graphics_view.overview_set_xrange)
         self.plot_controls.sigUpdateFilter.connect(self.paired_graphics_view.updateFilterSettings)

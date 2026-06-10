@@ -19,6 +19,7 @@ except Exception:
 
 import multiprocessing
 import traceback
+from memory_profiler import profile
 
 class NdfFile:
     """
@@ -79,7 +80,13 @@ class NdfFile:
         self.file_access_time   = os.path.getatime(self.filepath)
 
         self.tid_set = set()
-        self.tid_to_fs_dict = {}
+        
+        self.fs = fs
+        if type(fs)==dict:
+            self.tid_to_fs_dict = fs
+        else:
+            self.tid_to_fs_dict = {}
+
         self.tid_raw_data_time_dict = {}
         self.tid_data_time_dict = {}
         self.resampled = False
@@ -92,7 +99,6 @@ class NdfFile:
 
         self.t_stamps = None
         self.read_ids = None
-        self.fs = fs
 
         self._n_possible_glitches = None
         self._glitch_count        = None
@@ -143,6 +149,7 @@ class NdfFile:
             else:
                 print('meta data not found')
 
+    #@profile
     def get_valid_tids_and_fs(self, message_threshold=20000):
         """
         - Here work out which t_ids are in the file and their
@@ -156,13 +163,21 @@ class NdfFile:
         tid_message_counts = pd.Series(self.transmitter_id_bytes).value_counts()  # count how many different ids exist
         for tid, count in tid_message_counts.items():
             if count > message_threshold and tid != 0:
-                if self.fs == 'auto':
+                if type(self.fs) is dict:
+                    if tid in self.fs.keys():
+                        fs = self.fs[tid]
+                    else:
+                        fs = 'auto'
+                else:
+                    fs = self.fs
+
+                if fs == 'auto':
                     possible_freqs = [256, 512, 1024]
                     error = [abs(self.file_length - count / fs) for fs in possible_freqs]
                     self.tid_to_fs_dict[tid] = possible_freqs[np.argmin(error)]
                 else:
-                    self.fs = float(self.fs)
-                    self.tid_to_fs_dict[tid] = self.fs
+                    fs = float(fs)
+                    self.tid_to_fs_dict[tid] = fs
                 self.tid_set.add(tid)
                 self.tid_raw_data_time_dict[tid] = {}
                 self.tid_data_time_dict[tid] = {}
@@ -171,6 +186,7 @@ class NdfFile:
         logging.info('Valid ids and freq are: '+str(self.tid_to_fs_dict))
 
     #@lprofile()
+    #@profile
     def glitch_removal(self, plot_glitches=False, print_output=False, plot_sub_glitches = False):
         """
         The idea is to identify large transients in the data
@@ -302,6 +318,7 @@ class NdfFile:
         self._glitch_count += glitch_count
 
 
+    #@profile
     def correct_sampling_frequency(self):
         '''
         Remeber, this is acting on the modified data (bad message and glitch already)
@@ -339,26 +356,31 @@ class NdfFile:
         self._resampled = True
 
 
-    def save(self, save_file_name = None):
+    def save(self, save_file_name = None, tids = 'all'):
         """
         Saves file in h5 format. Will only save the tid/tids that have loaded.
         Args:
             save_file_name:
         """
+        if tids == 'all':
+            tids = self.read_ids
+
         if not save_file_name:
-            hdf5_filename = self.filepath.strip('.ndf')+'_Tid_'+''.join(str([tid for tid in self.read_ids]))+ '.h5'
+            hdf5_filename = self.filepath.strip('.ndf')+'_Tid_'+''.join(str([tid for tid in tids]))+ '.h5'
         else:
             if not save_file_name.endswith('.h5'):
                 save_file_name += '.h5'
             hdf5_filename = save_file_name
 
+
+
         with h5py.File(hdf5_filename, 'w') as f:
-            f.attrs['num_channels'] = len(self.read_ids)
-            f.attrs['t_ids'] = list(self.read_ids)
-            f.attrs['fs_dict'] = str({tid:self.tid_to_fs_dict[tid] for tid in self.read_ids})
+            f.attrs['num_channels'] = len(tids)
+            f.attrs['t_ids'] = list(tids)
+            f.attrs['fs_dict'] = str({tid:self.tid_to_fs_dict[tid] for tid in tids})
             file_group = f.create_group(os.path.split(self.filepath)[1][:-4])
 
-            for tid in self.read_ids:
+            for tid in tids:
                 try:
                     transmitter_group = file_group.create_group(str(tid))
                 except Exception:
@@ -410,6 +432,7 @@ class NdfFile:
         return 0
 
     #@lprofile()
+    #@profile
     def load(self, read_ids = [],
              auto_glitch_removal = True,
              auto_resampling = True,
@@ -491,6 +514,7 @@ class NdfFile:
             data = self.tid_data_time_dict[read_id]['data']
             self.tid_data_time_dict[read_id]['data'] = data - np.mean(data)
 
+    #@profile
     def highpass_filter(self, cutoff_hz = 1):
         '''
         Implements high pass digital butterworth filter, order 2.
@@ -511,6 +535,7 @@ class NdfFile:
             self.tid_data_time_dict[read_id]['data'] = filtered_data
 
     #@lprofile()
+    #@profile
     def correct_bad_messages(self): #new
         '''
         Method uses short inter-message-intervals and previous message value to identify bad messages
@@ -570,7 +595,8 @@ class DataHandler:
         Args:
             ndf_dir  : Directory to convert, or list of files
             tids     : Transmitter ids to convert. Default is 'all'. Pass integer or list of integers.
-            save_dir : optional save directory, will default to appending converted_h5s after current ndf
+            save_dir : optional save directory, will default to appending converted_h5s after current ndf,
+                       can be dictionary of folders and TIDs if you want to save different TIDs in different folders
             n_cores  : number of cores to use, -1 will use all cores.
             fs       : 'auto' or frequency in hz. Recommended to specify
             gui_object : this is actally a qthread object not gui object. Also no need to make object attribute, c
@@ -595,7 +621,7 @@ class DataHandler:
         if not tids == 'all':
             if type(tids) == str:
                 tids = eval(tids)
-            if not hasattr(tids, '__iter__'):
+            if not hasattr(tids, '__iter__'): # make sure tids is iterable
                 tids = [tids]
         self.tids_for_parallel_conversion = tids
 
@@ -603,32 +629,48 @@ class DataHandler:
 
         # set n_cores
         if n_cores == -1:
-            n_cores = multiprocessing.cpu_count()
+            n_cores = max(1, int(multiprocessing.cpu_count()//2) - 1) # leave one core free for the gui
+            n_cores = 1 # for debugging
 
         # Make save directory
-        if save_dir == 'same_level':
-            save_dir = ndf_dir + '_converted_h5s'
-        if not os.path.exists(save_dir):
-            os.makedirs(save_dir)
+        if type(save_dir) == dict:
+            pass # assume directories already made, as this is for more complex use cases. If you want to make directories, just do it yourself before calling this method.
+            # for dir in save_dir.keys():
+            #     if not os.path.exists(save_dir[dir]):
+            #         os.makedirs(save_dir[dir])
+            #         print('Made directory: '+str(save_dir[dir]))
+        else:
+            if save_dir == 'same_level':
+                save_dir = ndf_dir + '_converted_h5s'
+            if not os.path.exists(save_dir):
+                os.makedirs(save_dir)
+                print('Made directory: '+str(save_dir))
         self.savedir_for_parallel_conversion = save_dir
 
         # update gui labels if called from gui
         if progress_bar is not None:
             progress_bar.setValue(0)
 
-        # # run parallel conversion
-        pool = multiprocessing.Pool(n_cores)
-        l = len(files)
-        if l>0:
-            self.printProgress(0, l, prefix='Progress:', suffix='Complete', barLength=50)
-        for i, _ in enumerate(pool.imap(self.convert_ndf, files), 1):
-            self.printProgress(i, l, prefix='Progress:', suffix='Complete', barLength=50)
+
+        with multiprocessing.Pool(n_cores) as pool:
+            l = len(files)
+            if l>0:
+                self.printProgress(0, l, prefix='Progress:', suffix='Complete', barLength=50)
+
+            # pool.map(self.convert_ndf, files)
+            # self.printProgress(100, l, prefix='Progress:', suffix='Complete', barLength=50)
+            t0 = time.time()
+            for i, _ in enumerate(pool.imap(self.convert_ndf, files), 1):
+                ti = time.time()
+                dt = ti - t0
+                t0 = ti
+                self.printProgress(i, l, prefix='Progress:', suffix=f'Complete (aprox time left:{int(dt*(l-i))} seconds)', barLength=50)
+                if progress_bar is not None:
+                    progress_bar.setValue((100*(i+1))//len(files))  # might not work... didn't realise this was parallel
             if progress_bar is not None:
-                progress_bar.setValue((100*(i+1))//len(files))  # might not work... didn't realise this was parallel
-        if progress_bar is not None:
-            progress_bar.setValue(100)
-        pool.close()
-        pool.join()
+                progress_bar.setValue(100)
+            pool.close()
+            pool.join()
 
         # run sequential conversion for debugging purposes
         # for file in files:
@@ -659,8 +701,10 @@ class DataHandler:
                      auto_glitch_removal=glitch_detection_flag,
                      auto_filter=high_pass_filter_flag,
                      dynamic_range=dynamic_range_flag)
-            abs_savename = os.path.join(savedir, os.path.split(filename)[-1][:-4]+'_'+ndf_time+'_tids_'+str(ndf.read_ids))
-            ndf.save(save_file_name= abs_savename)
+            
+            for animal_savedir in savedir.keys():
+                abs_savename = os.path.join(animal_savedir, os.path.split(filename)[-1][:-4]+'_'+ndf_time+'_tids_'+str(savedir[animal_savedir]))
+                ndf.save(save_file_name= abs_savename,tids = savedir[animal_savedir])
             ndf.set_modified_time_to_old()
 
         except Exception:
@@ -732,37 +776,3 @@ class DataHandler:
         if iteration == total:
             sys.stdout.write('\n')
         sys.stdout.flush()
-
-
-import multiprocessing as mp
-from PySide6 import QtCore
-from PySide6.QtWidgets import QMenuBar, QGridLayout, QApplication, QWidget, QPlainTextEdit, QMainWindow
-import sys
-
-class GuiMain(QMainWindow):
-    ...
-    # Main window with several functions. When a button is clicked, executes
-    # self.button_pressed()
-
-    def button_pressed(self):
-        proc1 = OpenWindowProcess()
-        proc1.start()
-
-
-class OpenWindowProcess(mp.Process):
-    def __init__(self):
-        mp.Process.__init__(self)
-        print("Process PID: " + self.pid)
-
-    def run(self):
-        print("Opening window...")
-        app = QApplication(sys.argv)
-        window = QMainWindow()
-        window.show()
-        sys.exit(app.exec())
-
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    application = GuiMain()
-    sys.exit(app.exec())

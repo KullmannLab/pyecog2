@@ -8,7 +8,7 @@ PyEcog2 is a python software package aimed at exploring, visualizing and analysi
 
 For alpha testing:
 - clone the repository to your local machine
-- create a dedicated python 3.8 environment for pyecog2 (e.g. a [conda](https://www.anaconda.com/products/individual) environment)
+- create a dedicated python 3.11 environment for pyecog2 (e.g. a [conda](https://www.anaconda.com/products/individual) environment)
 ```shell
 conda create --name pyecog2 python=3.11 
 ```

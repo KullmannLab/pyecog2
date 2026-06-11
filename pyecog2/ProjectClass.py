@@ -685,6 +685,8 @@ class Project():
         with open(fname, 'w') as f:
             f.write('Animal ID,label,start,stop,confidence,notes\n')
             for animal in self.animal_list:
+                if len(animal.annotations.annotations_list)==0:
+                    f.write(animal.id + ',,,,,\n')
                 for a in animal.annotations.annotations_list:
                     f.write(animal.id + ',' + a.getLabel() + ',' + str(a.getStart()) + ',' + str(a.getEnd()) +
                             ',' + str(a.getConfidence()) +  ',' + str(a.getNotes()) + '\n')

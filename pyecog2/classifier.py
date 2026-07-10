@@ -1,4 +1,6 @@
 import numpy as np
+from numba.cuda import target
+
 from pyecog2.ProjectClass import FileBuffer
 import os
 from scipy import linalg
@@ -347,12 +349,19 @@ class GaussianClassifier():
                 for a in animal.annotations.get_all_with_label(label):
                     a.setConfidence(float('inf')) # set manually checked annotations to infinite confidence
             Nfiles = len(animal.eeg_files[:])
-            for ifile, eeg_file in enumerate(animal.eeg_files[:]):
-                feature_file = '.'.join(eeg_file.split('.')[:-1] + ['features'])
-                fmeta_file = '.'.join(eeg_file.split('.')[:-1] + ['fmeta'])
-                with open(fmeta_file) as f:
+
+            for ifile, eeg_fname in enumerate(animal.eeg_files[:]):
+                feature_fname = '.'.join(eeg_fname.split('.')[:-1] + ['features'])
+                feature_meta = '.'.join(eeg_fname.split('.')[:-1] + ['fmeta'])
+                fe_root_dir = os.path.join(self.project.project_file+'_classifier', 'feature_files')
+                target_dir = os.path.join(fe_root_dir,animal.id)
+                if os.path.isdir(target_dir):
+                    feature_fname = os.path.join(target_dir, os.path.split(feature_fname)[-1])
+                    feature_meta = os.path.join(target_dir, os.path.split(feature_meta)[-1])
+                
+                with open(feature_meta) as f:
                     fmeta_dict = json.load(f)
-                f_vec = np.fromfile(feature_file, dtype=fmeta_dict['data_format'])
+                f_vec = np.fromfile(feature_fname, dtype=fmeta_dict['data_format'])
                 # condition fvec
                 f_vec_d = f_vec.reshape((-1, self.FeatureExtractorNdim))
                 f_vec_d = f_vec_d[:, self.features]
@@ -397,15 +406,15 @@ class GaussianClassifier():
                     self.blank_means = mu.ravel()
                     self.blank_cov   = cov
                     if sum(np.isnan(cov.ravel())):
-                        logger.info(f'\nCov matrix is NaN after file: {ifile} {eeg_file} \n')
-                        print('\nCov matrix is NaN after file:',ifile,eeg_file,'\n')
+                        logger.info(f'\nCov matrix is NaN after file: {ifile} {eeg_fname} \n')
+                        print('\nCov matrix is NaN after file:',ifile,eeg_fname,'\n')
                         self._debug_f_vec_d =f_vec_d
                         return
 
                 if progress_bar is not None:
                     progress_bar.setValue(100*(ianimal + ifile/Nfiles)/Nanimals)
                 else:
-                    print('Animal:', animal.id, 'file:', ifile, 'of', len(animal.eeg_files), feature_file, end='\r')
+                    print('Animal:', animal.id, 'file:', ifile, 'of', len(animal.eeg_files), feature_fname, end='\r')
 
         trans_list = [(l[0],l[1],i+1) for i,key in enumerate(self.labels2classify) for l in labeled_positions[key]]
         trans_list.sort()
@@ -445,14 +454,20 @@ class GaussianClassifier():
         eegfiles = animal.eeg_files.copy()
         eegfiles.sort()
         Nfiles = len(eegfiles)
-        for i,eegfname in enumerate(eegfiles):
-            fname = '.'.join(eegfname.split('.')[:-1] + ['features'])
-            f_vec = np.fromfile(fname, dtype='float64')
+        for i,eeg_fname in enumerate(eegfiles):
+            feature_fname = '.'.join(eeg_fname.split('.')[:-1] + ['features'])
+            feature_meta = '.'.join(eeg_fname.split('.')[:-1] + ['fmeta'])
+            fe_root_dir = os.path.join(self.project.project_file + '_classifier', 'feature_files')
+            target_dir = os.path.join(fe_root_dir, animal.id)
+            if os.path.isdir(target_dir):
+                feature_fname = os.path.join(target_dir, os.path.split(feature_fname)[-1])
+                feature_meta = os.path.join(target_dir, os.path.split(feature_meta)[-1])
+
+            f_vec = np.fromfile(feature_fname, dtype='float64')
             f_vec = f_vec.reshape((-1, self.FeatureExtractorNdim))
             f_vec = f_vec[:, self.features]
             np.nan_to_num(f_vec, copy=False)
-            fmeta_file = '.'.join(eegfname.split('.')[:-1] + ['fmeta'])
-            with open(fmeta_file) as f:
+            with open(feature_meta) as f:
                 fmeta_dict = json.load(f)
             LL = self.log_likelyhoods(f_vec, bias=False, no_scale=False)
             np.nan_to_num(LL,copy=False)
@@ -467,7 +482,7 @@ class GaussianClassifier():
             if progress_bar is not None:
                 progress_bar.setValue(90*i/Nfiles)  # This takes about 90%of the time
             else:
-                print('Animal:', animal.id, 'file:', i, 'of', len(eegfiles), fmeta_file, end='\r')
+                print('Animal:', animal.id, 'file:', i, 'of', len(eegfiles), feature_meta, end='\r')
 
         LLv = np.vstack(LLv)
         _, _, total_npoints = self.all_mu_and_cov()

@@ -9,7 +9,7 @@ try:
     # Update the text on the splash screen
     pyi_splash.update_text("PyEcog2 (C) Marco Leite, UCL")
 except Exception:
-    print('Could not load splashscreen')
+    print('Starting PyEcog2... (PyEcog2 (C) Marco Leite, University College London)  (no splashscreen)')
 
 import numpy as np
 from PySide6 import QtCore, QtGui

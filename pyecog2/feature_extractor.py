@@ -69,11 +69,6 @@ def my_worker_flist_init(time_flist,freq_flist):
 
 
 class FeatureExtractor():
-    '''
-    ML: I am not sure if using file buffers is the best way of going about it: on the one hand it abstracts away the file
-    access, on the other hand it will probably always be relatively slow... maybe not a major issue since it will only be
-    ran once (or a small number of times) for each project.
-    '''
     def __init__(self, settings_dict = None):
         self.settings = settings_dict
         if self.settings is None:

@@ -1,10 +1,6 @@
 import os
-
-from future.backports.email import header
 from pyedflib import EdfReader
 from pyedflib.highlevel import write_edf
-
-from build.lib.pyecog2.coding_tests import plot_controls
 
 os.environ['QT_MULTIMEDIA_PREFERRED_PLUGINS'] = 'windowsmediafoundation'
 import sys
@@ -38,8 +34,8 @@ from pyecog2.ui_elements.PlotControlsWidget import PlotControls
 from datetime import datetime
 import pyqtgraph as pg
 from pyqtgraph.console import ConsoleWidget
-import pkg_resources
 import importlib.resources
+import importlib.metadata
 from pyecog2 import license
 from multiprocessing import freeze_support
 from urllib import request
@@ -79,10 +75,10 @@ class MainWindow(QMainWindow):
         # self.title = "ℙ𝕪𝔼𝕔𝕠𝕘"
         self.title = pyecog_string
         (size, rect) = self.get_available_screen()
-        icon_file = pkg_resources.resource_filename('pyecog2', 'icons/icon.png')
+        icon_file = importlib.resources.files('pyecog2') / 'icons/icon.png'
         logger.info(f'ICON:{icon_file}')
-        self.setWindowIcon(QtGui.QIcon(icon_file))
-        self.app_handle.setWindowIcon(QtGui.QIcon(icon_file))
+        self.setWindowIcon(QtGui.QIcon(str(icon_file)))
+        self.app_handle.setWindowIcon(QtGui.QIcon(str(icon_file)))
         self.setWindowTitle(self.title)
         self.setGeometry(0, 0, size.width(), size.height())
         # self.setWindowFlags(QtCore.Qt.FramelessWindowHint) # fooling around
@@ -127,12 +123,12 @@ class MainWindow(QMainWindow):
 
         self.dock_list['Hints'] = QDockWidget("Hints", self)
         self.text_edit = QTextBrowser()
-        hints_file = pkg_resources.resource_filename('pyecog2', 'HelperHints.md')
+        hints_file = importlib.resources.files('pyecog2')/ 'HelperHints.md'
         # text = open('HelperHints.md').read()
         logger.info(f'hints file: {hints_file}')
         text = open(hints_file).read()
         text = text.replace('icons/banner_small.png',
-                            pkg_resources.resource_filename('pyecog2', 'icons/banner_small.png'))
+                            str(importlib.resources.files('pyecog2') / 'icons/banner_small.png'))
         text += f'\n Log file location: {log_fname}'
         self.text_edit.setMarkdown(text)
         self.dock_list['Hints'].setWidget(self.text_edit)
@@ -229,7 +225,7 @@ class MainWindow(QMainWindow):
         try:
             pyi_splash.close()
         except Exception:
-            print('Could not close splash screen')
+            print('Starting PyEcog... (no splash screen)')
 
         try:
             settings = QSettings("PyEcog", "PyEcog")
@@ -812,7 +808,7 @@ class MainWindow(QMainWindow):
         # self.menubar.addMenu("View")
 
     def checkGitUpdates(self):
-        current_version = pkg_resources.get_distribution('pyecog2').version
+        current_version = importlib.metadata.version('pyecog2')
         try:
             with request.urlopen('https://api.github.com/repos/KullmannLab/TestPublic/releases/latest', timeout=2) as f:
                 data = json.loads(f.read().decode('utf-8'))

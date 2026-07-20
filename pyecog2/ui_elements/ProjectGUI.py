@@ -240,16 +240,16 @@ class ProjectEditWindow(QMainWindow):
         print('Updating project from root directories...')
         print(f'Processing {self.project.eeg_root_folder}...')
         worker = Worker(self.project.update_project_from_root_directories)
-        worker.signals.finished.connect(self.print_finished)
+        worker.signals.finished.connect(self.update_finished)
         self.threadpool.start(worker)
 
+    def update_finished(self):
+        print('Finished project update')
         # update animal list in GUI
         self.animal_dict = [Animal2Parameter(animal) for animal in self.project.animal_list]
         self.p.param('Animal list:').clearChildren()
         self.p.param('Animal list:').addChildren(self.animal_dict)
 
-    def print_finished(self):
-        print('Finished project update')
 
 if __name__ == '__main__':  # OBSOLETE ???
     app = QApplication(sys.argv)

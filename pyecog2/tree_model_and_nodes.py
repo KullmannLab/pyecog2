@@ -132,17 +132,17 @@ class TreeModel(QtCore.QAbstractItemModel):
 
         if role == QtCore.Qt.DecorationRole:
             if index.column() == 0:
-                icon_file_prefix = str(importlib.resources.files('pyecog2') / 'icons/')
+                icon_file_prefix = str(importlib.resources.files('pyecog2') / 'icons')
                 if isinstance(node, DirectoryNode):
-                    return QtGui.QIcon(icon_file_prefix+'folder.png')
+                    return QtGui.QIcon(icon_file_prefix+'/folder.png')
                 if isinstance(node, HDF5FileNode):
-                    return QtGui.QIcon(icon_file_prefix+'wave.png')
+                    return QtGui.QIcon(icon_file_prefix+'/wave.png')
                 if isinstance(node, LieteNode):
-                    return QtGui.QIcon(icon_file_prefix+'wave.png')
+                    return QtGui.QIcon(icon_file_prefix+'/wave.png')
                 if isinstance(node, AnimalNode):
-                    return QtGui.QIcon(icon_file_prefix+'laboratory-mouse.png')
+                    return QtGui.QIcon(icon_file_prefix+'/laboratory-mouse.png')
                 if isinstance(node, ProjectNode):
-                    return QtGui.QIcon(icon_file_prefix+'research.png')
+                    return QtGui.QIcon(icon_file_prefix+'/research.png')
                 pass #return pass
 
         if role == QtCore.Qt.ToolTipRole:

@@ -124,6 +124,7 @@ class FeatureExtractorWindow(QMainWindow):
         self.project = project
         self.feature_extractor = FeatureExtractor()
         classifier_dir = self.project.project_file + '_classifier' if project is not None else ''
+        self.fe_root_dir = os.path.join(classifier_dir, 'feature_extractor') if classifier_dir else 'EEG file dir'
         if os.path.isfile(os.path.join(classifier_dir, '_feature_extractor.json')):
             self.feature_extractor.load_settings(os.path.join(classifier_dir, '_feature_extractor.json'))
         self.setCentralWidget(widget)
@@ -234,8 +235,11 @@ class FeatureExtractorWindow(QMainWindow):
         self.setProjectFeatureExtraction()
         print('Starting feature extraction...')
         classifier_dir = self.project.project_file + '_classifier'
+        self.fe_root_dir = os.path.join(classifier_dir, 'feature_files')
         if not os.path.isdir(classifier_dir):
             os.mkdir(classifier_dir)
+        if not os.path.isdir(self.fe_root_dir):
+            os.mkdir(self.fe_root_dir)
         self.feature_extractor.save_settings(os.path.join(classifier_dir, '_feature_extractor.json'))
         print('Starting FE worker')
         worker = Worker(self.extractFeatures)
@@ -247,7 +251,7 @@ class FeatureExtractorWindow(QMainWindow):
         for i,animal in enumerate(self.project.animal_list):
             print(' calling feature_extractor.extract_features_from_animal')
             self.feature_extractor.extract_features_from_animal(animal, re_write = self.re_write.isChecked(), n_cores = -1,
-                                                                progress_bar = self.progressBar1)
+                                                                progress_bar = self.progressBar1, fe_root_dir = self.fe_root_dir)
             self.progressBar0.setValue((100*(i+1))//len(self.project.animal_list))
         print('Finnished extracting features')
         return (1, 1)

@@ -41,17 +41,11 @@ from multiprocessing import freeze_support
 from urllib import request
 import json
 import logging
-from pyecog2.logging_aux import LoggerWriter # DefaultStreamHandler
+from pyecog2.logging_aux import LoggerWriter, setup_logging # DefaultStreamHandler
 
-# Initialize logging
-log_fname = importlib.resources.files('pyecog2') / 'pyecog.log'
-print('Log filename:', log_fname)
-logging.basicConfig(filename=log_fname, filemode='w', level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-logger.info(f'Session start: {datetime.now()}')
-ch = logging.StreamHandler()
-ch.setLevel(logging.WARNING)
-logger.addHandler(ch)
+# Initialize centralized logging for the entire application
+# All modules using logging.getLogger(__name__) will inherit this configuration
+log_fname, logger = setup_logging(log_level=logging.DEBUG, console_level=logging.WARNING)
 sys.stderr = LoggerWriter(logger.error)
 # sys.stdout = LoggerWriter(logger.debug) # redirect stdout and stderr to log file
 

@@ -69,6 +69,9 @@ def my_worker_flist_init(time_flist,freq_flist):
 
 
 class FeatureExtractor():
+    '''
+    ML: using file buffers to abstract away the file access
+    '''
     def __init__(self, settings_dict = None):
         self.settings = settings_dict
         if self.settings is None:
@@ -183,7 +186,8 @@ class FeatureExtractor():
     def number_of_features(self):
         return len(self.settings['feature_time_functions']) + len(self.settings['feature_freq_functions'])
 
-    def extract_features_from_animal(self, animal, re_write = False, n_cores = -1, progress_bar = None):
+    def extract_features_from_animal(self, animal, re_write = False, n_cores = -1,
+                                     progress_bar = None, fe_root_dir = None):
         # Create feature files for each eeg file
         if n_cores == -1:
             n_cores = multiprocessing.cpu_count()
@@ -192,9 +196,19 @@ class FeatureExtractor():
         eeg_init_time = animal.eeg_init_time
         eeg_duration = animal.eeg_duration
         animal_id = animal.id
-        logger.info(f'Extracting features for animal {animal_id}')
-        print(f'Extracting features for animal {animal_id}')
-        tuples = [(eeg_files,eeg_init_time,eeg_duration, animal_id, i,re_write) for i in range(Nfiles)]
+
+        # create directories if they are required
+        target_dir = 'EEG file dir'
+        if fe_root_dir is not None:
+            if not os.path.isdir(fe_root_dir):
+                os.mkdir(fe_root_dir)
+            target_dir = os.path.join(fe_root_dir, animal_id)
+            if not os.path.isdir(target_dir):
+                os.mkdir(target_dir)
+
+        logger.info(f'Extracting features for animal {animal_id} to {target_dir}')
+        print(f'Extracting features for animal {animal_id} to {target_dir}')
+        tuples = [(eeg_files,eeg_init_time,eeg_duration, animal_id, i,re_write, target_dir) for i in range(Nfiles)]
         # The following is not working yet...
         # with multiprocessing.Pool(processes=n_cores,initializer=my_worker_flist_init,
         #                           initargs = (_time_flist,_freq_flist)) as pool:
@@ -211,10 +225,14 @@ class FeatureExtractor():
     def extract_features_from_file(self,animal_fileIndex_rewrite_tuple):
         if '_freq_flist' not in locals(): # initialize lambda functions in sub process
             self.update_from_settings()
-        eeg_files, eeg_init_time, eeg_duration, animal_id, i, re_write = animal_fileIndex_rewrite_tuple
+        eeg_files, eeg_init_time, eeg_duration, animal_id, i, re_write, target_dir = animal_fileIndex_rewrite_tuple
         eeg_fname = eeg_files[i]
         feature_fname = '.'.join(eeg_fname.split('.')[:-1] + ['features'])
         feature_metafname = '.'.join(eeg_fname.split('.')[:-1] + ['fmeta'])
+        if target_dir != 'EEG file dir':
+            feature_fname = os.path.join(target_dir, os.path.split(feature_fname)[-1])
+            feature_metafname = os.path.join(target_dir, os.path.split(feature_metafname)[-1])
+
         time_range = [eeg_init_time[i], eeg_init_time[i] + eeg_duration[i]]
         if re_write or not os.path.isfile(feature_fname):
             print('Extracting features for file', i + 1, 'of', len(eeg_files), ':', eeg_fname, end='\r')

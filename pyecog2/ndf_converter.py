@@ -662,9 +662,7 @@ class DataHandler:
             t0 = time.time()
             for i, _ in enumerate(pool.imap(self.convert_ndf, files), 1):
                 ti = time.time()
-                dt = ti - t0
-                t0 = ti
-                self.printProgress(i, l, prefix='Progress:', suffix=f'Complete (aprox time left:{int(dt*(l-i))} seconds)', barLength=50)
+                self.printProgress(i, l, prefix='Progress:', suffix=f'Complete (aprox time left:{int((ti-t0)/(i+1)*(l-i))} seconds)', barLength=50)
                 if progress_bar is not None:
                     progress_bar.setValue((100*(i+1))//len(files))  # might not work... didn't realise this was parallel
             if progress_bar is not None:

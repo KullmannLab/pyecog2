@@ -33,6 +33,8 @@ def wheelEvent(self, ev, axis=None):
     s = [(None if m is False else s) for m in mask]
     center = Point(fn.invertQTransform(self.childGroup.transform()).map(ev.pos()))
     # JC added
+    self._resetTarget()
+
     if ev.modifiers() == QtCore.Qt.ShiftModifier and s[0] is not None and s[1] is not None:
         for child in self.childGroup.childItems()[:]:
             if hasattr(child, 'accept_mousewheel_transformations'):
@@ -40,8 +42,12 @@ def wheelEvent(self, ev, axis=None):
                 m = QtGui.QTransform()
                 m.scale(1, m_old.m22() / s[1])
                 child.setTransform(m)
+                child.setData_with_envelope()
+
+        self.scaleBy([1, 1], center)
+        self.sigRangeChangedManually.emit(mask)
         ev.accept()
-        child_group_transformation = self.childGroup.transform()
+        # child_group_transformation = self.childGroup.transform()
         return
 
     if ev.modifiers() == QtCore.Qt.AltModifier and s[0] is not None and s[1] is not None:
@@ -52,13 +58,16 @@ def wheelEvent(self, ev, axis=None):
                 if round(child.y()) == round(center.y()):
                     m.scale(1, m_old.m22() / s[1])
                     child.setTransform(m)
+                    child.setData_with_envelope()
+        self.scaleBy([1, 1], center)
+        self.sigRangeChangedManually.emit(mask)
         ev.accept()
-        child_group_transformation = self.childGroup.transform()
+        # child_group_transformation = self.childGroup.transform()
         return
-    self._resetTarget()
+
     self.scaleBy(s, center)
-    ev.accept()
     self.sigRangeChangedManually.emit(mask)
+    ev.accept()
 
 
 def wheelEventWrapper(s):
@@ -172,7 +181,7 @@ class PairedGraphicsView():
         # {"1" : {'inset': obj,'overview':obj }
         # will be used for an ugly hack to snchonize across plots
         self.channel_plotitem_dict = {}
-        self.main_model.annotations.sigAnnotationAdded.connect(self.add_annotaion_plot)
+        self.main_model.annotations.sigAnnotationAdded.connect(self.add_annotation_plot)
         self.main_model.annotations.sigLabelsChanged.connect(
             lambda: self.set_scenes_plot_annotations_data(self.main_model.annotations))
 
@@ -262,7 +271,7 @@ class PairedGraphicsView():
                 pen = pens[i % len(pens)]
 
             logger.info(f'Setting plotitem channel data for channel {i}')
-            self.set_plotitem_channel_data(pen, i, self.scale)
+            self.set_plotitem_channel_data(pen, i, self.scale, self.plot_controls.clip_check.isChecked)
 
         end_t = timer()
         logger.info(f'Paired graphics view plot channels finnished in {end_t - start_t} seconds')
@@ -316,7 +325,7 @@ class PairedGraphicsView():
         end_t = timer()
         logger.info(f'Paired graphics view plot annotations + etc. in {end_t - start_t} seconds')
 
-    def set_plotitem_channel_data(self, pen, index, init_scale):
+    def set_plotitem_channel_data(self, pen, index, init_scale, clip=lambda: False):
         '''
         If the index exists within the plotitem dict we just set the data, else create
         or delete from the dict. (#todo)
@@ -327,10 +336,11 @@ class PairedGraphicsView():
         if True:  # index not in self.channel_plotitem_dict.keys(): # This was used before we were clearing the scenes upon file loading
             self.channel_plotitem_dict[index] = {}
             self.channel_plotitem_dict[index]['overview'] = PyecogPlotCurveItem(self.main_model.project, index,
-                                                                                viewbox=self.overview_plot.vb, pen=pen)
+                                                                                viewbox=self.overview_plot.vb, pen=pen,
+                                                                                clip = clip)
             self.channel_plotitem_dict[index]['insetview'] = PyecogPlotCurveItem(self.main_model.project, index,
                                                                                  viewbox=self.insetview_plot.vb,
-                                                                                 pen=pen)
+                                                                                 pen=pen, clip = clip)
             self.channel_plotitem_dict[index]['overview'].setY(index)
             self.channel_plotitem_dict[index]['insetview'].setY(index)
             m = QtGui.QTransform().scale(1, init_scale)
@@ -371,7 +381,7 @@ class PairedGraphicsView():
     def function_generator_link_delete(annotationpage, annotation_object):
         return lambda: annotationpage.delete_annotation(annotation_object)
 
-    def add_annotaion_plot(self, annotation):
+    def add_annotation_plot(self, annotation):
         color = self.main_model.annotations.label_color_dict[
             annotation.getLabel()]  # circle hue with constant luminosity and saturation
         brush = pg.functions.mkBrush(color=(*color, 25))
@@ -433,7 +443,7 @@ class PairedGraphicsView():
         for annotation in annotations.annotations_list:
             if intervals_overlap(annotation.getPos(), pos) and annotation not in self.plotted_annotations:
                 # print('annotation.getpos , pos:', (annotation.getPos(), pos))
-                self.add_annotaion_plot(annotation)
+                self.add_annotation_plot(annotation)
 
     def set_focus_on_annotation(self, annotation, modifier=''):
         if annotation is None:

@@ -18,7 +18,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
     also maybe the downsampling in plotitem?
     '''
 
-    def __init__(self, project, channel, viewbox, pen=None, *args, **kwds):
+    def __init__(self, project, channel, viewbox, pen=None,  clip=lambda: False,  *args, **kwds):
         '''
         Todo: I really dont like passining in the viewbox
         This should be assigned instead when they get added to the plot
@@ -43,6 +43,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
         self.setZValue(1)
         self.previous_args = [[[0,0],[0,0]],-1,0]
         self.scale_Bar = PyecogScaleBar(self, self.pen)
+        self.clip = clip
 
     def viewRangeChanged(self):
         # Re-compute data envlope and plot:
@@ -62,7 +63,8 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
         new_args = [self.parent_viewbox.viewRange(), self.channel, n]
         if new_args == self.previous_args:
             # print('setData_with_envlope: arguments did not change since last call')
-            return
+            pass
+            # return
         # print('displaying n points', n)
         # print('new n, previous n:',new_args[-1], self.previous_args[-1])
         if self.parent_viewbox.viewRange()[1][0]-2 < self.channel < self.parent_viewbox.viewRange()[1][1]+2: # Avoid plotting channels out of view
@@ -141,6 +143,9 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
             new_args[-1] = 0 # force reset on next plot
 
         # print('visible data shape:',visible_data.shape)
+        if self.clip():
+            # print(f'clipping at :{self.transform(),self.transform().m22()}')
+            visible_data = np.clip(visible_data,-0.5/self.transform().m22(),0.5/self.transform().m22())
         self.setData(y=visible_data.ravel(), x=self.visible_time.ravel(), pen=self.pen)  # update the plot
         # self.resetTransform()
         self.previous_args = new_args

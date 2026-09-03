@@ -238,8 +238,8 @@ class PairedGraphicsView():
                 return
             self.n_channels = arr.shape[1]
             self.scale = 1 / (8 * np.mean(np.std(arr, axis=0, keepdims=True), axis=1) + 1e-12)
-            self.overview_plot.vb.setYRange(-2, arr.shape[1] + 1)
-            self.insetview_plot.vb.setYRange(-2, arr.shape[1] + 1)
+            self.overview_plot.vb.setYRange(-self.n_channels - 1, + 2)
+            self.insetview_plot.vb.setYRange(-self.n_channels - 1,  + 2)
             self.timeline_plot.setTitle('<p style="font-size:large"> Animal: ' + self.animalid + '</b>')
             end_t = timer()
 
@@ -282,7 +282,7 @@ class PairedGraphicsView():
         # self.insetview_plot.vb.setLimits(xMin=0, xMax=arr.shape[0] / fs)
         self.overview_plot.vb.setLimits(maxXRange=3600)
         self.insetview_plot.vb.setLimits(maxXRange=3600)
-        self.overview_plot.vb.setLimits(yMin=-3, yMax=self.n_channels + 3)
+        self.overview_plot.vb.setLimits(yMin=-3 -self.n_channels, yMax= + 3)
         max_range = self.main_model.project.current_animal.get_animal_time_range()
         logger.info(f'Project time range: {max_range}')
         self.overview_plot.vb.setLimits(xMin=max_range[0], xMax=max_range[1])
@@ -341,8 +341,8 @@ class PairedGraphicsView():
             self.channel_plotitem_dict[index]['insetview'] = PyecogPlotCurveItem(self.main_model.project, index,
                                                                                  viewbox=self.insetview_plot.vb,
                                                                                  pen=pen, clip = clip)
-            self.channel_plotitem_dict[index]['overview'].setY(index)
-            self.channel_plotitem_dict[index]['insetview'].setY(index)
+            self.channel_plotitem_dict[index]['overview'].setY(-index)
+            self.channel_plotitem_dict[index]['insetview'].setY(-index)
             m = QtGui.QTransform().scale(1, init_scale)
             self.channel_plotitem_dict[index]['overview'].setTransform(m)
             self.channel_plotitem_dict[index]['insetview'].setTransform(m)

@@ -67,7 +67,7 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
             # return
         # print('displaying n points', n)
         # print('new n, previous n:',new_args[-1], self.previous_args[-1])
-        if self.parent_viewbox.viewRange()[1][0]-2 < self.channel < self.parent_viewbox.viewRange()[1][1]+2: # Avoid plotting channels out of view
+        if self.parent_viewbox.viewRange()[1][0]-2 < -self.channel < self.parent_viewbox.viewRange()[1][1]+2: # Avoid plotting channels out of view
             newXRange = new_args[0][0]
             previousXRange = self.previous_args[0][0]
             if newXRange[1]-newXRange[0] != previousXRange[1]-previousXRange[0] or \

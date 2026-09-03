@@ -198,7 +198,7 @@ class FeatureExtractor():
         animal_id = animal.id
 
         # create directories if they are required
-        target_dir = 'EEG file dir'
+        target_dir = ''
         if fe_root_dir is not None:
             if not os.path.isdir(fe_root_dir):
                 os.mkdir(fe_root_dir)
@@ -229,7 +229,7 @@ class FeatureExtractor():
         eeg_fname = eeg_files[i]
         feature_fname = '.'.join(eeg_fname.split('.')[:-1] + ['features'])
         feature_metafname = '.'.join(eeg_fname.split('.')[:-1] + ['fmeta'])
-        if target_dir != 'EEG file dir':
+        if target_dir != '':
             feature_fname = os.path.join(target_dir, os.path.split(feature_fname)[-1])
             feature_metafname = os.path.join(target_dir, os.path.split(feature_metafname)[-1])
 

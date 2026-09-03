@@ -353,9 +353,9 @@ class GaussianClassifier():
             for ifile, eeg_fname in enumerate(animal.eeg_files[:]):
                 feature_fname = '.'.join(eeg_fname.split('.')[:-1] + ['features'])
                 feature_meta = '.'.join(eeg_fname.split('.')[:-1] + ['fmeta'])
-                fe_root_dir = os.path.join(self.project.project_file+'_classifier', 'feature_files')
+                fe_root_dir = self.project.feature_extractor_root_dir
                 target_dir = os.path.join(fe_root_dir,animal.id)
-                if os.path.isdir(target_dir):
+                if os.path.isdir(target_dir): # Check if FE dir has files, otherwise use EEG dir
                     feature_fname = os.path.join(target_dir, os.path.split(feature_fname)[-1])
                     feature_meta = os.path.join(target_dir, os.path.split(feature_meta)[-1])
                 
@@ -457,7 +457,7 @@ class GaussianClassifier():
         for i,eeg_fname in enumerate(eegfiles):
             feature_fname = '.'.join(eeg_fname.split('.')[:-1] + ['features'])
             feature_meta = '.'.join(eeg_fname.split('.')[:-1] + ['fmeta'])
-            fe_root_dir = os.path.join(self.project.project_file + '_classifier', 'feature_files')
+            fe_root_dir = self.project.feature_extractor_root_dir
             target_dir = os.path.join(fe_root_dir, animal.id)
             if os.path.isdir(target_dir):
                 feature_fname = os.path.join(target_dir, os.path.split(feature_fname)[-1])

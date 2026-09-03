@@ -74,9 +74,10 @@ class ScalableGroupM(PyecogGroupParameter):
                        'removable': True,
                        'value': 'alias'})
 
-def settings2params(settings):
+def settings2params(settings,project):
     ntimefuncs = len(settings['feature_time_functions'])
-    return [
+    return [{'name': 'Feature Extractor Directory','type':'group','children':
+                [{'name':'Path','type': 'str','value':project.feature_extractor_root_dir}]},
             {'name': 'Feature Extractor Settings','type':'group','children':
                 [
                 {'name': 'Window settings','type':'group','children':[
@@ -99,7 +100,7 @@ def settings2params(settings):
              }]
 
 def params2settings(params):
-    fe_settings_list = params.children()[0].children()
+    fe_settings_list = params.children()[1].children()
     window_settings = fe_settings_list[0].children()
     feature_time_functions = fe_settings_list[1].children()
     feature_freq_functions = fe_settings_list[2].children()
@@ -124,7 +125,7 @@ class FeatureExtractorWindow(QMainWindow):
         self.project = project
         self.feature_extractor = FeatureExtractor()
         classifier_dir = self.project.project_file + '_classifier' if project is not None else ''
-        self.fe_root_dir = os.path.join(classifier_dir, 'feature_extractor') if classifier_dir else 'EEG file dir'
+        self.fe_root_dir = self.project.feature_extractor_root_dir if project is not None else ''
         if os.path.isfile(os.path.join(classifier_dir, '_feature_extractor.json')):
             self.feature_extractor.load_settings(os.path.join(classifier_dir, '_feature_extractor.json'))
         self.setCentralWidget(widget)
@@ -175,7 +176,7 @@ class FeatureExtractorWindow(QMainWindow):
         self.dfrmt = '%Y-%m-%d %H:%M:%S'  # Format to use in date elements
 
     def updateTreeFromSettings(self):
-        self.params = settings2params(self.feature_extractor.settings)
+        self.params = settings2params(self.feature_extractor.settings,self.project)
         ## Create tree of Parameter objects
         self.p = Parameter.create(name='params', type='group', children=self.params)
         self.t.setParameters(self.p, showTop=False)
@@ -195,6 +196,10 @@ class FeatureExtractorWindow(QMainWindow):
             print('loaded', fname)
 
     def resetSettings(self):
+        if self.project.feature_extractor_root_dir == '':
+            self.project.feature_extractor_root_dir = os.path.join(
+                *os.path.split(self.project.project_file)[:-1],
+                os.path.split(self.project.project_file)[-1][:-7] + '_feature_extractor')
         nchannels = self.project.file_buffer.get_nchannels()
         print(f'Resetting Settings for {nchannels} channels')
         self.feature_extractor.multichannel_auto_settings(nchannels)
@@ -229,13 +234,14 @@ class FeatureExtractorWindow(QMainWindow):
         if not os.path.isdir(classifier_dir):
             os.mkdir(classifier_dir)
         self.feature_extractor.save_settings(os.path.join(classifier_dir, '_feature_extractor.json'))
+        self.project.feature_extractor_root_dir = self.p.children()[0].children()[0].value()
         print(self.feature_extractor.settings)
 
     def runFeatureExtraction(self):
         self.setProjectFeatureExtraction()
         print('Starting feature extraction...')
         classifier_dir = self.project.project_file + '_classifier'
-        self.fe_root_dir = os.path.join(classifier_dir, 'feature_files')
+        self.fe_root_dir = self.project.feature_extractor_root_dir
         if not os.path.isdir(classifier_dir):
             os.mkdir(classifier_dir)
         if not os.path.isdir(self.fe_root_dir):

@@ -209,6 +209,7 @@ class ProjectEditWindow(QMainWindow):
 
         for a in deleted_animals:
             logger.info(f'Deleting animal with id {a}')
+            print(f'Deleting animal with id {a}')
             self.project.delete_animal(a)
 
         for p in animal_param_list:
@@ -219,9 +220,11 @@ class ProjectEditWindow(QMainWindow):
             self.p.param('Animal list:',p).setName(id)
             if animal is None:
                 logger.info(f'Adding new animal with id {id}')
+                print(f'Adding new animal with id {id}')
                 self.project.add_animal(Animal(id=id,eeg_folder=eeg_dir,video_folder=video_dir))
             else:
                 logger.info(f'Updating animal with id {id}')
+                print(f'Updating animal with id {id}')
                 animal.id = id
                 animal.update_eeg_folder(eeg_dir)
                 animal.update_video_folder(video_dir)

@@ -567,7 +567,7 @@ class FileBuffer():  # Consider translating this to cython
 
 class Project():
     def __init__(self, main_model=None, eeg_data_folder=None, video_data_folder=None, title='New Project', project_file='',
-                 dict=None):
+                 feature_extractor_root_dir='', dict=None):
         if dict is not None:
             self.__dict__ = dict
             self.filter_settings = (False, 0, 1e6)
@@ -582,6 +582,7 @@ class Project():
         self.eeg_root_folder = eeg_data_folder
         self.video_root_folder = video_data_folder
         self.project_file = project_file
+        self.feature_extractor_root_dir = feature_extractor_root_dir
         self.title = title
         self.current_animal = Animal()
         self.set_current_animal(Animal())  # start with empty animal
@@ -659,6 +660,9 @@ class Project():
 
         if not hasattr(self,'filter_settings'):  #Backwards compatibility
             self.filter_settings = (False, 0, 1e6)
+
+        if not hasattr(self, 'feature_extractor_root_dir'): #Backwards compatibility
+            self.feature_extractor_root_dir = ''
 
         self.main_model.sigProjectChanged.emit()
         return (new_dirname, orig_dirname)

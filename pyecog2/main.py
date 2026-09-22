@@ -943,5 +943,5 @@ def execute():
 
 
 if __name__ == '__main__':
-    freeze_support() # Why is this line here? - Answer: it is for creating a compiled executable
+    # freeze_support() # Why is this line here? - Answer: it is for creating a compiled executable
     execute()

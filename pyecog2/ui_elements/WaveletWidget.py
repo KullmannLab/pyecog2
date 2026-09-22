@@ -276,7 +276,10 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         self.main_model.sigWindowChanged.connect(self.update_data)
 
     def auto_histogram_levels(self):
-        self.hist.autoHistogramRange()
+        # self.hist.autoHistogramRange()
+        # self.hist_levels = self.hist.getLevels()
+        # print('Wavelet Auto Levels',self.hist_levels)
+        self.hist.setLevels(self.data.min(), self.data.max())
         self.hist_levels = self.hist.getLevels()
         print('Wavelet Auto Levels',self.hist_levels)
 

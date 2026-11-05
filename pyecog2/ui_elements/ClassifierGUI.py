@@ -1,6 +1,6 @@
 import sys, os
 from PySide6 import QtCore
-from PySide6.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QPushButton, QFileDialog
+from PySide6.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QPushButton, QFileDialog, QMessageBox
 
 from pyqtgraph.parametertree import Parameter
 from pyecog2.ui_elements.pyecogParameterTree import PyecogParameterTree
@@ -94,6 +94,8 @@ class ClassifierWindow(QMainWindow):
         self._err_color = QtCore.Qt.red
         self.button = QPushButton('Update', self)
         self.button.clicked.connect(self.update_settings)
+        self.export_button = QPushButton('Export Feature Extractor and Classifier', self)
+        self.export_button.clicked.connect(self.exportFEandClassifier)
         self.threadpool = QtCore.QThreadPool()
 
         all_labels = self.project.get_all_labels()
@@ -194,8 +196,9 @@ class ClassifierWindow(QMainWindow):
         layout.setRowMinimumHeight(0,400)
         layout.setColumnMinimumWidth(0,600)
         layout.addWidget(self.button)
+        layout.addWidget(self.export_button)
         layout.addWidget(self.terminal)
-        layout.setRowMinimumHeight(2,300)
+        layout.setRowMinimumHeight(3,300)
         # stdout = OutputWrapper(self, True)
         # stdout.outputWritten.connect(self.handleOutput)
         # stderr = OutputWrapper(self, False)
@@ -222,6 +225,10 @@ class ClassifierWindow(QMainWindow):
 
     def getFeatures2use(self):
         return np.array([self.p.param('Global Settings','Features to use', f).value() for f in self.feature_extractor.settings['feature_labels']])
+
+    def getUseImported(self):
+        return self.p.param('Global Settings','Import Classifier').value()
+
 
     def updateLabels(self):
         self.classifier = ProjectClassifier(self.project)
@@ -296,17 +303,44 @@ class ClassifierWindow(QMainWindow):
         #             else:
         #                 animal2.annotations.label_color_dict[label] = annotation_page.label_color_dict[label] # if annotation exists copy color
 
-    def import_classifier(self):
-        dialog = QFileDialog(parent=self)
-        dialog.setWindowTitle('Import Classifier file ...')
-        dialog.setFileMode(QFileDialog.ExistingFile)
-        dialog.setAcceptMode(QFileDialog.AcceptOpen)
-        dialog.setNameFilter('*.npz')
-        if dialog.exec():
-            fname = dialog.selectedFiles()[0]
-        else:
-            return
-        self.classifier.import_classifier(fname)
+    def import_classifier(self, fname = None):
+        if fname is None:
+            dialog = QFileDialog(parent=self)
+            dialog.setWindowTitle('Import Classifier file ...')
+            dialog.setFileMode(QFileDialog.ExistingFile)
+            dialog.setAcceptMode(QFileDialog.AcceptOpen)
+            dialog.setNameFilter('*.npz')
+            if dialog.exec():
+                fname = dialog.selectedFiles()[0]
+            else:
+                return
+
+        message_label, message, detailed_message = self.classifier.import_classifier(fname)
+        if message_label == 'FE settings mismatch':
+            msg = QMessageBox(parent=self)
+            msg.setIcon(QMessageBox.Information)
+            msg.setText(message + '\n Would you like to update the project Feature Extractor for the imported settings?')
+            msg.setDetailedText(detailed_message)
+            msg.setWindowTitle("Feature Extractor mismatch")
+            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            retval = msg.exec()
+            if retval == QMessageBox.Yes:
+                self.parent.openFeatureExtractor() #todo
+
+        elif message_label == 'FE feature mismatch':
+            msg = QMessageBox(parent=self)
+            msg.setIcon(QMessageBox.Information)
+            msg.setText(message + '\n Would you like to change the "Features to use" to conform to the imported classifier?')
+            msg.setDetailedText(detailed_message)
+            msg.setWindowTitle("Used features mismatch")
+            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            retval = msg.exec()
+            if retval == QMessageBox.Yes:
+                pass #todo
+
+        elif message_label =='':
+            print(f'Imported {fname}')
+
         self.classifier.save()
 
     def handleOutput(self, text, stdout):
@@ -372,7 +406,10 @@ class ClassifierWindow(QMainWindow):
         return lambda: self.runGlobalClassifier(animal_id,pbar)
 
     def runGlobalClassifier(self, animal_id,pbar=None):
-        self.classifier.assimilate_global_classifier(labels2train=self.getLables2train(), animals2use=self.getAnimals2use(), features2use=self.getFeatures2use())
+        self.classifier.assimilate_global_classifier(labels2train=self.getLables2train(),
+                                                     animals2use=self.getAnimals2use(),
+                                                     features2use=self.getFeatures2use(),
+                                                     use_imported=self.getUseImported())
         print('Labeling', animal_id)
         animal = self.project.get_animal(animal_id)
         prob_th = self.p.param('Global Settings','Automatic annotation settings', 'Annotation threshold probability').value()
@@ -389,6 +426,26 @@ class ClassifierWindow(QMainWindow):
     def updateAnnotationTables(self):
         print('Worker Finished, emitting LabelsChanged signal')
         self.project.main_model.annotations.sigLabelsChanged.emit('')
+
+
+    def exportFEandClassifier(self):
+        dialog = QFileDialog(parent=self)
+        dialog.setWindowTitle('Export Extractor and Classifier')
+        dialog.setFileMode(QFileDialog.AnyFile)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setAcceptMode(QFileDialog.AcceptSave)
+        dialog.setNameFilter('*.pyecog_classifier')
+        if dialog.exec():
+            fname = dialog.selectedFiles()[0]
+            logger.info(f'Exporting FE and Classifier to:{fname}')
+            self.classifier.assimilate_global_classifier(labels2train=self.getLables2train(),
+                                                         animals2use=self.getAnimals2use(),
+                                                         features2use=self.getFeatures2use(),
+                                                         use_imported=self.getUseImported())
+
+            self.project.export_FE_and_classifier(fname)
+
+        return
 
     def saveState(self):
         classifier_dir = self.project.project_file + '_classifier'

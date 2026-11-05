@@ -2,7 +2,7 @@ import json
 import numpy as np
 from collections import OrderedDict
 from pyecog2.h5loader import H5File
-import glob, os
+import glob, os, shutil
 from datetime import datetime
 from pyecog2.annotations_module import AnnotationPage, AnnotationElement
 from scipy import signal
@@ -700,10 +700,11 @@ class Project():
         with open(fname, 'r') as f:
             line = f.readline()
             line = f.readline()
-            while line!='':
+            while line != '':
                 animal_id, label, start, end, confidence, notes = line.split(',')
-                self.get_animal(animal_id).annotations.add_annotation(
-                    AnnotationElement(label=label, start=float(start), end=float(end), confidence=float(confidence), notes=notes))
+                if self.get_animal(animal_id):
+                    self.get_animal(animal_id).annotations.add_annotation(
+                        AnnotationElement(label=label, start=float(start), end=float(end), confidence=float(confidence), notes=notes))
                 line = f.readline()
         self.main_model.annotations.sigLabelsChanged.emit('')
         return
@@ -826,6 +827,40 @@ class Project():
                 for animal in self.animal_list:
                     animal.annotations.add_label(label, color)
                     color = animal.annotations.label_color_dict[label]
+
+    def import_FE_and_classifier(self,fname):
+        # inspect old and set new directories
+        if self.feature_extractor_root_dir == '':
+            self.feature_extractor_root_dir = self.project_file+'_feature_extractor'
+            if not os.path.isdir(self.feature_extractor_root_dir):
+                os.mkdir(self.feature_extractor_root_dir)
+        if not os.path.isdir(self.project_file+'_classifier'):
+            os.mkdir(self.project_file+'_classifier')
+
+        shutil.copy(os.path.join(fname, '_imported.npz'),
+                    os.path.join(self.project_file + '_classifier', '_imported.npz'))
+        shutil.copy(os.path.join(fname, '_feature_extractor.json'),
+                    os.path.join(self.project_file + '_classifier', '_feature_extractor.json'))
+
+        # update settings and respective GUI if they exist.
+        if self.main_model is not None:
+            if __name__ == '__main__':
+                if hasattr(self.main_model,'featureExtractorWindow'):
+                    self.main_model.featureExtractorWindow
+                    self.main_model.featureExtractorWindow.feature_extractor.load_settings(os.path.join(self.project_file + '_classifier', '_feature_extractor.json'))
+                    self.main_model.featureExtractorWindow.updateTreeFromSettings()
+                if hasattr(self.main_model,'ClassifierWindow'):
+                    self.main_model.ClassifierWindow.import_classifier(os.path.join(self.project_file + '_classifier', '_imported.npz'))
+        return
+
+    def export_FE_and_classifier(self,fname):
+        if not os.path.isdir(fname):
+            os.mkdir(fname)
+        shutil.copy(os.path.join(self.project_file + '_classifier', '_global.npz'),
+                    os.path.join(fname, '_imported.npz'))
+        shutil.copy(os.path.join(self.project_file + '_classifier', '_feature_extractor.json'),
+                    os.path.join(fname, '_feature_extractor.json'),)
+        return
 
 
 class MainModel(QtCore.QObject):

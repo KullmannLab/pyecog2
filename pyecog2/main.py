@@ -343,7 +343,8 @@ class MainWindow(QMainWindow):
     def load_project(self, fname=None):
         # license.update_license_reg_file()
         if type(fname) is not str:
-            dialog = QFileDialog(parent=self)
+            start_dir = os.path.dirname(self.main_model.project.project_file)
+            dialog = QFileDialog(parent=self, directory=start_dir)
             dialog.setWindowTitle('Load Project ...')
             dialog.setFileMode(QFileDialog.ExistingFile)
             # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
@@ -568,10 +569,24 @@ class MainWindow(QMainWindow):
 
     def openProjectEditor(self):
         logger.info('opening Project Editor')
+        if hasattr(self, 'projectEditor'):
+            self.projectEditor.setWindowState(
+                (self.projectEditor.windowState() & ~Qt.WindowMinimized) | Qt.WindowActive)
+            self.projectEditor.raise_()
+            self.projectEditor.show()
+            return
         self.projectEditor = ProjectEditWindow(self.main_model.project, parent=self)
         self.projectEditor.show()
 
     def openFeatureExtractor(self):
+        logger.info('opening Feature Extractor')
+        if hasattr(self, 'featureExtractorWindow'):
+            self.featureExtractorWindow.setWindowState(
+                (self.featureExtractorWindow.windowState() & ~Qt.WindowMinimized) | Qt.WindowActive)
+            self.featureExtractorWindow.raise_()
+            self.featureExtractorWindow.show()
+            self.featureExtractorWindow.updateTreeFromSettings()
+            return
         self.featureExtractorWindow = FeatureExtractorWindow(self.main_model.project, parent=self)
         self.featureExtractorWindow.show()
 
@@ -600,6 +615,12 @@ class MainWindow(QMainWindow):
             fname = dialog.selectedFiles()[0]
             logger.info(f'Exporting annotations to:{fname}')
             self.main_model.project.export_annotations(fname)
+
+    def import_FE_and_classifier(self):
+        fname = self.select_directory('Select *.pyecog_classifier folder to import')
+        if fname:
+            logger.info(f'Importing FE and Classifier from:{fname}')
+            self.main_model.project.import_FE_and_classifier(fname)
 
     def import_annotations(self):
         dialog = QFileDialog(parent=self)
@@ -739,6 +760,8 @@ class MainWindow(QMainWindow):
 
         # CLASSIFIER section
         self.menu_classifier = self.menu_bar.addMenu("Classifier")
+        self.action_setup_import_FE_and_classifier = self.menu_classifier.addAction("Import Feature Extractor and Classifier")
+        self.action_setup_import_FE_and_classifier.triggered.connect(self.import_FE_and_classifier)
         self.action_setup_feature_extractor = self.menu_classifier.addAction("Feature Extractor Options")
         self.action_setup_classifier = self.menu_classifier.addAction("Classifier Options")
         self.action_setup_feature_extractor.triggered.connect(self.openFeatureExtractor)

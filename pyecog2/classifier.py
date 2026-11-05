@@ -174,23 +174,35 @@ class ProjectClassifier():
         ife_settings = os.path.join(os.path.dirname(fname),'_feature_extractor.json')
         imported_fe.load_settings(ife_settings)
         if imported_fe.settings != self.feature_extractor.settings:
-            print('ERROR: unable to import classifier because feature extractor from imported classifier differs from current feature extractor')
-            return
+            message_label = 'FE settings mismatch'
+            message = 'ERROR: unable to import classifier because feature extractor from imported classifier differs from current feature extractor'
+            print(message)
+            logger.warning(message)
+            detailed_message = f'Imported Settings:{imported_fe.settings }' + '\n' + f'Current  Settings:{ self.feature_extractor.settings}'
+            logger.warning(detailed_message)
+            return message_label, message, detailed_message
+
         if set(self.global_classifier.features) != set(temp_classifier.features):
-            print('ERROR: unable to import classifier because the set of features used on imported classifier differ from the set used in current project')
-            logger.warning(f'imported features:{temp_classifier.features}')
-            logger.warning(f'global features:{self.global_classifier.features}')
-            return
+            message_label = 'FE feature mismatch'
+            message = 'ERROR: unable to import classifier because the set of features used on imported classifier differ from the set used in current project'
+            print(message)
+            logger.warning(message)
+            detailed_message = f'imported features:{temp_classifier.features}' + '\n' + f'global features:{self.global_classifier.features}'
+            logger.warning(detailed_message)
+            return message_label, message, detailed_message
+
         if set(self.global_classifier.labels2classify) != set(temp_classifier.labels2classify):
             # add missing labels to project
             self.project.homogenize_labels(temp_classifier.labels2classify)
+
         # Commit to import classifier
         self.imported_classifier.load(fname)
+        return '','Classifier imported successfully', ''
 
 
-    def assimilate_global_classifier(self,labels2train=None, animals2use=None,features2use=None):
+    def assimilate_global_classifier(self,labels2train=None, animals2use=None,features2use=None,use_imported = False):
         _,_,npoints = self.imported_classifier.all_mu_and_cov()
-        if npoints:
+        if npoints and use_imported:
             self.global_classifier.copy_from(self.imported_classifier) # start with either blank classifier or something imported
         else:
             self.global_classifier = GaussianClassifier(self.project, self.feature_extractor,labels = labels2train, features=features2use)
@@ -575,7 +587,7 @@ class GaussianClassifier():
             animal.annotations.pause_history_cache(False)
 
         if progress_bar is not None:
-            progress_bar.setValue(100)   # Done
+            progress_bar.setValue(int(100))   # Done
         return (LLv,R2v,pf,timev[:-1]) # remove last timev  element that was used only for ends
 
     def save(self,filename):

@@ -233,6 +233,9 @@ class ProjectClassifier():
             progress_bar.setValue(0.1)
             logger.info('Training animal specific classifier first...')
             print('Training animal specific classifier first...')
+            self.animal_classifier_dict[animal.id] = GaussianClassifier(self.project, self.feature_extractor,
+                                                                        self.global_classifier.labels2classify,
+                                                                        self.global_classifier.features)
             self.animal_classifier_dict[animal.id].train([animal])
         gc.copy_from(self.animal_classifier_dict[animal.id])
         # if gc.blank_npoints == 0:

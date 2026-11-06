@@ -1,4 +1,6 @@
 import sys
+import time
+
 from PySide6 import QtGui, QtCore
 from PySide6.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog
 
@@ -8,6 +10,7 @@ from pyecog2.ProjectClass import Animal
 
 from pyqtgraph.parametertree import Parameter
 from pyecog2.ui_elements.pyecogParameterTree import PyecogParameterTree,PyecogGroupParameter
+from pyecog2.ui_elements.WaveletWidget import Worker
 
 import logging
 logger = logging.getLogger(__name__)
@@ -194,14 +197,19 @@ class ProjectEditWindow(QMainWindow):
         # self.project.eeg_root_folder = eeg_root_folder.value(0)
 
     def update_project_settings(self):
-        logger.info('Project update started')
-        print('Project update started...')
+        logger.info('Starting project update...')
+        print('Starting project update...')
+        worker = Worker(self.update_project_settings_worker)
+        self.threadpool.start(worker)
+
+    def update_project_settings_worker(self):
         animal_param_list = self.p.param('Animal list:').getValues()
         old_animal_list = [a.id for a in self.project.animal_list]
         deleted_animals = list(set(old_animal_list)-set(animal_param_list))
 
         for a in deleted_animals:
             logger.info(f'Deleting animal with id {a}')
+            print(f'Deleting animal with id {a}')
             self.project.delete_animal(a)
 
         for p in animal_param_list:
@@ -212,9 +220,11 @@ class ProjectEditWindow(QMainWindow):
             self.p.param('Animal list:',p).setName(id)
             if animal is None:
                 logger.info(f'Adding new animal with id {id}')
+                print(f'Adding new animal with id {id}')
                 self.project.add_animal(Animal(id=id,eeg_folder=eeg_dir,video_folder=video_dir))
             else:
                 logger.info(f'Updating animal with id {id}')
+                print(f'Updating animal with id {id}')
                 animal.id = id
                 animal.update_eeg_folder(eeg_dir)
                 animal.update_video_folder(video_dir)
@@ -224,6 +234,7 @@ class ProjectEditWindow(QMainWindow):
         print('Project update finished')
 
 
+
     def update_project_from_roots(self):
         self.project.eeg_root_folder = self.p.param('Global Settings', 'Select EEG root directory','EEG root directory:').value()
         self.project.video_root_folder = self.p.param('Global Settings', 'Select Video root directory','Video root directory:').value()
@@ -231,8 +242,12 @@ class ProjectEditWindow(QMainWindow):
         logger.info(f'Processing {self.project.eeg_root_folder}...')
         print('Updating project from root directories...')
         print(f'Processing {self.project.eeg_root_folder}...')
-        self.project.update_project_from_root_directories()
+        worker = Worker(self.project.update_project_from_root_directories)
+        worker.signals.finished.connect(self.update_finished)
+        self.threadpool.start(worker)
 
+    def update_finished(self):
+        print('Finished project update')
         # update animal list in GUI
         self.animal_dict = [Animal2Parameter(animal) for animal in self.project.animal_list]
         self.p.param('Animal list:').clearChildren()

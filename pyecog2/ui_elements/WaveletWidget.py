@@ -276,7 +276,10 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
         self.main_model.sigWindowChanged.connect(self.update_data)
 
     def auto_histogram_levels(self):
-        self.hist.autoHistogramRange()
+        # self.hist.autoHistogramRange()
+        # self.hist_levels = self.hist.getLevels()
+        # print('Wavelet Auto Levels',self.hist_levels)
+        self.hist.setLevels(self.data.min(), self.data.max())
         self.hist_levels = self.hist.getLevels()
         print('Wavelet Auto Levels',self.hist_levels)
 
@@ -331,13 +334,14 @@ class WaveletWindowItem(pg.GraphicsLayoutWidget):
             if self.last_plot_was_wave:
                 if self.hist_levels is not None:
                     self.hist_levels = self.hist.getLevels()
+                self.img.setImage(self.data * 0)
+                self.hist.setLevels(*self.hist_levels) # Mantain levels from previous view if they exist
             elif self.last_plot_was_cross:
                 if self.hist_levels_cross is not None:
                     self.hist_levels_cross = self.hist.getLevels()
+                self.img.setImage(self.data * 0)
+                self.hist.setLevels(*self.hist_levels_cross) # Mantain levels from previous view if they exist
 
-            self.img.setImage(self.data*0)
-            # if self.hist_levels is not None: # Mantain levels from previous view if they exist
-            #     self.hist.setLevels(*self.hist_levels)
             self.p1.setLabel('bottom', 'Computing Wavelet tranform...', units='')
             self.show()
             # print('Computing Wavelet...')

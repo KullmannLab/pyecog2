@@ -3,7 +3,7 @@ from PySide6 import QtGui, QtCore, QtWidgets
 import numpy as np
 import json
 from pyecog2.ProjectClass import create_metafile_from_h5, load_metadata_file
-import pkg_resources
+import importlib.resources
 
 from timeit import default_timer as timer
 
@@ -132,17 +132,17 @@ class TreeModel(QtCore.QAbstractItemModel):
 
         if role == QtCore.Qt.DecorationRole:
             if index.column() == 0:
-                icon_file_prefix = pkg_resources.resource_filename('pyecog2', 'icons/')
+                icon_file_prefix = str(importlib.resources.files('pyecog2') / 'icons')
                 if isinstance(node, DirectoryNode):
-                    return QtGui.QIcon(icon_file_prefix+'folder.png')
+                    return QtGui.QIcon(icon_file_prefix+'/folder.png')
                 if isinstance(node, HDF5FileNode):
-                    return QtGui.QIcon(icon_file_prefix+'wave.png')
+                    return QtGui.QIcon(icon_file_prefix+'/wave.png')
                 if isinstance(node, LieteNode):
-                    return QtGui.QIcon(icon_file_prefix+'wave.png')
+                    return QtGui.QIcon(icon_file_prefix+'/wave.png')
                 if isinstance(node, AnimalNode):
-                    return QtGui.QIcon(icon_file_prefix+'laboratory-mouse.png')
+                    return QtGui.QIcon(icon_file_prefix+'/laboratory-mouse.png')
                 if isinstance(node, ProjectNode):
-                    return QtGui.QIcon(icon_file_prefix+'research.png')
+                    return QtGui.QIcon(icon_file_prefix+'/research.png')
                 pass #return pass
 
         if role == QtCore.Qt.ToolTipRole:

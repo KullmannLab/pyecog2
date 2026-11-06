@@ -1,8 +1,10 @@
 import numpy as np
-from pyecog2.ProjectClass import FileBuffer
+from numba.cuda import target
+
+# from pyecog2.ProjectClass import FileBuffer
 import os
 from scipy import linalg
-import scipy.stats as stats
+# import scipy.stats as stats
 from collections import OrderedDict
 from pyecog2.feature_extractor import FeatureExtractor
 from pyecog2.hmm_pyecog import HMM_LL
@@ -172,23 +174,36 @@ class ProjectClassifier():
         ife_settings = os.path.join(os.path.dirname(fname),'_feature_extractor.json')
         imported_fe.load_settings(ife_settings)
         if imported_fe.settings != self.feature_extractor.settings:
-            print('ERROR: unable to import classifier because feature extractor from imported classifier differs from current feature extractor')
-            return
+            message_label = 'FE settings mismatch'
+            message = 'ERROR: unable to import classifier because feature extractor from imported classifier differs from current feature extractor'
+            print(message)
+            logger.warning(message)
+            detailed_message = f'Imported Settings:{imported_fe.settings }' + '\n' + f'Current  Settings:{ self.feature_extractor.settings}'
+            logger.warning(detailed_message)
+            return message_label, message, detailed_message
+
         if set(self.global_classifier.features) != set(temp_classifier.features):
-            print('ERROR: unable to import classifier because the set of features used on imported classifier differ from the set used in current project')
-            logger.warning(f'imported features:{temp_classifier.features}')
-            logger.warning(f'global features:{self.global_classifier.features}')
-            return
+            message_label = 'FE feature mismatch'
+            message = 'ERROR: unable to import classifier because the set of features used on imported classifier differ from the set used in current project'
+            print(message)
+            logger.warning(message)
+            detailed_message = f'imported features:{temp_classifier.features}' + '\n' + f'global features:{self.global_classifier.features}'
+            logger.warning(detailed_message)
+            return message_label, message, detailed_message
+
         if set(self.global_classifier.labels2classify) != set(temp_classifier.labels2classify):
             # add missing labels to project
             self.project.homogenize_labels(temp_classifier.labels2classify)
+
         # Commit to import classifier
         self.imported_classifier.load(fname)
+        return '','Classifier imported successfully', ''
 
 
-    def assimilate_global_classifier(self,labels2train=None, animals2use=None,features2use=None):
+    def assimilate_global_classifier(self,labels2train=None, animals2use=None,features2use=None,use_imported = False):
         _,_,npoints = self.imported_classifier.all_mu_and_cov()
-        if npoints:
+        print('Assimilating Global Classifier',npoints, use_imported)
+        if npoints and use_imported:
             self.global_classifier.copy_from(self.imported_classifier) # start with either blank classifier or something imported
         else:
             self.global_classifier = GaussianClassifier(self.project, self.feature_extractor,labels = labels2train, features=features2use)
@@ -218,6 +233,9 @@ class ProjectClassifier():
             progress_bar.setValue(0.1)
             logger.info('Training animal specific classifier first...')
             print('Training animal specific classifier first...')
+            self.animal_classifier_dict[animal.id] = GaussianClassifier(self.project, self.feature_extractor,
+                                                                        self.global_classifier.labels2classify,
+                                                                        self.global_classifier.features)
             self.animal_classifier_dict[animal.id].train([animal])
         gc.copy_from(self.animal_classifier_dict[animal.id])
         # if gc.blank_npoints == 0:
@@ -347,12 +365,19 @@ class GaussianClassifier():
                 for a in animal.annotations.get_all_with_label(label):
                     a.setConfidence(float('inf')) # set manually checked annotations to infinite confidence
             Nfiles = len(animal.eeg_files[:])
-            for ifile, eeg_file in enumerate(animal.eeg_files[:]):
-                feature_file = '.'.join(eeg_file.split('.')[:-1] + ['features'])
-                fmeta_file = '.'.join(eeg_file.split('.')[:-1] + ['fmeta'])
-                with open(fmeta_file) as f:
+
+            for ifile, eeg_fname in enumerate(animal.eeg_files[:]):
+                feature_fname = '.'.join(eeg_fname.split('.')[:-1] + ['features'])
+                feature_meta = '.'.join(eeg_fname.split('.')[:-1] + ['fmeta'])
+                fe_root_dir = self.project.feature_extractor_root_dir
+                target_dir = os.path.join(fe_root_dir,animal.id)
+                if os.path.isdir(target_dir): # Check if FE dir has files, otherwise use EEG dir
+                    feature_fname = os.path.join(target_dir, os.path.split(feature_fname)[-1])
+                    feature_meta = os.path.join(target_dir, os.path.split(feature_meta)[-1])
+                
+                with open(feature_meta) as f:
                     fmeta_dict = json.load(f)
-                f_vec = np.fromfile(feature_file, dtype=fmeta_dict['data_format'])
+                f_vec = np.fromfile(feature_fname, dtype=fmeta_dict['data_format'])
                 # condition fvec
                 f_vec_d = f_vec.reshape((-1, self.FeatureExtractorNdim))
                 f_vec_d = f_vec_d[:, self.features]
@@ -397,15 +422,15 @@ class GaussianClassifier():
                     self.blank_means = mu.ravel()
                     self.blank_cov   = cov
                     if sum(np.isnan(cov.ravel())):
-                        logger.info(f'\nCov matrix is NaN after file: {ifile} {eeg_file} \n')
-                        print('\nCov matrix is NaN after file:',ifile,eeg_file,'\n')
+                        logger.info(f'\nCov matrix is NaN after file: {ifile} {eeg_fname} \n')
+                        print('\nCov matrix is NaN after file:',ifile,eeg_fname,'\n')
                         self._debug_f_vec_d =f_vec_d
                         return
 
                 if progress_bar is not None:
                     progress_bar.setValue(100*(ianimal + ifile/Nfiles)/Nanimals)
                 else:
-                    print('Animal:', animal.id, 'file:', ifile, 'of', len(animal.eeg_files), feature_file, end='\r')
+                    print('Animal:', animal.id, 'file:', ifile, 'of', len(animal.eeg_files), feature_fname, end='\r')
 
         trans_list = [(l[0],l[1],i+1) for i,key in enumerate(self.labels2classify) for l in labeled_positions[key]]
         trans_list.sort()
@@ -445,14 +470,20 @@ class GaussianClassifier():
         eegfiles = animal.eeg_files.copy()
         eegfiles.sort()
         Nfiles = len(eegfiles)
-        for i,eegfname in enumerate(eegfiles):
-            fname = '.'.join(eegfname.split('.')[:-1] + ['features'])
-            f_vec = np.fromfile(fname, dtype='float64')
+        for i,eeg_fname in enumerate(eegfiles):
+            feature_fname = '.'.join(eeg_fname.split('.')[:-1] + ['features'])
+            feature_meta = '.'.join(eeg_fname.split('.')[:-1] + ['fmeta'])
+            fe_root_dir = self.project.feature_extractor_root_dir
+            target_dir = os.path.join(fe_root_dir, animal.id)
+            if os.path.isdir(target_dir):
+                feature_fname = os.path.join(target_dir, os.path.split(feature_fname)[-1])
+                feature_meta = os.path.join(target_dir, os.path.split(feature_meta)[-1])
+
+            f_vec = np.fromfile(feature_fname, dtype='float64')
             f_vec = f_vec.reshape((-1, self.FeatureExtractorNdim))
             f_vec = f_vec[:, self.features]
             np.nan_to_num(f_vec, copy=False)
-            fmeta_file = '.'.join(eegfname.split('.')[:-1] + ['fmeta'])
-            with open(fmeta_file) as f:
+            with open(feature_meta) as f:
                 fmeta_dict = json.load(f)
             LL = self.log_likelyhoods(f_vec, bias=False, no_scale=False)
             np.nan_to_num(LL,copy=False)
@@ -467,7 +498,7 @@ class GaussianClassifier():
             if progress_bar is not None:
                 progress_bar.setValue(90*i/Nfiles)  # This takes about 90%of the time
             else:
-                print('Animal:', animal.id, 'file:', i, 'of', len(eegfiles), fmeta_file, end='\r')
+                print('Animal:', animal.id, 'file:', i, 'of', len(eegfiles), feature_meta, end='\r')
 
         LLv = np.vstack(LLv)
         _, _, total_npoints = self.all_mu_and_cov()
@@ -560,7 +591,7 @@ class GaussianClassifier():
             animal.annotations.pause_history_cache(False)
 
         if progress_bar is not None:
-            progress_bar.setValue(100)   # Done
+            progress_bar.setValue(int(100))   # Done
         return (LLv,R2v,pf,timev[:-1]) # remove last timev  element that was used only for ends
 
     def save(self,filename):

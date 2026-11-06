@@ -97,11 +97,14 @@ class PlotControls(QWidget):
         self.filter_controls_widget.setLayout(self.filter_controls_layout)
         self.filter_check = QCheckBox('Apply filter')
         self.filter_check.stateChanged.connect(self.update_filter)
+        self.clip_check = QCheckBox('Apply clip')
+        self.clip_check.stateChanged.connect(self.update_filter)
         self.hp_spin = pg.SpinBox(value=.001,bounds=[0,None],step=1,compactHeight=False,dec=True) #, int=True, minStep=1, step=1)
         self.hp_spin.valueChanged.connect(self.update_filter)
         self.lp_spin = pg.SpinBox(value=1000,bounds=[0,None],step=1,compactHeight=False,dec=True) #, int=True, minStep=1, step=1)
         self.lp_spin.valueChanged.connect(self.update_filter)
         self.filter_controls_layout.addWidget(self.filter_check,0,0)
+        self.filter_controls_layout.addWidget(self.clip_check,0,1)
         self.filter_controls_layout.addWidget(QLabel('High pass frequency (Hz)'),1,0)
         self.filter_controls_layout.addWidget(self.hp_spin,1,1)
         self.filter_controls_layout.addWidget(QLabel('Low pass frequency (Hz)'),2,0)
@@ -111,11 +114,13 @@ class PlotControls(QWidget):
         self.range_controls_widget = QWidget()
         self.range_controls_layout = QGridLayout()
         self.range_controls_widget.setLayout(self.range_controls_layout)
-        self.Xrange_spin_o = pg.SpinBox(value=3600.0, bounds=[0, 3600],step=.1,compactHeight=False,dec=True)
+        self.default_Xrange_o = 3600.0
+        self.default_Xrange_i = 30.0
+        self.Xrange_spin_o = pg.SpinBox(value=self.default_Xrange_o, bounds=[0, 3600],step=.1,compactHeight=False,dec=True)
         self.Xrange_spin_o.valueChanged.connect(self.update_Xrange_o)
         self.range_controls_layout.addWidget(QLabel('Overview X range (s)'),0,0)
         self.range_controls_layout.addWidget(self.Xrange_spin_o,0,1)
-        self.Xrange_spin_i = pg.SpinBox(value=30.0, bounds=[0, 3600],step=.1,compactHeight=False,dec=True)
+        self.Xrange_spin_i = pg.SpinBox(value=self.default_Xrange_i, bounds=[0, 3600],step=.1,compactHeight=False,dec=True)
         self.Xrange_spin_i.valueChanged.connect(self.update_Xrange_i)
         self.range_controls_layout.addWidget(QLabel('Inset X range (s)'),1,0)
         self.range_controls_layout.addWidget(self.Xrange_spin_i,1,1)
@@ -161,13 +166,28 @@ class PlotControls(QWidget):
 
     def update_Xrange_o(self):
         logger.info(f'Xrange overview value: {self.Xrange_spin_o.value()}')
+        self.default_Xrange_o = self.Xrange_spin_o.value()
         self.sigUpdateXrange_o.emit((self.Xrange_spin_o.value()))
         return
 
     def update_Xrange_i(self):
         logger.info(f'Xrange inset value: {self.Xrange_spin_i.value()}')
+        self.default_Xrange_i = self.Xrange_spin_i.value()
         self.sigUpdateXrange_i.emit((self.Xrange_spin_i.value()))
         return
+
+    def update_Xrange_o_from_paired_graphics(self,xrange):
+        self.Xrange_spin_o.blockSignals(True)
+        self.Xrange_spin_o.setValue(xrange)
+        self.Xrange_spin_o.blockSignals(False)
+        return
+
+    def update_Xrange_i_from_paired_graphics(self,xrange):
+        self.Xrange_spin_i.blockSignals(True)
+        self.Xrange_spin_i.setValue(xrange)
+        self.Xrange_spin_i.blockSignals(False)
+        return
+
 
     def launch_montage_editor(self):
         self.montage_window.update_montage_matrix()

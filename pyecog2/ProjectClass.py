@@ -2,14 +2,17 @@ import json
 import numpy as np
 from collections import OrderedDict
 from pyecog2.h5loader import H5File
-import glob, os
+import glob, os, shutil
 from datetime import datetime
 from pyecog2.annotations_module import AnnotationPage, AnnotationElement
+# from pyecog2.classifier import GaussianClassifier
+# from pyecog2.feature_extractor import FeatureExtractor
 from scipy import signal
 from PySide6 import QtCore
 import pyqtgraph as pg
 from timeit import default_timer as timer
 from pyedflib import EdfReader
+import re
 
 import logging
 logger = logging.getLogger(__name__)
@@ -18,6 +21,10 @@ logger = logging.getLogger(__name__)
 def clip(x, a, b):  # utility funciton for file buffer
     return min(max(int(x), a), b)
 
+def natural_sort_key(s):
+    # Splits the string into a list of text and integers
+    # e.g., "Animal 11" becomes ['Animal ', 11]
+    return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
 
 def intervals_overlap(a,b):
     # return (a[0] <= b[0] < a[1]) or (a[0] <= b[1] < a[1]) or (b[0] <= a[0] < b[1]) or (b[0] <= a[1] < b[1])
@@ -47,22 +54,40 @@ def create_metafile_from_h5(file,duration = 3600):
 
 def create_metafile_from_edf(file):
     assert file.endswith('.edf')
-    edf_file = EdfReader(file)
-    fsv = edf_file.getSampleFrequencies()
-    assert all([f == fsv[0] for f in fsv]) #check all channels have the same sampling frequency
-    dimension_dict = {'V': 1, 'mV': 1-3, 'uV': 1-6, 'nV': 1-9}
-    metadata = OrderedDict(fs=fsv[0],
-                           no_channels=len(fsv),
-                           data_format='edf',
-                           volts_per_bit=dimension_dict[edf_file.getPhysicalDimension(0)],
-                           transmitter_id=edf_file.getSignalHeader(0)['label'],
-                           start_timestamp_unix=int(edf_file.getStartdatetime().timestamp()),
-                           duration=int(edf_file.getFileDuration()),  # assume all h5 files have 1hr duration
-                           channel_labels=[edf_file.getSignalHeader(ch)['label'] for ch in range(len(fsv))],
-                           experiment_metadata_str=edf_file.getRecordingAdditional())
-    metafile = file[:-3] + 'meta'
+    with EdfReader(file) as edf_file:
+        fsv = edf_file.getSampleFrequencies()
+        assert all([f == fsv[0] for f in fsv]) #check all channels have the same sampling frequency
+        dimension_dict = {'V': 1, 'mV': 1e-3, 'uV': 1e-6, 'nV': 1e-9}
+        metadata = OrderedDict(fs=fsv[0],
+                               no_channels=len(fsv),
+                               data_format='edf',
+                               volts_per_bit=dimension_dict[edf_file.getPhysicalDimension(0)],
+                               transmitter_id=edf_file.getSignalHeader(0)['label'],
+                               start_timestamp_unix=int(edf_file.getStartdatetime().timestamp()),
+                               duration=int(edf_file.getFileDuration()),  # assume all h5 files have 1hr duration
+                               channel_labels=[edf_file.getSignalHeader(ch)['label'] for ch in range(len(fsv))],
+                               experiment_metadata_str=edf_file.getRecordingAdditional())
+        metafile = file[:-3] + 'meta'
     with open(metafile, 'w') as json_file:
         json.dump(metadata, json_file, indent=2, sort_keys=True)
+
+def edf_chinfo_from_metadata(metafile_name):
+    metadata = load_metadata_file(metafile_name)
+    n_channels = metadata['no_channels']
+    ch_info_list = []
+    for label in metadata['channel_labels']:
+        channel_info = {
+            'label': label,
+            'dimension': 'V',
+            'sample_rate': metadata['fs'],
+            'physical_max': metadata['volts_per_bit'] * 8,
+            'physical_min': -metadata['volts_per_bit'] * 8,
+            'digital_max': 32767,
+            'digital_min': -32768,
+            'transducer': '',
+            'prefilter': ''
+        }
+        ch_info_list.append(channel_info)
 
 
 def read_neuropixels_metadata(fname):
@@ -299,16 +324,17 @@ class FileBuffer():  # Consider translating this to cython
             self.data.append(arr)
         elif metadata['data_format'] == 'edf':
             try:
-                edf_file = EdfReader(fname[:-4] + 'edf')
+                with EdfReader(fname[:-4] + 'edf') as edf_file:
+                    channels = []
+                    duration = metadata['duration']
+                    for ch in range(metadata['no_channels']):
+                        channels.append(edf_file.readSignal(ch))
+                    arr = np.vstack(channels).T
+                    self.data.append(arr)
             except:
                 logger.warning(f'error trying to open {fname[:-4]} edf')
                 raise
-            channels = []
-            duration = metadata['duration']
-            for ch in range(metadata['no_channels']):
-                channels.append(edf_file.readSignal(ch))
-            arr = np.vstack(channels).T
-            self.data.append(arr)
+
         else:  # it is a bin file and can be mememaped
             try:
                 if self.verbose: logger.info(f'opening binary file: {metadata["binaryfilename"]}')
@@ -543,7 +569,7 @@ class FileBuffer():  # Consider translating this to cython
 
 class Project():
     def __init__(self, main_model=None, eeg_data_folder=None, video_data_folder=None, title='New Project', project_file='',
-                 dict=None):
+                 feature_extractor_root_dir='', dict=None):
         if dict is not None:
             self.__dict__ = dict
             self.filter_settings = (False, 0, 1e6)
@@ -558,6 +584,7 @@ class Project():
         self.eeg_root_folder = eeg_data_folder
         self.video_root_folder = video_data_folder
         self.project_file = project_file
+        self.feature_extractor_root_dir = feature_extractor_root_dir
         self.title = title
         self.current_animal = Animal()
         self.set_current_animal(Animal())  # start with empty animal
@@ -636,6 +663,9 @@ class Project():
         if not hasattr(self,'filter_settings'):  #Backwards compatibility
             self.filter_settings = (False, 0, 1e6)
 
+        if not hasattr(self, 'feature_extractor_root_dir'): #Backwards compatibility
+            self.feature_extractor_root_dir = ''
+
         self.main_model.sigProjectChanged.emit()
         return (new_dirname, orig_dirname)
 
@@ -661,6 +691,8 @@ class Project():
         with open(fname, 'w') as f:
             f.write('Animal ID,label,start,stop,confidence,notes\n')
             for animal in self.animal_list:
+                if len(animal.annotations.annotations_list)==0:
+                    f.write(animal.id + ',,,,,\n')
                 for a in animal.annotations.annotations_list:
                     f.write(animal.id + ',' + a.getLabel() + ',' + str(a.getStart()) + ',' + str(a.getEnd()) +
                             ',' + str(a.getConfidence()) +  ',' + str(a.getNotes()) + '\n')
@@ -670,10 +702,11 @@ class Project():
         with open(fname, 'r') as f:
             line = f.readline()
             line = f.readline()
-            while line!='':
+            while line != '':
                 animal_id, label, start, end, confidence, notes = line.split(',')
-                self.get_animal(animal_id).annotations.add_annotation(
-                    AnnotationElement(label=label, start=float(start), end=float(end), confidence=float(confidence), notes=notes))
+                if self.get_animal(animal_id):
+                    self.get_animal(animal_id).annotations.add_annotation(
+                        AnnotationElement(label=label, start=float(start), end=float(end), confidence=float(confidence), notes=notes))
                 line = f.readline()
         self.main_model.annotations.sigLabelsChanged.emit('')
         return
@@ -712,7 +745,7 @@ class Project():
         existing_eeg_dir = [animal.eeg_folder for animal in self.animal_list]
         eeg_dir_list = glob.glob(self.eeg_root_folder + os.path.sep + '*' + os.path.sep)  # then check for new animals
         video_dir_list = glob.glob(self.video_root_folder + os.path.sep + '*' + os.path.sep)
-        for directory in eeg_dir_list:
+        for directory in sorted(eeg_dir_list,key=natural_sort_key):
             if directory not in existing_eeg_dir:
                 id = directory.split(os.path.sep)[-2]
                 logger.info(f'Creating animal from directory:{directory}')
@@ -796,6 +829,45 @@ class Project():
                 for animal in self.animal_list:
                     animal.annotations.add_label(label, color)
                     color = animal.annotations.label_color_dict[label]
+
+    def import_FE_and_classifier(self,fname):
+        # inspect old and set new directories
+        if self.feature_extractor_root_dir == '' or self.feature_extractor_root_dir=='_feature_extractor':
+            self.feature_extractor_root_dir = self.project_file[:-7] +'_feature_extractor'
+            if not os.path.isdir(self.feature_extractor_root_dir):
+                os.mkdir(self.feature_extractor_root_dir)
+        if not os.path.isdir(self.project_file+'_classifier'):
+            os.mkdir(self.project_file+'_classifier')
+
+        new_classifier_fname = os.path.join(self.project_file + '_classifier', '_imported.npz')
+        new_fe_fname = os.path.join(self.project_file + '_classifier', '_feature_extractor.json')
+
+        shutil.copy(os.path.join(fname, '_imported.npz'), new_classifier_fname)
+        shutil.copy(os.path.join(fname, '_feature_extractor.json'), new_fe_fname)
+
+        # Ideally this should be made abstract, but this requires to put FileBuffer class in a solo module to avoid circular imports
+        with (np.load(new_classifier_fname) as d):
+            imported_classifier_dict = dict([(file, d[file]) for file in d.files])  # copy all arrays from file
+            self.homogenize_labels(imported_classifier_dict['labels2classify'])
+
+        # update settings and respective GUI if they exist. - Can't be done like this
+        # if self.main_model is not None:
+        #     if hasattr(self.main_model,'featureExtractorWindow'):
+        #         self.main_model.featureExtractorWindow.feature_extractor.load_settings(os.path.join(self.project_file + '_classifier', '_feature_extractor.json'))
+        #         self.main_model.featureExtractorWindow.updateTreeFromSettings()
+        #     if not hasattr(self.main_model,'ClassifierWindow'):
+        #         self.main_model
+        #     self.main_model.ClassifierWindow.import_classifier(os.path.join(self.project_file + '_classifier', '_imported.npz'))
+        return
+
+    def export_FE_and_classifier(self,fname):
+        if not os.path.isdir(fname):
+            os.mkdir(fname)
+        shutil.copy(os.path.join(self.project_file + '_classifier', '_global.npz'),
+                    os.path.join(fname, '_imported.npz'))
+        shutil.copy(os.path.join(self.project_file + '_classifier', '_feature_extractor.json'),
+                    os.path.join(fname, '_feature_extractor.json'),)
+        return
 
 
 class MainModel(QtCore.QObject):

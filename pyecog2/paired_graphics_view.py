@@ -33,6 +33,8 @@ def wheelEvent(self, ev, axis=None):
     s = [(None if m is False else s) for m in mask]
     center = Point(fn.invertQTransform(self.childGroup.transform()).map(ev.pos()))
     # JC added
+    self._resetTarget()
+
     if ev.modifiers() == QtCore.Qt.ShiftModifier and s[0] is not None and s[1] is not None:
         for child in self.childGroup.childItems()[:]:
             if hasattr(child, 'accept_mousewheel_transformations'):
@@ -40,8 +42,12 @@ def wheelEvent(self, ev, axis=None):
                 m = QtGui.QTransform()
                 m.scale(1, m_old.m22() / s[1])
                 child.setTransform(m)
+                child.setData_with_envelope()
+
+        self.scaleBy([1, 1], center)
+        self.sigRangeChangedManually.emit(mask)
         ev.accept()
-        child_group_transformation = self.childGroup.transform()
+        # child_group_transformation = self.childGroup.transform()
         return
 
     if ev.modifiers() == QtCore.Qt.AltModifier and s[0] is not None and s[1] is not None:
@@ -52,13 +58,16 @@ def wheelEvent(self, ev, axis=None):
                 if round(child.y()) == round(center.y()):
                     m.scale(1, m_old.m22() / s[1])
                     child.setTransform(m)
+                    child.setData_with_envelope()
+        self.scaleBy([1, 1], center)
+        self.sigRangeChangedManually.emit(mask)
         ev.accept()
-        child_group_transformation = self.childGroup.transform()
+        # child_group_transformation = self.childGroup.transform()
         return
-    self._resetTarget()
+
     self.scaleBy(s, center)
-    ev.accept()
     self.sigRangeChangedManually.emit(mask)
+    ev.accept()
 
 
 def wheelEventWrapper(s):
@@ -84,7 +93,7 @@ class PairedGraphicsView():
         self.splitter.setSizePolicy(sizePolicy)
         # self.splitter.setChildrenCollapsible(False)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None,plot_controls=None):
         # todo clean this method up!
         self.parent = parent
         self.build_splitter()
@@ -93,6 +102,7 @@ class PairedGraphicsView():
         self.main_model = parent.main_model
         self.main_pen = self.main_model.color_settings['pen']
         self.main_brush = self.main_model.color_settings['brush']
+        self.plot_controls = plot_controls
 
         self.inset_annotations = []
         self.overview_annotations = []
@@ -171,7 +181,7 @@ class PairedGraphicsView():
         # {"1" : {'inset': obj,'overview':obj }
         # will be used for an ugly hack to snchonize across plots
         self.channel_plotitem_dict = {}
-        self.main_model.annotations.sigAnnotationAdded.connect(self.add_annotaion_plot)
+        self.main_model.annotations.sigAnnotationAdded.connect(self.add_annotation_plot)
         self.main_model.annotations.sigLabelsChanged.connect(
             lambda: self.set_scenes_plot_annotations_data(self.main_model.annotations))
 
@@ -228,8 +238,8 @@ class PairedGraphicsView():
                 return
             self.n_channels = arr.shape[1]
             self.scale = 1 / (8 * np.mean(np.std(arr, axis=0, keepdims=True), axis=1) + 1e-12)
-            self.overview_plot.vb.setYRange(-2, arr.shape[1] + 1)
-            self.insetview_plot.vb.setYRange(-2, arr.shape[1] + 1)
+            self.overview_plot.vb.setYRange(-self.n_channels - 1, + 2)
+            self.insetview_plot.vb.setYRange(-self.n_channels - 1,  + 2)
             self.timeline_plot.setTitle('<p style="font-size:large"> Animal: ' + self.animalid + '</b>')
             end_t = timer()
 
@@ -261,7 +271,7 @@ class PairedGraphicsView():
                 pen = pens[i % len(pens)]
 
             logger.info(f'Setting plotitem channel data for channel {i}')
-            self.set_plotitem_channel_data(pen, i, self.scale)
+            self.set_plotitem_channel_data(pen, i, self.scale, self.plot_controls.clip_check.isChecked)
 
         end_t = timer()
         logger.info(f'Paired graphics view plot channels finnished in {end_t - start_t} seconds')
@@ -272,7 +282,7 @@ class PairedGraphicsView():
         # self.insetview_plot.vb.setLimits(xMin=0, xMax=arr.shape[0] / fs)
         self.overview_plot.vb.setLimits(maxXRange=3600)
         self.insetview_plot.vb.setLimits(maxXRange=3600)
-        self.overview_plot.vb.setLimits(yMin=-3, yMax=self.n_channels + 3)
+        self.overview_plot.vb.setLimits(yMin=-3 -self.n_channels, yMax= + 3)
         max_range = self.main_model.project.current_animal.get_animal_time_range()
         logger.info(f'Project time range: {max_range}')
         self.overview_plot.vb.setLimits(xMin=max_range[0], xMax=max_range[1])
@@ -315,7 +325,7 @@ class PairedGraphicsView():
         end_t = timer()
         logger.info(f'Paired graphics view plot annotations + etc. in {end_t - start_t} seconds')
 
-    def set_plotitem_channel_data(self, pen, index, init_scale):
+    def set_plotitem_channel_data(self, pen, index, init_scale, clip=lambda: False):
         '''
         If the index exists within the plotitem dict we just set the data, else create
         or delete from the dict. (#todo)
@@ -326,12 +336,13 @@ class PairedGraphicsView():
         if True:  # index not in self.channel_plotitem_dict.keys(): # This was used before we were clearing the scenes upon file loading
             self.channel_plotitem_dict[index] = {}
             self.channel_plotitem_dict[index]['overview'] = PyecogPlotCurveItem(self.main_model.project, index,
-                                                                                viewbox=self.overview_plot.vb, pen=pen)
+                                                                                viewbox=self.overview_plot.vb, pen=pen,
+                                                                                clip = clip)
             self.channel_plotitem_dict[index]['insetview'] = PyecogPlotCurveItem(self.main_model.project, index,
                                                                                  viewbox=self.insetview_plot.vb,
-                                                                                 pen=pen)
-            self.channel_plotitem_dict[index]['overview'].setY(index)
-            self.channel_plotitem_dict[index]['insetview'].setY(index)
+                                                                                 pen=pen, clip = clip)
+            self.channel_plotitem_dict[index]['overview'].setY(-index)
+            self.channel_plotitem_dict[index]['insetview'].setY(-index)
             m = QtGui.QTransform().scale(1, init_scale)
             self.channel_plotitem_dict[index]['overview'].setTransform(m)
             self.channel_plotitem_dict[index]['insetview'].setTransform(m)
@@ -370,7 +381,7 @@ class PairedGraphicsView():
     def function_generator_link_delete(annotationpage, annotation_object):
         return lambda: annotationpage.delete_annotation(annotation_object)
 
-    def add_annotaion_plot(self, annotation):
+    def add_annotation_plot(self, annotation):
         color = self.main_model.annotations.label_color_dict[
             annotation.getLabel()]  # circle hue with constant luminosity and saturation
         brush = pg.functions.mkBrush(color=(*color, 25))
@@ -432,7 +443,7 @@ class PairedGraphicsView():
         for annotation in annotations.annotations_list:
             if intervals_overlap(annotation.getPos(), pos) and annotation not in self.plotted_annotations:
                 # print('annotation.getpos , pos:', (annotation.getPos(), pos))
-                self.add_annotaion_plot(annotation)
+                self.add_annotation_plot(annotation)
 
     def set_focus_on_annotation(self, annotation, modifier=''):
         if annotation is None:
@@ -626,6 +637,7 @@ class PairedGraphicsView():
         x_range, _ = self.overview_plot.viewRange()
         self.set_scenes_plot_annotations_data(self.main_model.annotations, reset=False, pos=x_range)
         self.timeline_cursor.setPos(np.mean(x_range))
+        self.plot_controls.update_Xrange_o_from_paired_graphics(x_range[1]-x_range[0])
         # self.insetview_plot.removeItem(annotation_graph_i)
 
     def insetview_range_changed(self, mask=None):
@@ -639,6 +651,8 @@ class PairedGraphicsView():
             self.overview_plot.vb.setXRange(x_range[0], x_range[0] + ox_range[1] - ox_range[0], padding=0)
         elif x_range[1] > ox_range[1]:
             self.overview_plot.vb.setXRange(x_range[1] - (ox_range[1] - ox_range[0]), x_range[1], padding=0)
+
+        self.plot_controls.update_Xrange_i_from_paired_graphics(x_range[1]-x_range[0])
 
     def insetview_page_left(self):
         xmin, xmax = self.insetview_plot.viewRange()[0]

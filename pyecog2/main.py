@@ -1,13 +1,15 @@
 import os
+from pyedflib import EdfReader
+from pyedflib.highlevel import write_edf
 
 os.environ['QT_MULTIMEDIA_PREFERRED_PLUGINS'] = 'windowsmediafoundation'
 import sys
 try:
     import pyi_splash
     # Update the text on the splash screen
-    pyi_splash.update_text("PyEcog2 (C) Marco Leite, UCL")
+    pyi_splash.update_text("PyEcog2, Marco Leite, UCL")
 except Exception:
-    print('Could not load splashscreen')
+    print('Starting PyEcog2... (PyEcog2, Marco Leite, University College London)  (no splashscreen)')
 
 import numpy as np
 from PySide6 import QtCore, QtGui
@@ -32,24 +34,18 @@ from pyecog2.ui_elements.PlotControlsWidget import PlotControls
 from datetime import datetime
 import pyqtgraph as pg
 from pyqtgraph.console import ConsoleWidget
-import pkg_resources
 import importlib.resources
+import importlib.metadata
 from pyecog2 import license
 from multiprocessing import freeze_support
 from urllib import request
 import json
 import logging
-from pyecog2.logging_aux import LoggerWriter # DefaultStreamHandler
+from pyecog2.logging_aux import LoggerWriter, setup_logging # DefaultStreamHandler
 
-# Initialize logging
-log_fname = importlib.resources.files('pyecog2') / 'pyecog.log'
-print('Log filename:', log_fname)
-logging.basicConfig(filename=log_fname, filemode='w', level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-logger.info(f'Session start: {datetime.now()}')
-ch = logging.StreamHandler()
-ch.setLevel(logging.WARNING)
-logger.addHandler(ch)
+# Initialize centralized logging for the entire application
+# All modules using logging.getLogger(__name__) will inherit this configuration
+log_fname, logger = setup_logging(log_level=logging.DEBUG, console_level=logging.WARNING)
 sys.stderr = LoggerWriter(logger.error)
 # sys.stdout = LoggerWriter(logger.debug) # redirect stdout and stderr to log file
 
@@ -73,10 +69,10 @@ class MainWindow(QMainWindow):
         # self.title = "ℙ𝕪𝔼𝕔𝕠𝕘"
         self.title = pyecog_string
         (size, rect) = self.get_available_screen()
-        icon_file = pkg_resources.resource_filename('pyecog2', 'icons/icon.png')
+        icon_file = importlib.resources.files('pyecog2') / 'icons/icon.png'
         logger.info(f'ICON:{icon_file}')
-        self.setWindowIcon(QtGui.QIcon(icon_file))
-        self.app_handle.setWindowIcon(QtGui.QIcon(icon_file))
+        self.setWindowIcon(QtGui.QIcon(str(icon_file)))
+        self.app_handle.setWindowIcon(QtGui.QIcon(str(icon_file)))
         self.setWindowTitle(self.title)
         self.setGeometry(0, 0, size.width(), size.height())
         # self.setWindowFlags(QtCore.Qt.FramelessWindowHint) # fooling around
@@ -94,7 +90,6 @@ class MainWindow(QMainWindow):
         # Populate Main window with widgets
         # self.createDockWidget()
         self.dock_list = {}
-        self.paired_graphics_view = PairedGraphicsView(parent=self)
 
         self.tree_element = FileTreeElement(parent=self)
         self.main_model.sigProjectChanged.connect(
@@ -108,6 +103,7 @@ class MainWindow(QMainWindow):
         self.dock_list['File Tree'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
         self.plot_controls = PlotControls(self.main_model)
+        self.paired_graphics_view = PairedGraphicsView(parent=self,plot_controls=self.plot_controls)
         self.plot_controls.sigUpdateXrange_i.connect(self.paired_graphics_view.insetview_set_xrange)
         self.plot_controls.sigUpdateXrange_o.connect(self.paired_graphics_view.overview_set_xrange)
         self.plot_controls.sigUpdateFilter.connect(self.paired_graphics_view.updateFilterSettings)
@@ -121,12 +117,12 @@ class MainWindow(QMainWindow):
 
         self.dock_list['Hints'] = QDockWidget("Hints", self)
         self.text_edit = QTextBrowser()
-        hints_file = pkg_resources.resource_filename('pyecog2', 'HelperHints.md')
+        hints_file = importlib.resources.files('pyecog2')/ 'HelperHints.md'
         # text = open('HelperHints.md').read()
         logger.info(f'hints file: {hints_file}')
         text = open(hints_file).read()
         text = text.replace('icons/banner_small.png',
-                            pkg_resources.resource_filename('pyecog2', 'icons/banner_small.png'))
+                            str(importlib.resources.files('pyecog2') / 'icons/banner_small.png'))
         text += f'\n Log file location: {log_fname}'
         self.text_edit.setMarkdown(text)
         self.dock_list['Hints'].setWidget(self.text_edit)
@@ -223,7 +219,7 @@ class MainWindow(QMainWindow):
         try:
             pyi_splash.close()
         except Exception:
-            print('Could not close splash screen')
+            print('Starting PyEcog... (no splash screen)')
 
         try:
             settings = QSettings("PyEcog", "PyEcog")
@@ -347,7 +343,8 @@ class MainWindow(QMainWindow):
     def load_project(self, fname=None):
         # license.update_license_reg_file()
         if type(fname) is not str:
-            dialog = QFileDialog(parent=self)
+            start_dir = os.path.dirname(self.main_model.project.project_file)
+            dialog = QFileDialog(parent=self, directory=start_dir)
             dialog.setWindowTitle('Load Project ...')
             dialog.setFileMode(QFileDialog.ExistingFile)
             # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
@@ -572,10 +569,24 @@ class MainWindow(QMainWindow):
 
     def openProjectEditor(self):
         logger.info('opening Project Editor')
+        if hasattr(self, 'projectEditor'):
+            self.projectEditor.setWindowState(
+                (self.projectEditor.windowState() & ~Qt.WindowMinimized) | Qt.WindowActive)
+            self.projectEditor.raise_()
+            self.projectEditor.show()
+            return
         self.projectEditor = ProjectEditWindow(self.main_model.project, parent=self)
         self.projectEditor.show()
 
     def openFeatureExtractor(self):
+        logger.info('opening Feature Extractor')
+        if hasattr(self, 'featureExtractorWindow'):
+            self.featureExtractorWindow.setWindowState(
+                (self.featureExtractorWindow.windowState() & ~Qt.WindowMinimized) | Qt.WindowActive)
+            self.featureExtractorWindow.raise_()
+            self.featureExtractorWindow.show()
+            self.featureExtractorWindow.updateTreeFromSettings()
+            return
         self.featureExtractorWindow = FeatureExtractorWindow(self.main_model.project, parent=self)
         self.featureExtractorWindow.show()
 
@@ -605,6 +616,17 @@ class MainWindow(QMainWindow):
             logger.info(f'Exporting annotations to:{fname}')
             self.main_model.project.export_annotations(fname)
 
+    def import_FE_and_classifier(self):
+        if self.main_model.project.project_file == '':
+            msg ='Please save PyEcog Project before importing the feature extractor and classifier'
+            QMessageBox.critical(None, "Error", msg)
+            print(msg)
+            return
+        fname = self.select_directory('Select *.pyecog_classifier folder to import')
+        if fname:
+            logger.info(f'Importing FE and Classifier from:{fname}')
+            self.main_model.project.import_FE_and_classifier(fname)
+
     def import_annotations(self):
         dialog = QFileDialog(parent=self)
         dialog.setWindowTitle('Import annotations from CSV file')
@@ -633,6 +655,48 @@ class MainWindow(QMainWindow):
             data, _ = self.main_model.project.get_data_from_range(self.main_model.window)
             # Save the array to a CSV file
             np.savetxt(fname, data, delimiter=',')
+
+
+    def export_signal_trace_edf(self):
+        # Consider how to implement other file formats
+        dialog = QFileDialog(parent=self)
+        dialog.setWindowTitle('Export trace to EDF file')
+        dialog.setFileMode(QFileDialog.AnyFile)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setAcceptMode(QFileDialog.AcceptSave)
+        dialog.setNameFilter('*.edf')
+        if dialog.exec():
+            fname = dialog.selectedFiles()[0]
+            if not fname.endswith('.edf'):
+                fname = fname + '.edf'
+            logger.info(f'Exporting trace to:{fname}')
+            # Grab data from window
+            data, _ = self.main_model.project.get_data_from_range(self.main_model.window)
+            print(f'Data shape {data.shape}')
+            # Save the array to an EDF file
+            metadata, files = self.main_model.project.get_data_from_range(self.main_model.window,return_filedata_only = True)
+            if not metadata[0]['data_format'] == 'edf':
+                print('EDF export only available for EDF data')
+                return
+            # Create EDF file
+
+            dimension_dict = {'V': 1, 'mV': 1e-3, 'uV': 1e-6, 'nV': 1e-9}
+
+            with EdfReader(files[0][:-4]+'edf') as f:
+                header = f.getHeader()
+                header['startdate'] = datetime.fromtimestamp(self.main_model.window[0])
+                channel_info = f.getSignalHeaders()
+                n_channels = len(channel_info)
+                signal_headers = []
+                for ch in range(n_channels):
+                    ch_header = channel_info[ch]
+                    signal_headers.append(ch_header)
+
+                write_edf(fname, [data[:, i].ravel()/dimension_dict[channel_info[i]['dimension']] for i in range(data.shape[1])], signal_headers, header=header,
+                          digital=False, file_type=-1)
+
+
+
 
     # def reset_video(self):
     #     self.video_element.reset()
@@ -701,6 +765,8 @@ class MainWindow(QMainWindow):
 
         # CLASSIFIER section
         self.menu_classifier = self.menu_bar.addMenu("Classifier")
+        self.action_setup_import_FE_and_classifier = self.menu_classifier.addAction("Import Feature Extractor and Classifier")
+        self.action_setup_import_FE_and_classifier.triggered.connect(self.import_FE_and_classifier)
         self.action_setup_feature_extractor = self.menu_classifier.addAction("Feature Extractor Options")
         self.action_setup_classifier = self.menu_classifier.addAction("Classifier Options")
         self.action_setup_feature_extractor.triggered.connect(self.openFeatureExtractor)
@@ -725,6 +791,9 @@ class MainWindow(QMainWindow):
 
         self.action_open_console_window = self.menu_tools.addAction("Export selection window trace to CSV")
         self.action_open_console_window.triggered.connect(self.export_signal_trace)
+
+        self.action_open_console_window = self.menu_tools.addAction("Export selection window trace to EDF")
+        self.action_open_console_window.triggered.connect(self.export_signal_trace_edf)
 
         # HELP section
         self.menu_help = self.menu_bar.addMenu("Help")
@@ -761,7 +830,7 @@ class MainWindow(QMainWindow):
         # self.menubar.addMenu("View")
 
     def checkGitUpdates(self):
-        current_version = pkg_resources.get_distribution('pyecog2').version
+        current_version = importlib.metadata.version('pyecog2')
         try:
             with request.urlopen('https://api.github.com/repos/KullmannLab/TestPublic/releases/latest', timeout=2) as f:
                 data = json.loads(f.read().decode('utf-8'))
@@ -902,5 +971,5 @@ def execute():
 
 
 if __name__ == '__main__':
-    freeze_support() # Why is this line here? - Answer: it is for creating a compiled executable
+    # freeze_support() # Why is this line here? - Answer: it is for creating a compiled executable
     execute()

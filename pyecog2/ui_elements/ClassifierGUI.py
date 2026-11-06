@@ -211,6 +211,9 @@ class ClassifierWindow(QMainWindow):
 
         self.restoreState()
 
+        if self.imported_classifier_dir:
+            self.import_classifier(self.imported_classifier_dir)
+
     def getLables2Annotate(self):
         all_labels = self.project.get_all_labels()
         return [label for label in all_labels if self.p.param('Global Settings', 'Lablels to annotate', label).value()]
@@ -227,7 +230,7 @@ class ClassifierWindow(QMainWindow):
         return np.array([self.p.param('Global Settings','Features to use', f).value() for f in self.feature_extractor.settings['feature_labels']])
 
     def getUseImported(self):
-        return self.p.param('Global Settings','Import Classifier').value()
+        return self.p.param('Global Settings','Import Classifier','Use imported classifier:').value()
 
 
     def updateLabels(self):
@@ -304,7 +307,13 @@ class ClassifierWindow(QMainWindow):
         #                 animal2.annotations.label_color_dict[label] = annotation_page.label_color_dict[label] # if annotation exists copy color
 
     def import_classifier(self, fname = None):
-        if fname is None:
+        # set up the correct ticks for labels and features to be used in the classifier
+        print('debug import classifier')
+        print(self.feature_extractor.settings['feature_labels'])
+        print(self.project.get_all_labels())
+        print(self.classifier.imported_classifier.labels2classify)
+        print(fname)
+        if fname is None or not isinstance(fname,str):
             dialog = QFileDialog(parent=self)
             dialog.setWindowTitle('Import Classifier file ...')
             dialog.setFileMode(QFileDialog.ExistingFile)
@@ -316,6 +325,7 @@ class ClassifierWindow(QMainWindow):
                 return
 
         message_label, message, detailed_message = self.classifier.import_classifier(fname)
+        print(message_label, message, detailed_message)
         if message_label == 'FE settings mismatch':
             msg = QMessageBox(parent=self)
             msg.setIcon(QMessageBox.Information)
@@ -336,9 +346,28 @@ class ClassifierWindow(QMainWindow):
             msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
             retval = msg.exec()
             if retval == QMessageBox.Yes:
-                pass #todo
+                for i, f in enumerate(self.feature_extractor.settings['feature_labels']):
+                    self.p.param('Global Settings', 'Features to use', f).setValue(
+                        self.classifier.imported_classifier.features[i])
+
+                for label in self.project.get_all_labels():
+                    self.p.param('Global Settings', 'Lablels to train', label).setValue(False)
+                    print(label, False)
+                for label in self.classifier.imported_classifier.labels2classify:
+                    self.p.param('Global Settings', 'Lablels to train', label).setValue(True)
+                    print(label, True)
 
         elif message_label =='':
+            for i, f in enumerate(self.feature_extractor.settings['feature_labels']):
+                self.p.param('Global Settings', 'Features to use', f).setValue(
+                    self.classifier.imported_classifier.features[i])
+
+            for label in self.project.get_all_labels():
+                self.p.param('Global Settings', 'Lablels to train', label).setValue(False)
+                print(label,False)
+            for label in self.classifier.imported_classifier.labels2classify:
+                self.p.param('Global Settings', 'Lablels to train', label).setValue(True)
+                print(label,True)
             print(f'Imported {fname}')
 
         self.classifier.save()

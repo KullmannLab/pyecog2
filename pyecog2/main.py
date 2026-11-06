@@ -617,6 +617,11 @@ class MainWindow(QMainWindow):
             self.main_model.project.export_annotations(fname)
 
     def import_FE_and_classifier(self):
+        if self.main_model.project.project_file == '':
+            msg ='Please save PyEcog Project before importing the feature extractor and classifier'
+            QMessageBox.critical(None, "Error", msg)
+            print(msg)
+            return
         fname = self.select_directory('Select *.pyecog_classifier folder to import')
         if fname:
             logger.info(f'Importing FE and Classifier from:{fname}')

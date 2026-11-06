@@ -5,6 +5,8 @@ from pyecog2.h5loader import H5File
 import glob, os, shutil
 from datetime import datetime
 from pyecog2.annotations_module import AnnotationPage, AnnotationElement
+# from pyecog2.classifier import GaussianClassifier
+# from pyecog2.feature_extractor import FeatureExtractor
 from scipy import signal
 from PySide6 import QtCore
 import pyqtgraph as pg
@@ -830,27 +832,32 @@ class Project():
 
     def import_FE_and_classifier(self,fname):
         # inspect old and set new directories
-        if self.feature_extractor_root_dir == '':
-            self.feature_extractor_root_dir = self.project_file+'_feature_extractor'
+        if self.feature_extractor_root_dir == '' or self.feature_extractor_root_dir=='_feature_extractor':
+            self.feature_extractor_root_dir = self.project_file[:-7] +'_feature_extractor'
             if not os.path.isdir(self.feature_extractor_root_dir):
                 os.mkdir(self.feature_extractor_root_dir)
         if not os.path.isdir(self.project_file+'_classifier'):
             os.mkdir(self.project_file+'_classifier')
 
-        shutil.copy(os.path.join(fname, '_imported.npz'),
-                    os.path.join(self.project_file + '_classifier', '_imported.npz'))
-        shutil.copy(os.path.join(fname, '_feature_extractor.json'),
-                    os.path.join(self.project_file + '_classifier', '_feature_extractor.json'))
+        new_classifier_fname = os.path.join(self.project_file + '_classifier', '_imported.npz')
+        new_fe_fname = os.path.join(self.project_file + '_classifier', '_feature_extractor.json')
 
-        # update settings and respective GUI if they exist.
-        if self.main_model is not None:
-            if __name__ == '__main__':
-                if hasattr(self.main_model,'featureExtractorWindow'):
-                    self.main_model.featureExtractorWindow
-                    self.main_model.featureExtractorWindow.feature_extractor.load_settings(os.path.join(self.project_file + '_classifier', '_feature_extractor.json'))
-                    self.main_model.featureExtractorWindow.updateTreeFromSettings()
-                if hasattr(self.main_model,'ClassifierWindow'):
-                    self.main_model.ClassifierWindow.import_classifier(os.path.join(self.project_file + '_classifier', '_imported.npz'))
+        shutil.copy(os.path.join(fname, '_imported.npz'), new_classifier_fname)
+        shutil.copy(os.path.join(fname, '_feature_extractor.json'), new_fe_fname)
+
+        # Ideally this should be made abstract, but this requires to put FileBuffer class in a solo module to avoid circular imports
+        with (np.load(new_classifier_fname) as d):
+            imported_classifier_dict = dict([(file, d[file]) for file in d.files])  # copy all arrays from file
+            self.homogenize_labels(imported_classifier_dict['labels2classify'])
+
+        # update settings and respective GUI if they exist. - Can't be done like this
+        # if self.main_model is not None:
+        #     if hasattr(self.main_model,'featureExtractorWindow'):
+        #         self.main_model.featureExtractorWindow.feature_extractor.load_settings(os.path.join(self.project_file + '_classifier', '_feature_extractor.json'))
+        #         self.main_model.featureExtractorWindow.updateTreeFromSettings()
+        #     if not hasattr(self.main_model,'ClassifierWindow'):
+        #         self.main_model
+        #     self.main_model.ClassifierWindow.import_classifier(os.path.join(self.project_file + '_classifier', '_imported.npz'))
         return
 
     def export_FE_and_classifier(self,fname):

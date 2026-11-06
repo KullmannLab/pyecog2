@@ -1,10 +1,10 @@
 import numpy as np
 from numba.cuda import target
 
-from pyecog2.ProjectClass import FileBuffer
+# from pyecog2.ProjectClass import FileBuffer
 import os
 from scipy import linalg
-import scipy.stats as stats
+# import scipy.stats as stats
 from collections import OrderedDict
 from pyecog2.feature_extractor import FeatureExtractor
 from pyecog2.hmm_pyecog import HMM_LL
@@ -202,6 +202,7 @@ class ProjectClassifier():
 
     def assimilate_global_classifier(self,labels2train=None, animals2use=None,features2use=None,use_imported = False):
         _,_,npoints = self.imported_classifier.all_mu_and_cov()
+        print('Assimilating Global Classifier',npoints, use_imported)
         if npoints and use_imported:
             self.global_classifier.copy_from(self.imported_classifier) # start with either blank classifier or something imported
         else:

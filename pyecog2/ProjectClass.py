@@ -850,14 +850,6 @@ class Project():
             imported_classifier_dict = dict([(file, d[file]) for file in d.files])  # copy all arrays from file
             self.homogenize_labels(imported_classifier_dict['labels2classify'])
 
-        # update settings and respective GUI if they exist. - Can't be done like this
-        # if self.main_model is not None:
-        #     if hasattr(self.main_model,'featureExtractorWindow'):
-        #         self.main_model.featureExtractorWindow.feature_extractor.load_settings(os.path.join(self.project_file + '_classifier', '_feature_extractor.json'))
-        #         self.main_model.featureExtractorWindow.updateTreeFromSettings()
-        #     if not hasattr(self.main_model,'ClassifierWindow'):
-        #         self.main_model
-        #     self.main_model.ClassifierWindow.import_classifier(os.path.join(self.project_file + '_classifier', '_imported.npz'))
         return
 
     def export_FE_and_classifier(self,fname):

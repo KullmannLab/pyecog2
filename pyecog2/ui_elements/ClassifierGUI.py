@@ -92,8 +92,8 @@ class ClassifierWindow(QMainWindow):
         self.setCentralWidget(widget)
         self.terminal = ConsoleWidget(namespace={'self':self}) # QTextBrowser(self)
         self._err_color = QtCore.Qt.red
-        self.button = QPushButton('Update', self)
-        self.button.clicked.connect(self.update_settings)
+        self.update_button = QPushButton('Update', self)
+        self.update_button.clicked.connect(self.update_settings)
         self.export_button = QPushButton('Export Feature Extractor and Classifier', self)
         self.export_button.clicked.connect(self.exportFEandClassifier)
         self.threadpool = QtCore.QThreadPool()
@@ -191,11 +191,12 @@ class ClassifierWindow(QMainWindow):
         self.t.setParameters(self.p, showTop=False)
         self.t.headerItem().setHidden(True)
 
+
+        layout.addWidget(self.update_button)
         layout.addWidget(self.t)
-        layout.setRowStretch(0,10)
-        layout.setRowMinimumHeight(0,400)
+        layout.setRowStretch(1,10)
+        layout.setRowMinimumHeight(1,400)
         layout.setColumnMinimumWidth(0,600)
-        layout.addWidget(self.button)
         layout.addWidget(self.export_button)
         layout.addWidget(self.terminal)
         layout.setRowMinimumHeight(3,300)
@@ -284,10 +285,26 @@ class ClassifierWindow(QMainWindow):
             if a not in all_animals:
                 self.p.param('Animal Settings').removeChild(self.p.param('Animal Settings', a,))
 
+
+    def updateFeatureExtractor(self):
+        self.feature_extractor = FeatureExtractor()
+        classifier_dir = self.project.project_file + '_classifier' if self.project is not None else ''
+        if os.path.isfile(os.path.join(classifier_dir, '_feature_extractor.json')):
+            self.feature_extractor.load_settings(os.path.join(classifier_dir, '_feature_extractor.json'))
+        if os.path.isfile(os.path.join(classifier_dir, '_imported.npz')):
+            self.imported_classifier_dir = os.path.join(classifier_dir, '_imported.npz')
+        else:
+            self.imported_classifier_dir = ''
+        p = FeatureExtractor2Parameter(self.feature_extractor)
+        self.p.param('Global Settings').removeChild(self.p.param('Global Settings','Features to use'))
+        self.p.param('Global Settings').addChild(p)
+
+
     def update_settings(self):
         self.saveState()
         self.updateLabels()
         self.updateAnimals()
+        self.updateFeatureExtractor()
         self.restoreState()
 
 

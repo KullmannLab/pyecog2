@@ -247,6 +247,8 @@ class FeatureExtractorWindow(QMainWindow):
 
         print(self.feature_extractor.settings)
         self.feature_extractor.save_settings(os.path.join(self.fe_root_dir, '_feature_extractor.json'))
+        if self.parent is not None: # for consistency main_model should be passed in as argument in _init_()
+            self.parent().main_model.sigProjectChanged.emit()
 
     def runFeatureExtraction(self):
         self.setProjectFeatureExtraction()

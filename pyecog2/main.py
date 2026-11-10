@@ -626,6 +626,7 @@ class MainWindow(QMainWindow):
         if fname:
             logger.info(f'Importing FE and Classifier from:{fname}')
             self.main_model.project.import_FE_and_classifier(fname)
+            self.main_model.sigProjectChanged.emit()
 
     def import_annotations(self):
         dialog = QFileDialog(parent=self)

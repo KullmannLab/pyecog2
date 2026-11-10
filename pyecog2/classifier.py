@@ -201,12 +201,15 @@ class ProjectClassifier():
 
 
     def assimilate_global_classifier(self,labels2train=None, animals2use=None,features2use=None,use_imported = False):
+
+        self.global_classifier = GaussianClassifier(self.project, self.feature_extractor, labels=labels2train,
+                                                    features=features2use)
+
         _,_,npoints = self.imported_classifier.all_mu_and_cov()
         print('Assimilating Global Classifier',npoints, use_imported)
         if npoints and use_imported:
-            self.global_classifier.copy_from(self.imported_classifier) # start with either blank classifier or something imported
-        else:
-            self.global_classifier = GaussianClassifier(self.project, self.feature_extractor,labels = labels2train, features=features2use)
+            self.global_classifier.assimilate_classifier(self.imported_classifier) # assimilate imported
+
         for k, gc in self.animal_classifier_dict.items():
             if animals2use is None or k in animals2use:
                 logger.info(f'assimilating {k}')

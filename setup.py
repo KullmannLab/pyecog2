@@ -32,7 +32,6 @@ setuptools.setup(
                     'pyopengl-accelerate==3.1.9',
                     'pyEDFlib==0.1.36',
                     'rsa',
-                    'jupyter',
                     ],
    include_package_data = True
   )

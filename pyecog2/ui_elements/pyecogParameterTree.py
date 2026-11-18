@@ -1,4 +1,4 @@
-from PySide2 import QtGui, QtCore
+from PySide6 import QtGui, QtCore
 from pyqtgraph.parametertree import ParameterTree
 from pyqtgraph.parametertree.parameterTypes import GroupParameter, GroupParameterItem, registerParameterType
 

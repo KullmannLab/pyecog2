@@ -1,6 +1,6 @@
 import sys, os
-from PySide2 import QtCore
-from PySide2.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QPushButton, QFileDialog
+from PySide6 import QtCore
+from PySide6.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QPushButton, QFileDialog, QMessageBox
 
 from pyqtgraph.parametertree import Parameter
 from pyecog2.ui_elements.pyecogParameterTree import PyecogParameterTree
@@ -11,7 +11,11 @@ from pyecog2.ui_elements.WaveletWidget import Worker
 from pyqtgraph.console import ConsoleWidget
 import numpy as np
 import json
+import logging
+import faulthandler
 
+faulthandler.enable()
+logger = logging.getLogger(__name__)
 
 class OutputWrapper(QtCore.QObject):
     outputWritten = QtCore.Signal(object, object)
@@ -90,6 +94,8 @@ class ClassifierWindow(QMainWindow):
         self._err_color = QtCore.Qt.red
         self.button = QPushButton('Update', self)
         self.button.clicked.connect(self.update_settings)
+        self.export_button = QPushButton('Export Feature Extractor and Classifier', self)
+        self.export_button.clicked.connect(self.exportFEandClassifier)
         self.threadpool = QtCore.QThreadPool()
 
         all_labels = self.project.get_all_labels()
@@ -112,7 +118,8 @@ class ClassifierWindow(QMainWindow):
                  'children': [{'name': 'Annotation threshold probability', 'type': 'float', 'value': 0.5,'bounds':[0,1],'dec': True},
                               {'name': 'Outlier threshold factor', 'type': 'float', 'value': 1,'bounds':[0,np.inf],'dec': True, 'min_step':1},
                               {'name': 'maximum number of annotations', 'type': 'int', 'value': 100},
-                              {'name': 'Use Viterbi (only allows observed transitions - EXPERIMENTAL)', 'type': 'bool', 'value': False} ]
+                              {'name': 'Use Viterbi (only allows observed transitions)', 'type': 'bool', 'value': False},
+                              {'name': 'Use Maximum a posteriori (allows unobserved transitions)', 'type': 'bool', 'value': False} ]
                  },
                 FeatureExtractor2Parameter(self.feature_extractor)
                 # {'name': 'Assimilate global classifier from individual animals', 'type': 'action'},
@@ -189,12 +196,13 @@ class ClassifierWindow(QMainWindow):
         layout.setRowMinimumHeight(0,400)
         layout.setColumnMinimumWidth(0,600)
         layout.addWidget(self.button)
+        layout.addWidget(self.export_button)
         layout.addWidget(self.terminal)
-        layout.setRowMinimumHeight(2,300)
-        stdout = OutputWrapper(self, True)
-        stdout.outputWritten.connect(self.handleOutput)
-        stderr = OutputWrapper(self, False)
-        stderr.outputWritten.connect(self.handleOutput)
+        layout.setRowMinimumHeight(3,300)
+        # stdout = OutputWrapper(self, True)
+        # stdout.outputWritten.connect(self.handleOutput)
+        # stderr = OutputWrapper(self, False)
+        # stderr.outputWritten.connect(self.handleOutput)
 
         self.project.main_model.annotations.sigLabelsChanged.connect(self.updateLabels)
         self.project.main_model.sigProjectChanged.connect(self.update_settings)
@@ -202,6 +210,9 @@ class ClassifierWindow(QMainWindow):
         self.dfrmt = '%Y-%m-%d %H:%M:%S'  # Format to use in date elements
 
         self.restoreState()
+
+        if self.imported_classifier_dir:
+            self.import_classifier(self.imported_classifier_dir)
 
     def getLables2Annotate(self):
         all_labels = self.project.get_all_labels()
@@ -217,6 +228,10 @@ class ClassifierWindow(QMainWindow):
 
     def getFeatures2use(self):
         return np.array([self.p.param('Global Settings','Features to use', f).value() for f in self.feature_extractor.settings['feature_labels']])
+
+    def getUseImported(self):
+        return self.p.param('Global Settings','Import Classifier','Use imported classifier:').value()
+
 
     def updateLabels(self):
         self.classifier = ProjectClassifier(self.project)
@@ -278,28 +293,83 @@ class ClassifierWindow(QMainWindow):
 
     def homogenize_labels(self):
         labels = self.getLables2train()
-        for animal in self.project.animal_list:
-            annotation_page = animal.annotations
-            for label in annotation_page.labels:
-                if label not in labels:  # only copy labels that are ticked to train
-                    continue
-                for animal2 in self.project.animal_list:
-                    if label not in animal2.annotations.labels:
-                        animal2.annotations.add_label(label,annotation_page.label_color_dict[label])
-                    else:
-                        animal2.annotations.label_color_dict[label] = annotation_page.label_color_dict[label] # if annotation exists copy color
+        self.project.homogenize_labels(labels)
+        #  --- previous code ---
+        # for animal in self.project.animal_list:
+        #     annotation_page = animal.annotations
+        #     for label in annotation_page.labels:
+        #         if label not in labels:  # only copy labels that are ticked to train
+        #             continue
+        #         for animal2 in self.project.animal_list:
+        #             if label not in animal2.annotations.labels:
+        #                 animal2.annotations.add_label(label,annotation_page.label_color_dict[label])
+        #             else:
+        #                 animal2.annotations.label_color_dict[label] = annotation_page.label_color_dict[label] # if annotation exists copy color
 
-    def import_classifier(self):
-        dialog = QFileDialog(parent=self)
-        dialog.setWindowTitle('Import Classifier file ...')
-        dialog.setFileMode(QFileDialog.ExistingFile)
-        dialog.setAcceptMode(QFileDialog.AcceptOpen)
-        dialog.setNameFilter('*.npz')
-        if dialog.exec():
-            fname = dialog.selectedFiles()[0]
-        else:
-            return
-        self.classifier.import_classifier(fname)
+    def import_classifier(self, fname = None):
+        # set up the correct ticks for labels and features to be used in the classifier
+        print('debug import classifier')
+        print(self.feature_extractor.settings['feature_labels'])
+        print(self.project.get_all_labels())
+        print(self.classifier.imported_classifier.labels2classify)
+        print(fname)
+        if fname is None or not isinstance(fname,str):
+            dialog = QFileDialog(parent=self)
+            dialog.setWindowTitle('Import Classifier file ...')
+            dialog.setFileMode(QFileDialog.ExistingFile)
+            dialog.setAcceptMode(QFileDialog.AcceptOpen)
+            dialog.setNameFilter('*.npz')
+            if dialog.exec():
+                fname = dialog.selectedFiles()[0]
+            else:
+                return
+
+        message_label, message, detailed_message = self.classifier.import_classifier(fname)
+        print(message_label, message, detailed_message)
+        if message_label == 'FE settings mismatch':
+            msg = QMessageBox(parent=self)
+            msg.setIcon(QMessageBox.Information)
+            msg.setText(message + '\n Would you like to update the project Feature Extractor for the imported settings?')
+            msg.setDetailedText(detailed_message)
+            msg.setWindowTitle("Feature Extractor mismatch")
+            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            retval = msg.exec()
+            if retval == QMessageBox.Yes:
+                self.parent.openFeatureExtractor() #todo
+
+        elif message_label == 'FE feature mismatch':
+            msg = QMessageBox(parent=self)
+            msg.setIcon(QMessageBox.Information)
+            msg.setText(message + '\n Would you like to change the "Features to use" to conform to the imported classifier?')
+            msg.setDetailedText(detailed_message)
+            msg.setWindowTitle("Used features mismatch")
+            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            retval = msg.exec()
+            if retval == QMessageBox.Yes:
+                for i, f in enumerate(self.feature_extractor.settings['feature_labels']):
+                    self.p.param('Global Settings', 'Features to use', f).setValue(
+                        self.classifier.imported_classifier.features[i])
+
+                for label in self.project.get_all_labels():
+                    self.p.param('Global Settings', 'Lablels to train', label).setValue(False)
+                    print(label, False)
+                for label in self.classifier.imported_classifier.labels2classify:
+                    self.p.param('Global Settings', 'Lablels to train', label).setValue(True)
+                    print(label, True)
+
+        elif message_label =='':
+            for i, f in enumerate(self.feature_extractor.settings['feature_labels']):
+                self.p.param('Global Settings', 'Features to use', f).setValue(
+                    self.classifier.imported_classifier.features[i])
+
+            for label in self.project.get_all_labels():
+                self.p.param('Global Settings', 'Lablels to train', label).setValue(False)
+                print(label,False)
+            for label in self.classifier.imported_classifier.labels2classify:
+                self.p.param('Global Settings', 'Lablels to train', label).setValue(True)
+                print(label,True)
+            print(f'Imported {fname}')
+
         self.classifier.save()
 
     def handleOutput(self, text, stdout):
@@ -315,6 +385,7 @@ class ClassifierWindow(QMainWindow):
 
     def trainClassifier(self,animal_id,pbar=None):
         print('Training', animal_id)
+        logger.info(f'Training {animal_id}')
         if pbar is not None:
             pbar.setValue(0.1)
         worker = Worker(self.classifier.train_animal,animal_id,pbar,self.getLables2train(), self.getFeatures2use())
@@ -351,10 +422,11 @@ class ClassifierWindow(QMainWindow):
         prob_th = self.p.param('Global Settings','Automatic annotation settings', 'Annotation threshold probability').value()
         outlier_th = self.p.param('Global Settings','Automatic annotation settings', 'Outlier threshold factor').value()
         max_anno = self.p.param('Global Settings','Automatic annotation settings', 'maximum number of annotations').value()
-        viterbi = self.p.param('Global Settings','Automatic annotation settings', 'Use Viterbi (only allows observed transitions - EXPERIMENTAL)').value()
+        viterbi = self.p.param('Global Settings','Automatic annotation settings', 'Use Viterbi (only allows observed transitions)').value()
+        maxapost = self.p.param('Global Settings', 'Automatic annotation settings', 'Use Maximum a posteriori (allows unobserved transitions)').value()
         worker = Worker(self.classifier.animal_classifier_dict[animal_id].classify_animal,
                         animal,pbar,max_annotations=max_anno, prob_th=prob_th,outlier_th =outlier_th,
-                        labels2annotate = self.getLables2Annotate(),viterbi=viterbi)
+                        labels2annotate = self.getLables2Annotate(),viterbi=viterbi,maxapost=maxapost)
         worker.signals.finished.connect(self.updateAnnotationTables)
         self.threadpool.start(worker)
         return 1, 1
@@ -363,15 +435,19 @@ class ClassifierWindow(QMainWindow):
         return lambda: self.runGlobalClassifier(animal_id,pbar)
 
     def runGlobalClassifier(self, animal_id,pbar=None):
-        self.classifier.assimilate_global_classifier(labels2train=self.getLables2train(), animals2use=self.getAnimals2use(), features2use=self.getFeatures2use())
+        self.classifier.assimilate_global_classifier(labels2train=self.getLables2train(),
+                                                     animals2use=self.getAnimals2use(),
+                                                     features2use=self.getFeatures2use(),
+                                                     use_imported=self.getUseImported())
         print('Labeling', animal_id)
         animal = self.project.get_animal(animal_id)
         prob_th = self.p.param('Global Settings','Automatic annotation settings', 'Annotation threshold probability').value()
         outlier_th = self.p.param('Global Settings','Automatic annotation settings', 'Outlier threshold factor').value()
         max_anno = self.p.param('Global Settings','Automatic annotation settings', 'maximum number of annotations').value()
-        viterbi = self.p.param('Global Settings','Automatic annotation settings', 'Use Viterbi (only allows observed transitions - EXPERIMENTAL)').value()
+        viterbi = self.p.param('Global Settings','Automatic annotation settings', 'Use Viterbi (only allows observed transitions)').value()
+        maxapost = self.p.param('Global Settings', 'Automatic annotation settings', 'Use Maximum a posteriori (allows unobserved transitions)').value()
         worker = Worker(self.classifier.classify_animal_with_global, animal, pbar, max_annotations=max_anno,
-                        prob_th=prob_th,outlier_th =outlier_th, labels2annotate = self.getLables2Annotate(),viterbi=viterbi)
+                        prob_th=prob_th,outlier_th =outlier_th, labels2annotate = self.getLables2Annotate(),viterbi=viterbi,maxapost=maxapost)
         worker.signals.finished.connect(self.updateAnnotationTables)
         self.threadpool.start(worker)
         return 1, 1
@@ -379,6 +455,26 @@ class ClassifierWindow(QMainWindow):
     def updateAnnotationTables(self):
         print('Worker Finished, emitting LabelsChanged signal')
         self.project.main_model.annotations.sigLabelsChanged.emit('')
+
+
+    def exportFEandClassifier(self):
+        dialog = QFileDialog(parent=self)
+        dialog.setWindowTitle('Export Extractor and Classifier')
+        dialog.setFileMode(QFileDialog.AnyFile)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setAcceptMode(QFileDialog.AcceptSave)
+        dialog.setNameFilter('*.pyecog_classifier')
+        if dialog.exec():
+            fname = dialog.selectedFiles()[0]
+            logger.info(f'Exporting FE and Classifier to:{fname}')
+            self.classifier.assimilate_global_classifier(labels2train=self.getLables2train(),
+                                                         animals2use=self.getAnimals2use(),
+                                                         features2use=self.getFeatures2use(),
+                                                         use_imported=self.getUseImported())
+
+            self.project.export_FE_and_classifier(fname)
+
+        return
 
     def saveState(self):
         classifier_dir = self.project.project_file + '_classifier'
@@ -407,4 +503,4 @@ if __name__ == '__main__':
     window = ClassifierWindow()
     window.setGeometry(500, 300, 300, 200)
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

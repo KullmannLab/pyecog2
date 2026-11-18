@@ -1,16 +1,24 @@
 import os
+from pyedflib import EdfReader
+from pyedflib.highlevel import write_edf
 
 os.environ['QT_MULTIMEDIA_PREFERRED_PLUGINS'] = 'windowsmediafoundation'
 import sys
+try:
+    import pyi_splash
+    # Update the text on the splash screen
+    pyi_splash.update_text("PyEcog2, Marco Leite, UCL")
+except Exception:
+    print('Starting PyEcog2... (PyEcog2, Marco Leite, University College London)  (no splashscreen)')
 
 import numpy as np
-from PySide2 import QtCore, QtGui
-from PySide2.QtGui import QPalette, QColor, QDesktopServices
-from PySide2.QtCore import Qt, QSettings
-from PySide2.QtWidgets import QApplication, QTextBrowser, QDockWidget, QMainWindow, \
+from PySide6 import QtCore, QtGui
+from PySide6.QtGui import QPalette, QColor, QDesktopServices
+from PySide6.QtCore import Qt, QSettings
+from PySide6.QtWidgets import QApplication, QTextBrowser, QDockWidget, QMainWindow, \
     QFileDialog, QMessageBox
 from pyecog2.ProjectClass import Project, MainModel
-from pyecog2.annotation_table_widget import AnnotationTableWidget
+from pyecog2.ui_elements.annotation_table_widget import AnnotationTableWidget
 from pyecog2.annotations_module import AnnotationElement
 from pyecog2.ui_elements.AnnotationParameterTree import AnnotationParameterTee
 from pyecog2.ui_elements.FFTWidget import FFTwindow
@@ -26,22 +34,18 @@ from pyecog2.ui_elements.PlotControlsWidget import PlotControls
 from datetime import datetime
 import pyqtgraph as pg
 from pyqtgraph.console import ConsoleWidget
-import pkg_resources
+import importlib.resources
+import importlib.metadata
 from pyecog2 import license
 from multiprocessing import freeze_support
 from urllib import request
 import json
 import logging
-from pyecog2.logging_aux import LoggerWriter # DefaultStreamHandler
+from pyecog2.logging_aux import LoggerWriter, setup_logging # DefaultStreamHandler
 
-# Initialize logging
-log_fname = pkg_resources.resource_filename('pyecog2', '/') + 'pyecog.log'
-logging.basicConfig(filename=log_fname, filemode='w', level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-logger.info(f'Session start: {datetime.now()}')
-ch = logging.StreamHandler()
-ch.setLevel(logging.WARNING)
-logger.addHandler(ch)
+# Initialize centralized logging for the entire application
+# All modules using logging.getLogger(__name__) will inherit this configuration
+log_fname, logger = setup_logging(log_level=logging.DEBUG, console_level=logging.WARNING)
 sys.stderr = LoggerWriter(logger.error)
 # sys.stdout = LoggerWriter(logger.debug) # redirect stdout and stderr to log file
 
@@ -65,10 +69,10 @@ class MainWindow(QMainWindow):
         # self.title = "ℙ𝕪𝔼𝕔𝕠𝕘"
         self.title = pyecog_string
         (size, rect) = self.get_available_screen()
-        icon_file = pkg_resources.resource_filename('pyecog2', 'icons/icon.png')
+        icon_file = importlib.resources.files('pyecog2') / 'icons/icon.png'
         logger.info(f'ICON:{icon_file}')
-        self.setWindowIcon(QtGui.QIcon(icon_file))
-        self.app_handle.setWindowIcon(QtGui.QIcon(icon_file))
+        self.setWindowIcon(QtGui.QIcon(str(icon_file)))
+        self.app_handle.setWindowIcon(QtGui.QIcon(str(icon_file)))
         self.setWindowTitle(self.title)
         self.setGeometry(0, 0, size.width(), size.height())
         # self.setWindowFlags(QtCore.Qt.FramelessWindowHint) # fooling around
@@ -81,12 +85,11 @@ class MainWindow(QMainWindow):
         self.live_recording_timer = QtCore.QTimer()
         self.live_recording_timer.timeout.connect(self.reload_plot)
 
-        self.check_license()
+        # self.check_license()  # Used when Pyecog was close source
 
         # Populate Main window with widgets
         # self.createDockWidget()
         self.dock_list = {}
-        self.paired_graphics_view = PairedGraphicsView(parent=self)
 
         self.tree_element = FileTreeElement(parent=self)
         self.main_model.sigProjectChanged.connect(
@@ -100,6 +103,7 @@ class MainWindow(QMainWindow):
         self.dock_list['File Tree'].setFeatures(QDockWidget.DockWidgetFloatable | QDockWidget.DockWidgetMovable)
 
         self.plot_controls = PlotControls(self.main_model)
+        self.paired_graphics_view = PairedGraphicsView(parent=self,plot_controls=self.plot_controls)
         self.plot_controls.sigUpdateXrange_i.connect(self.paired_graphics_view.insetview_set_xrange)
         self.plot_controls.sigUpdateXrange_o.connect(self.paired_graphics_view.overview_set_xrange)
         self.plot_controls.sigUpdateFilter.connect(self.paired_graphics_view.updateFilterSettings)
@@ -113,12 +117,13 @@ class MainWindow(QMainWindow):
 
         self.dock_list['Hints'] = QDockWidget("Hints", self)
         self.text_edit = QTextBrowser()
-        hints_file = pkg_resources.resource_filename('pyecog2', 'HelperHints.md')
+        hints_file = importlib.resources.files('pyecog2')/ 'HelperHints.md'
         # text = open('HelperHints.md').read()
         logger.info(f'hints file: {hints_file}')
         text = open(hints_file).read()
         text = text.replace('icons/banner_small.png',
-                            pkg_resources.resource_filename('pyecog2', 'icons/banner_small.png'))
+                            str(importlib.resources.files('pyecog2') / 'icons/banner_small.png'))
+        text += f'\n Log file location: {log_fname}'
         self.text_edit.setMarkdown(text)
         self.dock_list['Hints'].setWidget(self.text_edit)
         self.dock_list['Hints'].setObjectName("Hints")
@@ -210,6 +215,12 @@ class MainWindow(QMainWindow):
 
         self.action_darkmode.setChecked(self.settings.value("darkMode", type=bool))
         self.toggle_darkmode()  # pre toggle darkmode to make sure project loading dialogs are made with the correct color pallete
+
+        try:
+            pyi_splash.close()
+        except Exception:
+            print('Starting PyEcog... (no splash screen)')
+
         try:
             settings = QSettings("PyEcog", "PyEcog")
             settings.beginGroup("ProjectSettings")
@@ -231,6 +242,7 @@ class MainWindow(QMainWindow):
         self.toggle_auto_save()
         self.checkGitUpdates()
 
+
     def check_license(self):
         # Check if license is valid
         license_is_valid = False
@@ -243,18 +255,18 @@ class MainWindow(QMainWindow):
                 msg.setText("Your license seems to be invalid. Do you have an activated PyEcogLicense.txt file?")
                 msg.setWindowTitle("Invalid License")
                 msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-                retval = msg.exec_()
+                retval = msg.exec()
                 if retval == QMessageBox.No:
                     msg2 = QMessageBox(parent=self)
                     msg2.setIcon(QMessageBox.Information)
                     msg2.setText("Would you like to create a new PyEcog License file?")
                     msg2.setWindowTitle("Generate new License")
                     msg2.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-                    retval = msg2.exec_()
+                    retval = msg2.exec()
                     if retval == QMessageBox.Yes:
                         dialog2 = QFileDialog(parent=self)
                         dialog2.setWindowTitle('Choose a directory to ssave PyEcogLicense.txt...')
-                        # dialog2.setFileMode(QFileDialog.DirectoryOnly)
+                        # dialog2.setFileMode(QFileDialog.Directory)
                         dialog2.setAcceptMode(QFileDialog.AcceptSave)
                         dialog2.selectFile(('PyEcogLicense.txt'))
                         if dialog2.exec():
@@ -269,7 +281,7 @@ class MainWindow(QMainWindow):
                             msg3.setDetailedText("File location:" + location)
                             msg3.setWindowTitle("Generate new License")
                             msg3.setStandardButtons(QMessageBox.Ok)
-                            msg3.exec_()
+                            msg3.exec()
                 else: # there is a valid license somewhere
                     dialog = QFileDialog(parent=self)
                     dialog.setWindowTitle('Load License ...')
@@ -277,6 +289,7 @@ class MainWindow(QMainWindow):
                     # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
                     dialog.setAcceptMode(QFileDialog.AcceptOpen)
                     dialog.setNameFilter('*.txt')
+                    fname = ''
                     if dialog.exec():
                         fname = dialog.selectedFiles()[0]
                     license.copy_activated_license(fname)
@@ -310,7 +323,7 @@ class MainWindow(QMainWindow):
         self.show()
 
     def load_directory(self, dirname=None):
-        license.update_license_reg_file()
+        # license.update_license_reg_file()
         logger.info('Openening folder')
         if type(dirname) != str:
             dirname = self.select_directory()
@@ -320,16 +333,18 @@ class MainWindow(QMainWindow):
         temp_project.set_temp_project_from_folder(dirname)
         self.tree_element.set_rootnode_from_project(temp_project)
         self.main_model.project = temp_project
+        os.chdir(dirname)
 
     def new_project(self):
-        license.update_license_reg_file()
+        # license.update_license_reg_file()
         self.main_model.project.__init__(main_model=self.main_model)  # = Project(self.main_model)
         self.tree_element.set_rootnode_from_project(self.main_model.project)
 
     def load_project(self, fname=None):
-        license.update_license_reg_file()
+        # license.update_license_reg_file()
         if type(fname) is not str:
-            dialog = QFileDialog(parent=self)
+            start_dir = os.path.dirname(self.main_model.project.project_file)
+            dialog = QFileDialog(parent=self, directory=start_dir)
             dialog.setWindowTitle('Load Project ...')
             dialog.setFileMode(QFileDialog.ExistingFile)
             # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
@@ -356,7 +371,7 @@ class MainWindow(QMainWindow):
                                         )
                     msg.setWindowTitle("Load autosave")
                     msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-                    retval = msg.exec_()
+                    retval = msg.exec()
                     if retval == QMessageBox.Yes:
                         fname = fname + '_autosave'
 
@@ -369,7 +384,7 @@ class MainWindow(QMainWindow):
                 msg.setDetailedText(f"Original location: {orig_dirname}\nNew location: {new_dirname}")
                 msg.setWindowTitle("Update directory structures")
                 msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-                retval = msg.exec_()
+                retval = msg.exec()
                 if retval == QMessageBox.Yes:
                     self.main_model.project.update_folder_structure_from_new_project_location(new_dirname,orig_dirname)
 
@@ -387,7 +402,7 @@ class MainWindow(QMainWindow):
 
     def save(self):
         logger.info('save action triggered')
-        license.update_license_reg_file()
+        # license.update_license_reg_file()
         fname = self.main_model.project.project_file
         if not os.path.isfile(fname):
             self.save_as()
@@ -397,7 +412,7 @@ class MainWindow(QMainWindow):
         self.toggle_auto_save()
 
     def save_as(self):
-        license.update_license_reg_file()
+        # license.update_license_reg_file()
         dialog = QFileDialog(parent=self)
         dialog.setWindowTitle('Save Project as ...')
         dialog.setFileMode(QFileDialog.AnyFile)
@@ -414,7 +429,7 @@ class MainWindow(QMainWindow):
         self.toggle_auto_save()
 
     def auto_save(self):
-        license.update_license_reg_file()
+        # license.update_license_reg_file()
         # print('autosave_save action triggered')
         fname = self.main_model.project.project_file
         if not os.path.isfile(fname):
@@ -440,7 +455,7 @@ class MainWindow(QMainWindow):
     def toggle_darkmode(self):
         if self.action_darkmode.isChecked():
             logger.info('Setting Dark Mode')
-            # Fusion dark palette adapted from https://gist.github.com/QuantumCD/6245215.
+            # # Fusion dark palette adapted from https://gist.github.com/QuantumCD/6245215.
             palette = QPalette()
             palette.setColor(QPalette.Window, QColor(53, 53, 53))
             palette.setColor(QPalette.WindowText, Qt.white)
@@ -458,7 +473,7 @@ class MainWindow(QMainWindow):
             palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
             palette.setColor(QPalette.HighlightedText, Qt.black)
             self.app_handle.setPalette(palette)
-            self.main_model.color_settings['pen'].setColor(QColor(255, 255, 255, 100))
+            self.main_model.color_settings['pen'].setColor(QColor(255, 255, 255, 160))
             self.main_model.color_settings['brush'].setColor(QColor(0, 0, 0, 255))
         else:
             logger.info('Setting Light Mode')
@@ -476,7 +491,7 @@ class MainWindow(QMainWindow):
         '''
         dialog = QFileDialog(parent=self)
         dialog.setWindowTitle(label_text)
-        dialog.setFileMode(QFileDialog.DirectoryOnly)
+        dialog.setFileMode(QFileDialog.Directory)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         # we might want to set home directory using settings
         # for now rely on default behaviour
@@ -504,11 +519,13 @@ class MainWindow(QMainWindow):
             # print('called set xrange')
             self.paired_graphics_view.insetview_plot.vb.setXRange(buffer_x_max - x_range, buffer_x_max, padding=0)
 
+
     def load_live_recording(self):
         if self.actionLiveUpdate.isChecked():
             self.live_recording_timer.start(100)
         else:
             self.live_recording_timer.stop()
+
 
     def open_git_url(self):
         QDesktopServices.openUrl('https://github.com/KullmannLab/pyecog2')
@@ -552,10 +569,24 @@ class MainWindow(QMainWindow):
 
     def openProjectEditor(self):
         logger.info('opening Project Editor')
+        if hasattr(self, 'projectEditor'):
+            self.projectEditor.setWindowState(
+                (self.projectEditor.windowState() & ~Qt.WindowMinimized) | Qt.WindowActive)
+            self.projectEditor.raise_()
+            self.projectEditor.show()
+            return
         self.projectEditor = ProjectEditWindow(self.main_model.project, parent=self)
         self.projectEditor.show()
 
     def openFeatureExtractor(self):
+        logger.info('opening Feature Extractor')
+        if hasattr(self, 'featureExtractorWindow'):
+            self.featureExtractorWindow.setWindowState(
+                (self.featureExtractorWindow.windowState() & ~Qt.WindowMinimized) | Qt.WindowActive)
+            self.featureExtractorWindow.raise_()
+            self.featureExtractorWindow.show()
+            self.featureExtractorWindow.updateTreeFromSettings()
+            return
         self.featureExtractorWindow = FeatureExtractorWindow(self.main_model.project, parent=self)
         self.featureExtractorWindow.show()
 
@@ -585,6 +616,88 @@ class MainWindow(QMainWindow):
             logger.info(f'Exporting annotations to:{fname}')
             self.main_model.project.export_annotations(fname)
 
+    def import_FE_and_classifier(self):
+        if self.main_model.project.project_file == '':
+            msg ='Please save PyEcog Project before importing the feature extractor and classifier'
+            QMessageBox.critical(None, "Error", msg)
+            print(msg)
+            return
+        fname = self.select_directory('Select *.pyecog_classifier folder to import')
+        if fname:
+            logger.info(f'Importing FE and Classifier from:{fname}')
+            self.main_model.project.import_FE_and_classifier(fname)
+
+    def import_annotations(self):
+        dialog = QFileDialog(parent=self)
+        dialog.setWindowTitle('Import annotations from CSV file')
+        dialog.setFileMode(QFileDialog.AnyFile)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        # dialog.setAcceptMode(QFileDialog.AcceptSave)
+        dialog.setNameFilter('*.csv')
+        if dialog.exec():
+            fname = dialog.selectedFiles()[0]
+            logger.info(f'Importing annotations from:{fname}')
+            self.main_model.project.import_annotations(fname)
+
+
+    def export_signal_trace(self):
+        # Consider how to implement other file formats
+        dialog = QFileDialog(parent=self)
+        dialog.setWindowTitle('Export trace to CSV file')
+        dialog.setFileMode(QFileDialog.AnyFile)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setAcceptMode(QFileDialog.AcceptSave)
+        dialog.setNameFilter('*.csv')
+        if dialog.exec():
+            fname = dialog.selectedFiles()[0]
+            logger.info(f'Exporting trace to:{fname}')
+            # Grab data from window
+            data, _ = self.main_model.project.get_data_from_range(self.main_model.window)
+            # Save the array to a CSV file
+            np.savetxt(fname, data, delimiter=',')
+
+
+    def export_signal_trace_edf(self):
+        # Consider how to implement other file formats
+        dialog = QFileDialog(parent=self)
+        dialog.setWindowTitle('Export trace to EDF file')
+        dialog.setFileMode(QFileDialog.AnyFile)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setAcceptMode(QFileDialog.AcceptSave)
+        dialog.setNameFilter('*.edf')
+        if dialog.exec():
+            fname = dialog.selectedFiles()[0]
+            if not fname.endswith('.edf'):
+                fname = fname + '.edf'
+            logger.info(f'Exporting trace to:{fname}')
+            # Grab data from window
+            data, _ = self.main_model.project.get_data_from_range(self.main_model.window)
+            print(f'Data shape {data.shape}')
+            # Save the array to an EDF file
+            metadata, files = self.main_model.project.get_data_from_range(self.main_model.window,return_filedata_only = True)
+            if not metadata[0]['data_format'] == 'edf':
+                print('EDF export only available for EDF data')
+                return
+            # Create EDF file
+
+            dimension_dict = {'V': 1, 'mV': 1e-3, 'uV': 1e-6, 'nV': 1e-9}
+
+            with EdfReader(files[0][:-4]+'edf') as f:
+                header = f.getHeader()
+                header['startdate'] = datetime.fromtimestamp(self.main_model.window[0])
+                channel_info = f.getSignalHeaders()
+                n_channels = len(channel_info)
+                signal_headers = []
+                for ch in range(n_channels):
+                    ch_header = channel_info[ch]
+                    signal_headers.append(ch_header)
+
+                write_edf(fname, [data[:, i].ravel()/dimension_dict[channel_info[i]['dimension']] for i in range(data.shape[1])], signal_headers, header=header,
+                          digital=False, file_type=-1)
+
+
+
+
     # def reset_video(self):
     #     self.video_element.reset()
     #     self.video_element.sigTimeChanged.connect(self.main_model.set_time_position)
@@ -598,6 +711,7 @@ class MainWindow(QMainWindow):
         self.action_NDF_converter = self.menu_file.addAction("Open NDF converter")
         self.menu_file.addSeparator()
         self.action_load_directory = self.menu_file.addAction("Load directory")
+        self.action_load_directory.setShortcut('Ctrl+D')
         self.menu_file.addSeparator()
         self.actionLiveUpdate = self.menu_file.addAction("Live Recording")
         self.actionLiveUpdate.setCheckable(True)
@@ -645,11 +759,14 @@ class MainWindow(QMainWindow):
         self.annotations_redo.triggered.connect(self.main_model.annotations.step_forward_in_history)
         self.action_export_annotations = self.menu_annotations.addAction("Export to CSV")
         self.action_export_annotations.triggered.connect(self.export_annotations)
-        self.action_import_annotations = self.menu_annotations.addAction("Import annotations")
-        self.action_import_annotations.setDisabled(True)
+        self.action_import_annotations = self.menu_annotations.addAction("Import from CSV")
+        self.action_import_annotations.triggered.connect(self.import_annotations)
+        # self.action_import_annotations.setDisabled(True)
 
         # CLASSIFIER section
         self.menu_classifier = self.menu_bar.addMenu("Classifier")
+        self.action_setup_import_FE_and_classifier = self.menu_classifier.addAction("Import Feature Extractor and Classifier")
+        self.action_setup_import_FE_and_classifier.triggered.connect(self.import_FE_and_classifier)
         self.action_setup_feature_extractor = self.menu_classifier.addAction("Feature Extractor Options")
         self.action_setup_classifier = self.menu_classifier.addAction("Classifier Options")
         self.action_setup_feature_extractor.triggered.connect(self.openFeatureExtractor)
@@ -671,6 +788,12 @@ class MainWindow(QMainWindow):
 
         self.action_open_console_window = self.menu_tools.addAction("Console")
         self.action_open_console_window.triggered.connect(self.open_console_window)
+
+        self.action_open_console_window = self.menu_tools.addAction("Export selection window trace to CSV")
+        self.action_open_console_window.triggered.connect(self.export_signal_trace)
+
+        self.action_open_console_window = self.menu_tools.addAction("Export selection window trace to EDF")
+        self.action_open_console_window.triggered.connect(self.export_signal_trace_edf)
 
         # HELP section
         self.menu_help = self.menu_bar.addMenu("Help")
@@ -707,17 +830,18 @@ class MainWindow(QMainWindow):
         # self.menubar.addMenu("View")
 
     def checkGitUpdates(self):
-        current_version = pkg_resources.get_distribution('pyecog2').version
-        with request.urlopen('https://api.github.com/repos/KullmannLab/TestPublic/releases/latest', timeout=2) as f:
-            data = json.loads(f.read().decode('utf-8'))
-        latest_version = data['tag_name']
-        print(f'Current version:{current_version}\nLatest version:{latest_version}')
-        if latest_version > current_version:
-            self.update_pyecog()
-
+        current_version = importlib.metadata.version('pyecog2')
+        try:
+            with request.urlopen('https://api.github.com/repos/KullmannLab/TestPublic/releases/latest', timeout=2) as f:
+                data = json.loads(f.read().decode('utf-8'))
+            latest_version = data['tag_name']
+            print(f'Current version:{current_version}\nLatest version:{latest_version}')
+            if latest_version > current_version:
+                self.update_pyecog()
+        except:
+            print('could not check latest version')
     def update_pyecog(self):
         print('Ask to update PyEcog')
-        print('Updating PyEcog...')
 
     def closeEvent(self, event):
         self.auto_save()
@@ -754,7 +878,7 @@ class MainWindow(QMainWindow):
 
 
     def keyPressEvent(self, evt):
-        logger.info(f'Key press captured by Main {evt.key()}')
+        logger.info(f'Key press captured by Main {evt.key(),evt.modifiers()==QtCore.Qt.ShiftModifier,evt.modifiers()}')
         modifiers = evt.modifiers()
         if evt.key() == QtCore.Qt.Key_Space:
             logger.info('Space pressed')
@@ -762,14 +886,14 @@ class MainWindow(QMainWindow):
             return
 
         if evt.key() == QtCore.Qt.Key_Left:
-            if modifiers == QtCore.Qt.ShiftModifier:
+            if modifiers & QtCore.Qt.ShiftModifier:
                 self.paired_graphics_view.overview_page_left()
             else:
                 self.paired_graphics_view.insetview_page_left()
             return
 
         if evt.key() == QtCore.Qt.Key_Right:
-            if modifiers == QtCore.Qt.ShiftModifier:
+            if modifiers & QtCore.Qt.ShiftModifier:
                 self.paired_graphics_view.overview_page_right()
             else:
                 self.paired_graphics_view.insetview_page_right()
@@ -811,7 +935,7 @@ def execute():
     app.setApplicationName('PyEcog')
     app.setOrganizationDomain('PyEcog')
     app.setOrganizationName('PyEcog')
-    app.setStyle("fusion")
+    app.setStyle("Fusion")
     # Mikail feel free to play about if you feel so inclined :P
     # Now use a palette to switch to dark colors:
     # palette = QPalette()
@@ -835,16 +959,17 @@ def execute():
     pg.setConfigOption('background', 'w')
     # pg.setConfigOption('foreground', 'k')
     pg.setConfigOption('antialias', True)
-
-    pg.setConfigOption('useWeave', True)
-    # pg.setConfigOption('useOpenGL', True)
+    # pg.setConfigOption('useWeave', True) # deprecated?
+    pg.setConfigOption('useOpenGL', False)
+    pg.setConfigOption('enableExperimental', False)
+    pg.setConfigOption('useNumba', True)
 
     screen = MainWindow(app_handle=app)
     screen.get_available_screen()
     screen.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == '__main__':
-    freeze_support() # Why is this line here? - Answer: it is for creating a compiled executable
+    # freeze_support() # Why is this line here? - Answer: it is for creating a compiled executable
     execute()

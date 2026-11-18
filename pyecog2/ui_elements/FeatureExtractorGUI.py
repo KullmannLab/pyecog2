@@ -1,6 +1,6 @@
 import sys, os
-from PySide2 import QtGui, QtCore
-from PySide2.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog, \
+from PySide6 import QtGui, QtCore
+from PySide6.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog, \
     QProgressBar, QCheckBox
 
 from pyqtgraph.parametertree import Parameter
@@ -74,9 +74,10 @@ class ScalableGroupM(PyecogGroupParameter):
                        'removable': True,
                        'value': 'alias'})
 
-def settings2params(settings):
+def settings2params(settings,project):
     ntimefuncs = len(settings['feature_time_functions'])
-    return [
+    return [{'name': 'Feature Extractor Directory','type':'group','children':
+                [{'name':'Path','type': 'str','value':project.feature_extractor_root_dir}]},
             {'name': 'Feature Extractor Settings','type':'group','children':
                 [
                 {'name': 'Window settings','type':'group','children':[
@@ -99,7 +100,7 @@ def settings2params(settings):
              }]
 
 def params2settings(params):
-    fe_settings_list = params.children()[0].children()
+    fe_settings_list = params.children()[1].children()
     window_settings = fe_settings_list[0].children()
     feature_time_functions = fe_settings_list[1].children()
     feature_freq_functions = fe_settings_list[2].children()
@@ -124,11 +125,17 @@ class FeatureExtractorWindow(QMainWindow):
         self.project = project
         self.feature_extractor = FeatureExtractor()
         classifier_dir = self.project.project_file + '_classifier' if project is not None else ''
+        self.fe_root_dir = self.project.feature_extractor_root_dir if project is not None else ''
         if os.path.isfile(os.path.join(classifier_dir, '_feature_extractor.json')):
             self.feature_extractor.load_settings(os.path.join(classifier_dir, '_feature_extractor.json'))
+        else:
+            self.resetSettings(update_tree=False)
+
         self.setCentralWidget(widget)
         self.terminal = QTextBrowser(self)
         self._err_color = QtCore.Qt.red
+        self.button = QPushButton('Reset to Default Settings', self)
+        self.button.clicked.connect(self.resetSettings)
         self.button0 = QPushButton('Import Settings File', self)
         self.button0.clicked.connect(self.loadSettingsFile)
         self.button1 = QPushButton('Set Project feature Extractor', self)
@@ -145,10 +152,11 @@ class FeatureExtractorWindow(QMainWindow):
         self.t = PyecogParameterTree()
         self.updateTreeFromSettings()
 
+        layout.addWidget(self.button)
         layout.addWidget(self.button0)
         layout.addWidget(self.t)
-        layout.setRowStretch(1,10)
-        layout.setRowMinimumHeight(1,400)
+        layout.setRowStretch(2,10)
+        layout.setRowMinimumHeight(2,400)
         layout.setColumnMinimumWidth(0,600)
         layout.addWidget(self.button1)
         extract_widget = QWidget()
@@ -160,7 +168,7 @@ class FeatureExtractorWindow(QMainWindow):
         layout.addWidget(self.progressBar0)
         layout.addWidget(self.progressBar1)
         layout.addWidget(self.terminal)
-        layout.setRowMinimumHeight(7,300)
+        layout.setRowMinimumHeight(8,300)
         stdout = OutputWrapper(self, True)
         stdout.outputWritten.connect(self.handleOutput)
         stderr = OutputWrapper(self, False)
@@ -171,7 +179,7 @@ class FeatureExtractorWindow(QMainWindow):
         self.dfrmt = '%Y-%m-%d %H:%M:%S'  # Format to use in date elements
 
     def updateTreeFromSettings(self):
-        self.params = settings2params(self.feature_extractor.settings)
+        self.params = settings2params(self.feature_extractor.settings,self.project)
         ## Create tree of Parameter objects
         self.p = Parameter.create(name='params', type='group', children=self.params)
         self.t.setParameters(self.p, showTop=False)
@@ -189,6 +197,18 @@ class FeatureExtractorWindow(QMainWindow):
             self.feature_extractor.load_settings(fname)
             self.updateTreeFromSettings()
             print('loaded', fname)
+
+    def resetSettings(self,update_tree=True):
+        if self.project.feature_extractor_root_dir == '':
+            self.project.feature_extractor_root_dir = os.path.join(
+                *os.path.split(self.project.project_file)[:-1],
+                os.path.split(self.project.project_file)[-1][:-7] + '_feature_extractor')
+        nchannels = self.project.file_buffer.get_nchannels()
+        print(f'Resetting Settings for {nchannels} channels')
+        self.feature_extractor.multichannel_auto_settings(nchannels)
+        print(self.feature_extractor.settings)
+        if update_tree:
+            self.updateTreeFromSettings()
 
     def exportSettingsFile(self):
         dialog = QFileDialog(self)
@@ -216,17 +236,29 @@ class FeatureExtractorWindow(QMainWindow):
         self.feature_extractor.update_from_settings(params2settings(self.p))
         classifier_dir = self.project.project_file + '_classifier'
         if not os.path.isdir(classifier_dir):
+            print(f'Creating classifier dir: {classifier_dir}')
             os.mkdir(classifier_dir)
         self.feature_extractor.save_settings(os.path.join(classifier_dir, '_feature_extractor.json'))
+        self.project.feature_extractor_root_dir = self.p.children()[0].children()[0].value()
+        self.fe_root_dir = self.project.feature_extractor_root_dir
+        if not os.path.isdir(self.fe_root_dir):
+            print(f'Creating feature extractor dir: {self.fe_root_dir}')
+            os.mkdir(self.fe_root_dir)
+
         print(self.feature_extractor.settings)
+        self.feature_extractor.save_settings(os.path.join(self.fe_root_dir, '_feature_extractor.json'))
 
     def runFeatureExtraction(self):
         self.setProjectFeatureExtraction()
         print('Starting feature extraction...')
         classifier_dir = self.project.project_file + '_classifier'
+        self.fe_root_dir = self.project.feature_extractor_root_dir
         if not os.path.isdir(classifier_dir):
             os.mkdir(classifier_dir)
+        if not os.path.isdir(self.fe_root_dir):
+            os.mkdir(self.fe_root_dir)
         self.feature_extractor.save_settings(os.path.join(classifier_dir, '_feature_extractor.json'))
+        self.feature_extractor.save_settings(os.path.join(self.fe_root_dir, '_feature_extractor.json'))
         print('Starting FE worker')
         worker = Worker(self.extractFeatures)
         self.progressBar0.setValue(0.1)
@@ -237,7 +269,7 @@ class FeatureExtractorWindow(QMainWindow):
         for i,animal in enumerate(self.project.animal_list):
             print(' calling feature_extractor.extract_features_from_animal')
             self.feature_extractor.extract_features_from_animal(animal, re_write = self.re_write.isChecked(), n_cores = -1,
-                                                                progress_bar = self.progressBar1)
+                                                                progress_bar = self.progressBar1, fe_root_dir = self.fe_root_dir)
             self.progressBar0.setValue((100*(i+1))//len(self.project.animal_list))
         print('Finnished extracting features')
         return (1, 1)
@@ -248,4 +280,4 @@ if __name__ == '__main__':
     window = FeatureExtractorWindow()
     window.setGeometry(500, 300, 300, 200)
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

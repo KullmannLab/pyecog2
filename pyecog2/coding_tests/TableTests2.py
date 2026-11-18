@@ -1,5 +1,5 @@
-from pyecog2.annotation_table_widget import AnnotationTableWidget
-from PySide2 import QtCore, QtWidgets
+from pyecog2.ui_elements.annotation_table_widget import AnnotationTableWidget
+from PySide6 import QtCore, QtWidgets
 import numpy as np
 from pyecog2.annotations_module import AnnotationElement, AnnotationPage
 
@@ -12,7 +12,7 @@ data = np.array([
     (443, 1e-12, 'w'),
 ], dtype=[('Column 1', int), ('Column 2', float), ('Column 3', object)])
 
-annotations = AnnotationPage(list=[AnnotationElement(label='seizure', start=1, end=10),
+annotations = AnnotationPage(alist=[AnnotationElement(label='seizure', start=1, end=10),
                                                            AnnotationElement(label='seizure', start=14, end=22),
                                                            AnnotationElement(label='spike', start=23, end=25),
                                                            AnnotationElement(label='artefact', start=26, end=26.5)]*10)
@@ -27,4 +27,4 @@ if __name__ == '__main__':
     import sys
 
     if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-        QtWidgets.QApplication.instance().exec_()
+        QtWidgets.QApplication.instance().exec()

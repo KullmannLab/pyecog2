@@ -1,7 +1,7 @@
 import sys
-from PySide2.QtCore import *
-from PySide2.QtGui import *
-from PySide2.QtWidgets import *
+from PySide6.QtCore import *
+from PySide6.QtGui import *
+from PySide6.QtWidgets import *
 
 class Window(QMainWindow):
     def __init__(self, parent=None):
@@ -84,7 +84,7 @@ def main():
     app.setOrganizationDomain('ltd')
     app.setOrganizationName('Alg')
     w = Window()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 if __name__ == '__main__':
     main()

@@ -4,7 +4,7 @@ import uuid
 import json
 from datetime import datetime
 import os, sys
-import pkg_resources
+import importlib.resources
 from shutil import copyfile
 
 
@@ -32,7 +32,7 @@ def get_filepath_ID(fname):
 
 
 def verify_license_file():
-    fname = pkg_resources.resource_filename('pyecog2', 'license/PyEcogLicense.txt')
+    fname = str(importlib.resources.files('pyecog2') / 'license/PyEcogLicense.txt')
     with open(fname, 'r') as f:
         license_dict = json.load(f)
 
@@ -102,7 +102,7 @@ def verify_license_reg_file(filepath,fileid):
 
 
 def update_license_reg_file():
-    filepath = pkg_resources.resource_filename('pyecog2', 'license/license_reg.txt')
+    filepath = str(importlib.resources.files('pyecog2') / 'license/license_reg.txt')
     with open(filepath, 'r') as f:
         license_reg_dict = json.load(f)
 
@@ -138,10 +138,10 @@ def update_license_reg_file():
 
 
 def update_license_file():
-    license_file_path = pkg_resources.resource_filename('pyecog2', 'license/PyEcogLicense.txt')
+    license_file_path = str(importlib.resources.files('pyecog2') / 'license/PyEcogLicense.txt')
     with open(license_file_path, 'r') as f:
         license_dict = json.load(f)
-    license_dict['license reg path'] = pkg_resources.resource_filename('pyecog2', 'license/license_reg.txt')
+    license_dict['license reg path'] = str(importlib.resources.files('pyecog2') / 'license/license_reg.txt')
     license_dict['license reg ID'] = get_filepath_ID(license_dict['license reg path'])
     update_license_reg_file()
     license_dict['computer ID'] = str(hex(uuid.getnode()))
@@ -150,10 +150,10 @@ def update_license_file():
 
 def copy_license_to_folder(filename):
     update_license_file()
-    copyfile(pkg_resources.resource_filename('pyecog2', 'license/PyEcogLicense.txt'), filename)
+    copyfile(str(importlib.resources.files('pyecog2') / 'license/PyEcogLicense.txt'), filename)
     return filename
 
 def copy_activated_license(fname):
     update_license_file()
-    copyfile(fname, pkg_resources.resource_filename('pyecog2', 'license/PyEcogLicense.txt'))
+    copyfile(fname, str(importlib.resources.files('pyecog2') / 'license/PyEcogLicense.txt'))
     return fname + 'PyEcogLicense.txt'

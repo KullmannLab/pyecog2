@@ -1,7 +1,7 @@
 import sys, os, glob
 from datetime import datetime
-from PySide2 import QtGui, QtCore
-from PySide2.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog
+from PySide6 import QtGui, QtCore
+from PySide6.QtWidgets import QGridLayout, QApplication, QWidget, QMainWindow, QTextBrowser, QPushButton, QFileDialog
 
 from pyqtgraph.parametertree import Parameter
 from pyecog2.ndf_converter import NdfFile, DataHandler
@@ -62,17 +62,28 @@ class NDFConverterWindow(QMainWindow):
     def __init__(self,parent = None):
         QMainWindow.__init__(self,parent = parent)
         self.settings = None
+        settings = {'NDFdir': os.getcwd(),
+                    'H5dir': os.getcwd(),
+                    'start': '1971-01-01 00:00:00',
+                    'end': '2999-01-01 00:00:00',
+                    'filter': True,
+                    'glitch': True,
+                    'DynamicRange': '27 mV (OSI Default)',
+                    'ManualDynamicRange': 27e-3,
+                    'AnimalDictList': [{'id': 'Animal 1',
+                                        'tidfs': '[0],auto'}]
+                    }
         if hasattr(parent.main_model.project,'ndf_converter_settings'): # For backwards compatibility
             self.settings = parent.main_model.project.ndf_converter_settings
         if self.settings is None:
-            self.settings = {'NDFdir': os.getcwd(),
-                             'H5dir': os.getcwd(),
-                             'start': '1971-01-01 00:00:00',
-                             'end': '2999-01-01 00:00:00',
-                             'AnimalDictList':[{'id': 'Animal 1',
-                                                'tidfs': '[0],auto'}]
-                             }
-            parent.main_model.project.ndf_converter_settings = self.settings
+            self.settings = settings
+        else:
+            # implement backwards compatibility
+            for k in settings.keys():
+                if k not in self.settings.keys():
+                    self.settings[k] = settings[k]
+
+        parent.main_model.project.ndf_converter_settings = self.settings
 
         widget = QWidget(self)
         layout = QGridLayout(widget)
@@ -99,15 +110,24 @@ class NDFConverterWindow(QMainWindow):
                 {'name': 'Select Destination directory', 'type': 'action', 'children': [
                     {'name': 'Destination directory:', 'type': 'str', 'value': self.destination_folder }
                 ]},
-                {'name': 'Update fields from directories', 'type': 'action'}
+                {'name': 'Update fields from directories', 'type': 'action'},
+                {'name': 'Set Animal fields from CSV', 'type': 'action'},
+                {'name': 'Export Animal fields to CSV', 'type': 'action'}
             ]},
             {'name': 'Date Range', 'type': 'group', 'children': [
                 {'name': 'Start', 'type': 'str', 'value': self.settings['start'] },
                 {'name': 'End', 'type': 'str', 'value': self.settings['end']},
                 ]},
+            {'name': 'Converter Extra Settings', 'type': 'group', 'children': [
+                {'name': '1Hz high pass filter', 'type': 'bool', 'value': self.settings['filter']},
+                {'name': 'Glitch Remover', 'type': 'bool', 'value': self.settings['glitch']},
+                {'name': 'Dynamic Range', 'type': 'list', 'value': self.settings['DynamicRange'],
+                    'values': ['27 mV (OSI Default)', '270 mV (OSI High Dynamic Range)', 'Manual']},
+                {'name': 'Manual Dynamic Range (V)', 'type': 'float', 'value': self.settings['ManualDynamicRange']}
+            ]},
             ScalableGroup(name='Animal id: [TID1,TID2,...],fs', children=self.animal_dict)]
 
-        ## Create tree of Parameter objects
+        # Create tree of Parameter objects
         self.p = Parameter.create(name='params', type='group', children=self.params)
         self.p.param('Directories', 'Select NDF directory').sigActivated.connect(self.selectNDFFolder)
         self.p.param('Directories', 'Select NDF directory','NDF directory:').sigValueChanged.connect(self.setNDFFolder)
@@ -115,6 +135,8 @@ class NDFConverterWindow(QMainWindow):
         self.p.param('Directories', 'Select Destination directory', 'Destination directory:').sigValueChanged.connect(
             self.setDestinationFolder)
         self.p.param('Directories', 'Update fields from directories').sigActivated.connect(self.updateFieldsFromDirectories)
+        self.p.param('Directories', 'Set Animal fields from CSV').sigActivated.connect(self.updateAnimalsFromCSV)
+        self.p.param('Directories', 'Export Animal fields to CSV').sigActivated.connect(self.exportAnimalsToCSV)
 
         self.t = PyecogParameterTree()
         self.t.setParameters(self.p, showTop=False)
@@ -150,7 +172,7 @@ class NDFConverterWindow(QMainWindow):
         dialog = QFileDialog(self)
         dialog.setDirectory(self.folder2convert)
         dialog.setWindowTitle('Select NDF directory')
-        dialog.setFileMode(QFileDialog.DirectoryOnly)
+        dialog.setFileMode(QFileDialog.Directory)
         # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         if dialog.exec():
@@ -191,12 +213,56 @@ class NDFConverterWindow(QMainWindow):
         self.p.param('Animal id: [TID1,TID2,...],fs').clearChildren()
         self.p.param('Animal id: [TID1,TID2,...],fs').addChildren(self.animal_dict)
 
+    def updateAnimalsFromCSV(self):
+        dialog = QFileDialog(parent=self)
+        dialog.setWindowTitle('Import Animal Settings from CSV file')
+        dialog.setFileMode(QFileDialog.AnyFile)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setNameFilter('*.csv')
+        if dialog.exec():
+            fname = dialog.selectedFiles()[0]
+        self.animal_dict.clear()
+
+        with open(fname, 'r') as f:
+            line = f.readline()
+            while line!='':
+                l = line.split(',')
+                animal_id = l[0]
+                tid = ','.join(l[1:-1])
+                fs = l[-1]
+                self.animal_dict.append({'name': animal_id,
+                                         'type': 'str',
+                                         'value': tid + ',' + str(fs),
+                                         'renamable': True,
+                                         'removable': True})
+                line = f.readline()
+
+        self.p.param('Animal id: [TID1,TID2,...],fs').clearChildren()
+        self.p.param('Animal id: [TID1,TID2,...],fs').addChildren(self.animal_dict)
+
+    def exportAnimalsToCSV(self):
+        dialog = QFileDialog(parent=self)
+        dialog.setWindowTitle('Import Animal Settings from CSV file')
+        dialog.setFileMode(QFileDialog.AnyFile)
+        # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
+        dialog.setAcceptMode(QFileDialog.AcceptSave)
+        dialog.setNameFilter('*.csv')
+        if dialog.exec():
+            fname = dialog.selectedFiles()[0]
+
+        if not fname.endswith('.csv'):
+            fname+='.csv'
+        with open(fname, 'w') as f:
+            for a in self.p.param('Animal id: [TID1,TID2,...],fs').children():
+                f.write( a.name() + ',' + a.value() + '\n')
+
+
 
     def selectDestinationFolder(self):
         dialog = QFileDialog(self)
         dialog.setDirectory(self.destination_folder)
         dialog.setWindowTitle('Select Destination directory')
-        dialog.setFileMode(QFileDialog.DirectoryOnly)
+        dialog.setFileMode(QFileDialog.Directory)
         # dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         if dialog.exec():
@@ -221,7 +287,7 @@ class NDFConverterWindow(QMainWindow):
 
     def converterFinished(self,dummy_arg = None):
         print('NDF converter finished')
-        logger.infot('NDF converter finished')
+        logger.info('NDF converter finished')
         self.converter_running = False
 
     def convertFiles(self):
@@ -238,25 +304,61 @@ class NDFConverterWindow(QMainWindow):
         self.settings['end'] = end_string
         self.settings['AnimalDictList'] = [{'id': a.name(),
                                              'tidfs': a.value()} for a in self.p.param('Animal id: [TID1,TID2,...],fs').children()]
+        self.settings['filter'] = self.p.param('Converter Extra Settings', '1Hz high pass filter').value()
+        self.settings['glitch'] = self.p.param('Converter Extra Settings', 'Glitch Remover').value()
+
+        self.settings['DynamicRange'] = self.p.param('Converter Extra Settings', 'Dynamic Range').value()
+        if self.settings['DynamicRange'] == '27 mV (OSI Default)':
+            self.settings['ManualDynamicRange'] = 27e-3
+        elif self.settings['DynamicRange'] == '270 mV (OSI High Dynamic Range)':
+            self.settings['ManualDynamicRange'] = 270e-3
+        else:
+            self.settings['ManualDynamicRange'] = self.p.param('Converter Extra Settings', 'Manual Dynamic Range (V)').value()
+
         self.files2convert = [os.path.join(self.folder2convert, f) for f in os.listdir(self.folder2convert)
                               if (f.endswith('.ndf') and start_time <= int(f[1:-4]) <= end_time)]
         print(len(self.files2convert), 'files between:', start_time, 'and', end_time)
+
+
+        destination_folder_dict = {} 
+        all_tids = []
+        all_fs = {}
+
+        # Transfer this loop int dh.convert_ndf_directory_to_h5
         for a in self.p.param('Animal id: [TID1,TID2,...],fs').children():
-            dh = DataHandler()
-            print('***\n Starting to convert', a.name(), a.value(),'\n***')
+            
+            print('\n Preparing directory structure for ', a.name(), a.value(),'\n')
             tidfs = a.value().split(']')
             tids = tidfs[0]+']'
             if len(tidfs)>1:
                 fs = tidfs[1][1:] # remove the coma
             else:
                 fs = 'auto'
+
             animal_destination_folder = self.destination_folder + os.sep + a.name()
             if not os.path.isdir(self.destination_folder):
                 os.mkdir(self.destination_folder)
+                logger.info('Created destination folder: ' + self.destination_folder)
             if not os.path.isdir(animal_destination_folder):
                 os.mkdir(animal_destination_folder)
-            dh.convert_ndf_directory_to_h5(self.files2convert,tids=tids,save_dir=animal_destination_folder,fs=fs)
-        return (1,1) # wavelet worker expects to emit tuple when done...
+                logger.info('Created animal destination folder: ' + animal_destination_folder)
+            
+            # we will use these variables in the convert_ndf_directory_to_h5 function to save different TIDs in different folders
+            destination_folder_dict[animal_destination_folder] = eval(tids)
+            all_tids += eval(tids)
+            for tid in eval(tids):
+                all_fs[tid] = fs
+
+        print('***\n STARTING CONVERSION \n***')
+        dh = DataHandler()
+        dh.convert_ndf_directory_to_h5(self.files2convert,tids=all_tids,
+                                       save_dir=destination_folder_dict,
+                                       fs=all_fs,
+                                       glitch_detection=self.settings['glitch'],
+                                       high_pass_filter=self.settings['filter'],
+                                       dynamic_range=self.settings['ManualDynamicRange'])
+        
+        return 1, 1  # wavelet worker expects to emit tuple when done...
 
 
 
@@ -267,4 +369,4 @@ if __name__ == '__main__':
     window = NDFConverterWindow()
     window.setGeometry(500, 300, 300, 200)
     window.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

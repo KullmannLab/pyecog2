@@ -37,13 +37,13 @@ spins = [
 win = QtGui.QMainWindow()
 win.setWindowTitle('pyqtgraph example: SpinBox')
 cw = QtGui.QWidget()
-layout = QtGui.QGridLayout()
+layout = QGridLayout()
 cw.setLayout(layout)
 win.setCentralWidget(cw)
 win.show()
 # win.resize(300, 600)
-changingLabel = QtGui.QLabel()  ## updated immediately
-changedLabel = QtGui.QLabel()  ## updated only when editing is finished or mouse wheel has stopped for 0.3sec
+changingLabel = QLabel()  ## updated immediately
+changedLabel = QLabel()  ## updated only when editing is finished or mouse wheel has stopped for 0.3sec
 changingLabel.setMinimumWidth(200)
 font = changingLabel.font()
 font.setBold(True)
@@ -62,7 +62,7 @@ def valueChanging(sb, value):
 
 
 for text, spin in spins:
-    label = QtGui.QLabel(text)
+    label = QLabel(text)
     labels.append(label)
     layout.addWidget(label)
     layout.addWidget(spin)
@@ -120,4 +120,4 @@ if __name__ == '__main__':
     import sys
 
     if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-        QtGui.QApplication.instance().exec_()
+        QtGui.QApplication.instance().exec()

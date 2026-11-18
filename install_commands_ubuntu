@@ -1,1 +1,2 @@
 sudo apt-get install -y python-pyqt5.qtmultimedia
+sudo apt install libxcb-cursor0

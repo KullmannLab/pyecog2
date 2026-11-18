@@ -2,23 +2,34 @@ import json
 import numpy as np
 from collections import OrderedDict
 from pyecog2.h5loader import H5File
-import glob, os
+import glob, os, shutil
 from datetime import datetime
-from pyecog2.annotations_module import AnnotationPage
+from pyecog2.annotations_module import AnnotationPage, AnnotationElement
+# from pyecog2.classifier import GaussianClassifier
+# from pyecog2.feature_extractor import FeatureExtractor
 from scipy import signal
-from PySide2 import QtCore
+from PySide6 import QtCore
 import pyqtgraph as pg
 from timeit import default_timer as timer
+from pyedflib import EdfReader
+import re
 
 import logging
 logger = logging.getLogger(__name__)
 
+
 def clip(x, a, b):  # utility funciton for file buffer
     return min(max(int(x), a), b)
+
+def natural_sort_key(s):
+    # Splits the string into a list of text and integers
+    # e.g., "Animal 11" becomes ['Animal ', 11]
+    return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
 
 def intervals_overlap(a,b):
     # return (a[0] <= b[0] < a[1]) or (a[0] <= b[1] < a[1]) or (b[0] <= a[0] < b[1]) or (b[0] <= a[1] < b[1])
     return (a[0] <= b[0] < a[1]) or (a[0] < b[1] <= a[1]) or (b[0] <= a[0] < b[1]) or (b[0] < a[1] <= b[1])
+
 
 def create_metafile_from_h5(file,duration = 3600):
     assert file.endswith('.h5')
@@ -30,7 +41,7 @@ def create_metafile_from_h5(file,duration = 3600):
     metadata = OrderedDict(fs=fs,
                            no_channels=len(h5_file.attributes['t_ids']),
                            data_format='h5',
-                           volts_per_bit=4e-7,
+                           volts_per_bit=1e-6,
                            transmitter_id=str(h5_file.attributes['t_ids']),
                            start_timestamp_unix=int(os.path.split(file)[-1].split('_')[0][1:]),
                            duration=duration,  # assume all h5 files have 1hr duration
@@ -41,24 +52,78 @@ def create_metafile_from_h5(file,duration = 3600):
         json.dump(metadata, json_file, indent=2, sort_keys=True)
 
 
+def create_metafile_from_edf(file):
+    assert file.endswith('.edf')
+    with EdfReader(file) as edf_file:
+        fsv = edf_file.getSampleFrequencies()
+        assert all([f == fsv[0] for f in fsv]) #check all channels have the same sampling frequency
+        dimension_dict = {'V': 1, 'mV': 1e-3, 'uV': 1e-6, 'nV': 1e-9}
+        metadata = OrderedDict(fs=fsv[0],
+                               no_channels=len(fsv),
+                               data_format='edf',
+                               volts_per_bit=dimension_dict[edf_file.getPhysicalDimension(0)],
+                               transmitter_id=edf_file.getSignalHeader(0)['label'],
+                               start_timestamp_unix=int(edf_file.getStartdatetime().timestamp()),
+                               duration=int(edf_file.getFileDuration()),  # assume all h5 files have 1hr duration
+                               channel_labels=[edf_file.getSignalHeader(ch)['label'] for ch in range(len(fsv))],
+                               experiment_metadata_str=edf_file.getRecordingAdditional())
+        metafile = file[:-3] + 'meta'
+    with open(metafile, 'w') as json_file:
+        json.dump(metadata, json_file, indent=2, sort_keys=True)
+
+def edf_chinfo_from_metadata(metafile_name):
+    metadata = load_metadata_file(metafile_name)
+    n_channels = metadata['no_channels']
+    ch_info_list = []
+    for label in metadata['channel_labels']:
+        channel_info = {
+            'label': label,
+            'dimension': 'V',
+            'sample_rate': metadata['fs'],
+            'physical_max': metadata['volts_per_bit'] * 8,
+            'physical_min': -metadata['volts_per_bit'] * 8,
+            'digital_max': 32767,
+            'digital_min': -32768,
+            'transducer': '',
+            'prefilter': ''
+        }
+        ch_info_list.append(channel_info)
+
+
 def read_neuropixels_metadata(fname):
     d = {}
+    filetype = str.split(str(fname), sep='.')[-2]
     with open(fname) as f:
         while True:
-            line =f.readline()
+            line = f.readline()
             if line == '':
                 break
             linesplit = line.split('=')
-            d[linesplit[0]]=linesplit[1][:-1]
+            d[linesplit[0]] = linesplit[1][:-1]
 
-    m = {'no_channels':int(d['nSavedChans']),
-         'fs':float(d['imSampRate']),
-         'start_timestamp_unix': datetime.timestamp(datetime.strptime(d['fileCreateTime'],'%Y-%m-%dT%H:%M:%S')),
-         'duration':float(d['fileTimeSecs']),
-         'data_format':'int16',
-         'volts_per_bit': 1.170e-3/float(eval('[' + (d['~imroTbl'].replace('(', ',(').replace(' ', ',')[1:] + ']') )[1][3])}
+    Imax = 512
+    Vmax = float(d['imAiRangeMax'])
+    APgain = eval('[' + (d['~imroTbl'].replace('(', ',(').replace(' ', ',')[1:] + ']'))[1][3]
+    LFgain = eval('[' + (d['~imroTbl'].replace('(', ',(').replace(' ', ',')[1:] + ']'))[1][4]
+    APuV_per_bit = 1 * Vmax / Imax / APgain
+    LFuV_per_bit = 1 * Vmax / Imax / LFgain
+
+    m = {'no_channels': int(d['nSavedChans']),
+         'binaryfilename': fname[:-4] + 'bin',
+         'fs': float(d['imSampRate']),
+         'start_timestamp_unix': datetime.timestamp(datetime.strptime(d['fileCreateTime'], '%Y-%m-%dT%H:%M:%S')),
+         'duration': float(d['fileTimeSecs']),
+         'data_format': 'int16',
+         'fileSizeBytes': int(d['fileSizeBytes'])}
+
+    if filetype == 'lf':
+        m['volts_per_bit'] = LFuV_per_bit
+        m['file_type'] = 'lf'
+    elif filetype == 'ap':
+        m['volts_per_bit'] = APuV_per_bit
+        m['file_type'] = 'ap'
+
     return m
-
 
 def load_metadata_file(fname):
     try:  # most common scenario
@@ -75,11 +140,39 @@ def load_metadata_file(fname):
                         create_metafile_from_h5(fname[:-4] + 'h5')  # create metafiles for h5 files if they do not exist
                         with open(fname, 'r') as json_file:
                             metadata = json.load(json_file)
+                    elif os.path.isfile(fname[:-4] + 'edf'):
+                        create_metafile_from_edf(fname[:-4] + 'edf')  # create metafiles for edf files if they do not exist
+                        with open(fname, 'r') as json_file:
+                            metadata = json.load(json_file)
                     else:
                         logger.info(f'Non-existent file:{fname}')
             except Exception:
                 logger.info('Unrecognized metafile format')
     return metadata
+
+def generate_metadata_for_folder(eeg_folder):
+    logger.info(f'Looking for files:{eeg_folder}{os.path.sep}*.h5')
+    h5files = glob.glob(eeg_folder + os.path.sep + '*.h5')
+    h5files.sort()
+    for i, file in enumerate(h5files):
+        if os.path.isfile(file[:-2] + 'meta'):
+            continue
+        start = int(os.path.split(file)[-1].split('_')[0][1:])
+        try:
+            next_start = int(os.path.split(h5files[i + 1])[-1].split('_')[0][1:])
+            duration = min(next_start - start, 3600)
+        except Exception:
+            duration = 3600
+        create_metafile_from_h5(file, duration)
+
+    logger.info(f'Looking for files:{eeg_folder}{os.path.sep}*.edf')
+    edffiles = glob.glob(eeg_folder + os.path.sep + '*.edf')
+    edffiles.sort()
+    for i, file in enumerate(edffiles):
+        if os.path.isfile(file[:-2] + 'meta'):
+            continue
+        create_metafile_from_edf(file)
+
 
 class Animal():
     def __init__(self, id=None, eeg_folder=None, video_folder=None, dict={}):
@@ -114,19 +207,7 @@ class Animal():
 
     def update_eeg_folder(self,eeg_folder):
         self.eeg_folder = os.path.normpath(eeg_folder)
-        logger.info(f'Looking for files:{eeg_folder}{os.path.sep}*.h5')
-        h5files = glob.glob(eeg_folder + os.path.sep + '*.h5')
-        h5files.sort()
-        for i,file in enumerate(h5files):
-            if os.path.isfile(file[:-2] + 'meta'):
-                continue
-            start = int(os.path.split(file)[-1].split('_')[0][1:])
-            try:
-                next_start = int(os.path.split(h5files[i+1])[-1].split('_')[0][1:])
-                duration = min(next_start-start,3600)
-            except Exception:
-                duration = 3600
-            create_metafile_from_h5(file,duration)
+        generate_metadata_for_folder(eeg_folder)  # generate metadata files for h5 and edf files that do not have them
         self.eeg_files = glob.glob(eeg_folder + os.path.sep + '*.meta')
         self.eeg_files.sort()
         self.eeg_init_time = []
@@ -161,7 +242,7 @@ class Animal():
                 self.eeg_files[i] = f
             else:
                 if not already_warned:
-                    logger.warning('EEG file name does not start with given prefix')
+                    logger.warning(f'EEG file name does not start with given prefix: {f}')
                     already_warned = True
 
     def substitute_video_folder_prefix(self,old_prefix,new_prefix):
@@ -213,6 +294,8 @@ class FileBuffer():  # Consider translating this to cython
         self.eeg_init_time = eeg_init_time
         self.eeg_duration = eeg_duration
         self.verbose = verbose
+        self.montage = np.eye(1)
+        self.apply_montage = False
 
     def add_file_to_buffer(self, fname):
         if fname in self.files:  # skip if file is already buffered
@@ -239,10 +322,23 @@ class FileBuffer():  # Consider translating this to cython
                     channels.append(h5file[tid]['data'])
             arr = np.vstack(channels).T
             self.data.append(arr)
+        elif metadata['data_format'] == 'edf':
+            try:
+                with EdfReader(fname[:-4] + 'edf') as edf_file:
+                    channels = []
+                    duration = metadata['duration']
+                    for ch in range(metadata['no_channels']):
+                        channels.append(edf_file.readSignal(ch))
+                    arr = np.vstack(channels).T
+                    self.data.append(arr)
+            except:
+                logger.warning(f'error trying to open {fname[:-4]} edf')
+                raise
+
         else:  # it is a bin file and can be mememaped
             try:
-                if self.verbose: logger.info(f'opening binary fie: {fname[:-4]} bin')
-                m = np.memmap(fname[:-4] + 'bin', mode='r', dtype =metadata['data_format'] )
+                if self.verbose: logger.info(f'opening binary file: {metadata["binaryfilename"]}')
+                m = np.memmap(metadata['binaryfilename'], mode='r', dtype =metadata['data_format'] )
             except ValueError:
                 m = np.zeros(0)  # binary file is empty so just create empty array
             m = m.reshape((-1, metadata['no_channels']))
@@ -277,7 +373,7 @@ class FileBuffer():  # Consider translating this to cython
         if self.data:
             return max([data.shape[1] for data in self.data])
         else:
-            return 0
+            return 1
 
     def clear_buffer(self):
         self.files = []
@@ -288,7 +384,6 @@ class FileBuffer():  # Consider translating this to cython
 
     def get_t_max_for_live_plot(self):
         return max([r[1] for r in self.data_ranges])
-
 
     def get_data_from_range(self, trange, channel=None, n_envelope=None, for_plot=False, filter_settings=(False,0,0)):
         # First check if data is already buffered, most of the time this will be the case:
@@ -337,7 +432,14 @@ class FileBuffer():  # Consider translating this to cython
         enveloped_data = []
         enveloped_time = []
         no_downsampling = True
+
         for i, data in enumerate(self.data):
+            if self.montage.shape[1] != data.shape[1]:
+                if (self.montage == np.eye(self.montage.shape[1])).all(): # create apropriately sized matrix if it is Identity
+                    self.montage = np.eye(data.shape[1])
+                else:
+                    print('Montage shape incompatible with data shape')
+                    raise IndexError
 
             if channel is not None and channel>=data.shape[1]:
                 continue # skip this file becuase it does not have channel with required index
@@ -351,15 +453,32 @@ class FileBuffer():  # Consider translating this to cython
             # print('Downsampling ratio:', ds,file_envlopes,sample_ranges)
             if channel is None:
                 # poor coding here, we are not computing proper envelopes, but it'll do for now because this is only
-                # used for coputing channel scallings so far
-                enveloped_data.append(dV*data[start:stop:ds, :])
+                # used for computing channel scallings so far
+                if self.apply_montage and not (self.montage==np.eye(self.montage.shape[0])).all(): # avoid multiplication if montage is identity matrix
+                    enveloped_data.append(data[start:stop:ds, :]@(dV*self.montage.T))
+                else:
+                    enveloped_data.append(data[start:stop:ds, :]*dV)
                 if ds != 0:
                     no_downsampling = False
             elif ds == 1:
                 # Small enough to display with no intervention.
-                enveloped_data.append(dV*data[start:stop, channel].reshape(-1, 1))
+                if self.apply_montage:
+                    montage_channel = self.montage[channel,:]
+                    nzmi = np.nonzero(montage_channel)  # non zero indices of montage to avoid unecessary computations
+                else:
+                    montage_channel = np.zeros(data.shape[1])  # no montage is applied
+                    montage_channel[channel] = 1
+                    nzmi = np.array([channel])
+                enveloped_data.append((data[start:stop, nzmi]@(montage_channel[nzmi].T*dV)).reshape(-1, 1))
             else:
                 no_downsampling = False
+                if self.apply_montage:
+                    montage_channel = self.montage[channel, :]
+                    nzmi = np.nonzero(montage_channel)  # non zero indices of montage to avoid unecessary computations
+                else:
+                    montage_channel = np.zeros(data.shape[1])  # no montage is applied
+                    montage_channel[channel] = 1
+                    nzmi = np.array([channel])
                 # Here convert data into a down-sampled array suitable for visualizing.
                 # Must do this piecewise to limit memory usage.
                 dss = 1
@@ -378,7 +497,7 @@ class FileBuffer():  # Consider translating this to cython
                     # read data in chunks of ~1M samples
                     chunkSize = int((1e6 // ds) * ds)
                     while sourcePtr < stop - 1:
-                        chunk_data = data[sourcePtr:min(stop, sourcePtr + chunkSize):dss, channel]
+                        chunk_data = data[sourcePtr:min(stop, sourcePtr + chunkSize):dss, nzmi]@montage_channel[nzmi].T
                         sourcePtr += chunkSize
                         # reshape chunk to be integer multiple of ds
                         chunk_data = chunk_data[:(len(chunk_data) // ds) * ds].reshape(len(chunk_data) // ds, ds)
@@ -400,8 +519,7 @@ class FileBuffer():  # Consider translating this to cython
 
             enveloped_time.append(np.linspace(start / fs + self.data_ranges[i][0], (stop-1) / fs + self.data_ranges[i][0],
                                               len(enveloped_data[-1])).reshape(-1, 1))
-            # enveloped_time.append(np.linspace(start / fs + self.data_ranges[i][0], (stop-1) / fs + self.data_ranges[i][0],
-            #                                   len(enveloped_data[-1])).reshape(-1, 1))
+
             if len(enveloped_time[-1]) == 0:
                 del (enveloped_time[-1])
                 del (enveloped_data[-1])
@@ -425,21 +543,21 @@ class FileBuffer():  # Consider translating this to cython
         if len(enveloped_data) > 0:
             data = np.vstack(enveloped_data)
             time = np.vstack(enveloped_time)
-            # if for_plot and filter_settings[0]: # apply LP filter only for plots
-            #     fs = 2/(time[2]-time[0])
-            #     nyq = 0.5 * fs[0]
-            #     hpcutoff = min(max(filter_settings[1] / nyq, 0.001), .5)
-            #     data = data - np.mean(data)
-            #     lpcutoff = min(max(filter_settings[2] / nyq, 0.001), 1)
-            #     # for some reason the bandpass butterworth filter is very unstable
-            #     if lpcutoff<.99:  # don't apply filter if LP cutoff freqquency is above nyquist freq.
-            #         # if self.verbose: print('applying LP filter to display data:', filter_settings, fs, nyq, lpcutoff)
-            #         b, a = signal.butter(2, lpcutoff, 'lowpass', analog=False)
-            #         data = signal.filtfilt(b, a, data,axis =0,method='gust')
-            #     if hpcutoff > .001: # don't apply filter if HP cutoff frequency too low.
-            #         # if self.verbose: print('applying HP filter to display data:', filter_settings, fs, nyq, hpcutoff)
-            #         b, a = signal.butter(2, hpcutoff, 'highpass', analog=False)
-            #         data = signal.filtfilt(b, a, data,axis =0,method='gust')
+            if for_plot and filter_settings[0]: # apply LP filter only for plots
+                fs = 2/(time[2]-time[0])
+                nyq = 0.5 * fs[0]
+                hpcutoff = min(max(filter_settings[1] / nyq, 0.001), .5)
+                data = data - np.mean(data)
+                lpcutoff = min(max(filter_settings[2] / nyq, 0.001), 1)
+                # for some reason the bandpass butterworth filter is very unstable
+                if lpcutoff<.99:  # don't apply filter if LP cutoff freqquency is above nyquist freq.
+                    # if self.verbose: print('applying LP filter to display data:', filter_settings, fs, nyq, lpcutoff)
+                    b, a = signal.butter(2, lpcutoff, 'lowpass', analog=False)
+                    data = signal.filtfilt(b, a, data,axis =0,method='gust')
+                if hpcutoff > .001: # don't apply filter if HP cutoff frequency too low.
+                    # if self.verbose: print('applying HP filter to display data:', filter_settings, fs, nyq, hpcutoff)
+                    b, a = signal.butter(2, hpcutoff, 'highpass', analog=False)
+                    data = signal.filtfilt(b, a, data,axis =0,method='gust')
         else:
             data = np.zeros((0,1))
             time = np.zeros((0,1))
@@ -451,7 +569,7 @@ class FileBuffer():  # Consider translating this to cython
 
 class Project():
     def __init__(self, main_model=None, eeg_data_folder=None, video_data_folder=None, title='New Project', project_file='',
-                 dict=None):
+                 feature_extractor_root_dir='', dict=None):
         if dict is not None:
             self.__dict__ = dict
             self.filter_settings = (False, 0, 1e6)
@@ -466,6 +584,7 @@ class Project():
         self.eeg_root_folder = eeg_data_folder
         self.video_root_folder = video_data_folder
         self.project_file = project_file
+        self.feature_extractor_root_dir = feature_extractor_root_dir
         self.title = title
         self.current_animal = Animal()
         self.set_current_animal(Animal())  # start with empty animal
@@ -486,7 +605,13 @@ class Project():
         self.current_animal.annotations.copy_from(self.main_model.annotations,connect_history=False,quiet=True)
         self.main_model.annotations.copy_from(animal.annotations,quiet=True)
         self.current_animal = animal
+        apply_montage = None
+        montage = None
+        if hasattr(self,'file_buffer') and hasattr(self.file_buffer,'file_buffer'):
+            apply_montage, montage = self.file_buffer.apply_montage, self.file_buffer.montage # keep previous montage settings - poor coding practice
         self.file_buffer = FileBuffer(self.current_animal)
+        if apply_montage is not None:
+            self.file_buffer.apply_montage, self.file_buffer.montage = apply_montage, montage
         self.main_model.annotations.sigLabelsChanged.emit('')
         logger.info(f'ProjectClass set_current_animal ran in {timer()-start_t} seconds')
 
@@ -533,9 +658,14 @@ class Project():
                 self.project_file = fname.strip('_autosave') # when recovering autosaves, make the project file the original project file
             else:
                 logger.info('Project file changed directories - asking if user wants to update EEG and/or Video directories as well')
+                self.project_file = fname.strip('_autosave')
 
         if not hasattr(self,'filter_settings'):  #Backwards compatibility
             self.filter_settings = (False, 0, 1e6)
+
+        if not hasattr(self, 'feature_extractor_root_dir'): #Backwards compatibility
+            self.feature_extractor_root_dir = ''
+
         self.main_model.sigProjectChanged.emit()
         return (new_dirname, orig_dirname)
 
@@ -544,11 +674,13 @@ class Project():
         logger.info(f'Updating project folders, from: {old_project_path}, to:{new_project_path}')
         old_project_path_n = old_project_path.replace('\\', '/')
         new_project_path_n = new_project_path.replace('\\', '/')
-        commonsuffix =  os.path.commonprefix([old_project_path_n[::-1],new_project_path_n[::-1]])[::-1]
-        new_prefix = new_project_path_n[:-len(commonsuffix)+1]
-        old_prefix = old_project_path_n[:-len(commonsuffix)+1]
+        logger.info(f'Updating project folders normalized, from: {old_project_path_n}, to:{new_project_path_n}')
+        commonsuffix = os.path.commonprefix([old_project_path_n[::-1],new_project_path_n[::-1]])[::-1]
+        new_prefix = new_project_path_n[:len(new_project_path_n)-len(commonsuffix)]
+        old_prefix = old_project_path_n[:len(old_project_path_n)-len(commonsuffix)]
+        logger.info(f'common_suffix:{len(commonsuffix)}, new_prefix: {new_prefix}, old_prefix:{old_prefix}')
         for a in self.animal_list:
-            logger.info(f'Updating project folders for animal {a.id}')
+            logger.info(f'Updating project folders for animal {a.id},old:{old_prefix}, new:{new_prefix},common:{commonsuffix}')
             if update_eeg:
                 a.substitute_eeg_folder_prefix(old_prefix,new_prefix)
             if update_video:
@@ -559,9 +691,24 @@ class Project():
         with open(fname, 'w') as f:
             f.write('Animal ID,label,start,stop,confidence,notes\n')
             for animal in self.animal_list:
+                if len(animal.annotations.annotations_list)==0:
+                    f.write(animal.id + ',,,,,\n')
                 for a in animal.annotations.annotations_list:
                     f.write(animal.id + ',' + a.getLabel() + ',' + str(a.getStart()) + ',' + str(a.getEnd()) +
                             ',' + str(a.getConfidence()) +  ',' + str(a.getNotes()) + '\n')
+        return
+
+    def import_annotations(self, fname):
+        with open(fname, 'r') as f:
+            line = f.readline()
+            line = f.readline()
+            while line != '':
+                animal_id, label, start, end, confidence, notes = line.split(',')
+                if self.get_animal(animal_id):
+                    self.get_animal(animal_id).annotations.add_annotation(
+                        AnnotationElement(label=label, start=float(start), end=float(end), confidence=float(confidence), notes=notes))
+                line = f.readline()
+        self.main_model.annotations.sigLabelsChanged.emit('')
         return
 
     def get_animal(self, animal_id):
@@ -598,7 +745,7 @@ class Project():
         existing_eeg_dir = [animal.eeg_folder for animal in self.animal_list]
         eeg_dir_list = glob.glob(self.eeg_root_folder + os.path.sep + '*' + os.path.sep)  # then check for new animals
         video_dir_list = glob.glob(self.video_root_folder + os.path.sep + '*' + os.path.sep)
-        for directory in eeg_dir_list:
+        for directory in sorted(eeg_dir_list,key=natural_sort_key):
             if directory not in existing_eeg_dir:
                 id = directory.split(os.path.sep)[-2]
                 logger.info(f'Creating animal from directory:{directory}')
@@ -650,20 +797,7 @@ class Project():
 
     def set_temp_project_from_folder(self,eeg_folder):
         eeg_folder = os.path.normpath(eeg_folder)
-        logger.info(f'Looking for files: {eeg_folder}{os.path.sep}*.h5')
-        h5files = glob.glob(eeg_folder + os.path.sep + '*.h5')
-        h5files.sort()
-        for i, file in enumerate(h5files):
-            if os.path.isfile(file[:-2] + 'meta'):
-                # print(file[:-2] + 'meta already exists')
-                continue
-            start = int(os.path.split(file)[-1].split('_')[0][1:])
-            try:
-                next_start = int(os.path.split(h5files[i + 1])[-1].split('_')[0][1:])
-                duration = min(next_start - start, 3600)
-            except Exception:
-                duration = 3600
-            create_metafile_from_h5(file, duration)
+        generate_metadata_for_folder(eeg_folder)
         eeg_files = glob.glob(eeg_folder + os.path.sep + '*.meta')
         eeg_files.sort()
         for fname in eeg_files:
@@ -673,6 +807,68 @@ class Project():
             animal.eeg_init_time.append(metadata['start_timestamp_unix'])
             animal.eeg_duration.append(metadata['duration'])
             self.add_animal(animal)
+
+    def homogenize_labels(self, labels):
+        homogenized_labels = {label:False for label in labels}
+        for label in labels:
+            if homogenized_labels[label]:
+                continue
+            for animal in self.animal_list:
+                annotation_page = animal.annotations
+                for label1 in annotation_page.labels:
+                    if label1 == label:
+                        homogenized_labels[label] = True
+                        for animal2 in self.animal_list:
+                            if label not in animal2.annotations.labels:
+                                animal2.annotations.add_label(label,annotation_page.label_color_dict[label])
+                            else:
+                                animal2.annotations.label_color_dict[label] = annotation_page.label_color_dict[label] # if annotation exists copy color
+        for label in labels: # add inexisting labels
+            if not homogenized_labels[label]:
+                color = None
+                for animal in self.animal_list:
+                    animal.annotations.add_label(label, color)
+                    color = animal.annotations.label_color_dict[label]
+
+    def import_FE_and_classifier(self,fname):
+        # inspect old and set new directories
+        if self.feature_extractor_root_dir == '' or self.feature_extractor_root_dir=='_feature_extractor':
+            self.feature_extractor_root_dir = self.project_file[:-7] +'_feature_extractor'
+            if not os.path.isdir(self.feature_extractor_root_dir):
+                os.mkdir(self.feature_extractor_root_dir)
+        if not os.path.isdir(self.project_file+'_classifier'):
+            os.mkdir(self.project_file+'_classifier')
+
+        new_classifier_fname = os.path.join(self.project_file + '_classifier', '_imported.npz')
+        new_fe_fname = os.path.join(self.project_file + '_classifier', '_feature_extractor.json')
+
+        shutil.copy(os.path.join(fname, '_imported.npz'), new_classifier_fname)
+        shutil.copy(os.path.join(fname, '_feature_extractor.json'), new_fe_fname)
+
+        # Ideally this should be made abstract, but this requires to put FileBuffer class in a solo module to avoid circular imports
+        with (np.load(new_classifier_fname) as d):
+            imported_classifier_dict = dict([(file, d[file]) for file in d.files])  # copy all arrays from file
+            self.homogenize_labels(imported_classifier_dict['labels2classify'])
+
+        # update settings and respective GUI if they exist. - Can't be done like this
+        # if self.main_model is not None:
+        #     if hasattr(self.main_model,'featureExtractorWindow'):
+        #         self.main_model.featureExtractorWindow.feature_extractor.load_settings(os.path.join(self.project_file + '_classifier', '_feature_extractor.json'))
+        #         self.main_model.featureExtractorWindow.updateTreeFromSettings()
+        #     if not hasattr(self.main_model,'ClassifierWindow'):
+        #         self.main_model
+        #     self.main_model.ClassifierWindow.import_classifier(os.path.join(self.project_file + '_classifier', '_imported.npz'))
+        return
+
+    def export_FE_and_classifier(self,fname):
+        if not os.path.isdir(fname):
+            os.mkdir(fname)
+        shutil.copy(os.path.join(self.project_file + '_classifier', '_global.npz'),
+                    os.path.join(fname, '_imported.npz'))
+        shutil.copy(os.path.join(self.project_file + '_classifier', '_feature_extractor.json'),
+                    os.path.join(fname, '_feature_extractor.json'),)
+        return
+
 
 class MainModel(QtCore.QObject):
     sigTimeChanged      = QtCore.Signal(object)

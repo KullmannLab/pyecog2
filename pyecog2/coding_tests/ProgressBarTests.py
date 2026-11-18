@@ -1,7 +1,7 @@
 import sys
-from PySide2.QtCore import QTimer
-from PySide2.QtWidgets import QApplication, QMainWindow, QProgressBar
-from PySide2.QtCore import Qt
+from PySide6.QtCore import QTimer
+from PySide6.QtWidgets import QApplication, QMainWindow, QProgressBar
+from PySide6.QtCore import Qt
 
 
 class Example(QMainWindow):
@@ -33,4 +33,4 @@ class Example(QMainWindow):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = Example()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

@@ -504,7 +504,16 @@ class FileBuffer():  # Consider translating this to cython
             stop = sample_ranges[i][1]
             fs = self.metadata[i]['fs']
             no_channels = self.metadata[i]['no_channels']
-            dV = self.metadata[i]['volts_per_bit'] if self.metadata[i]['volts_per_bit'] != 0 else 1
+
+            # Multi-modal support: handle different modality types for scaling
+            from pyecog2.modality_utils import get_modality_info
+            modality_info = get_modality_info(self.metadata[i])
+
+            if modality_info['modality_type'] == 'categorical':
+                dV = 1.0
+            else:
+                dV = self.metadata[i]['volts_per_bit'] if self.metadata[i]['volts_per_bit'] != 0 else 1
+
             # Decide by how much we should downsample
             ds = int((stop - start) / file_envlopes[i]) + 1
             # print('Downsampling ratio:', ds,file_envlopes,sample_ranges)
@@ -536,43 +545,49 @@ class FileBuffer():  # Consider translating this to cython
                     montage_channel = np.zeros(data.shape[1])  # no montage is applied
                     montage_channel[channel] = 1
                     nzmi = np.array([channel])
-                # Here convert data into a down-sampled array suitable for visualizing.
-                # Must do this piecewise to limit memory usage.
-                dss = 1
-                originalds = ds
-                if ds > 10 and no_channels > 10: # so much downsampling that we might as well skip some samples if lots of channels
-                    dss = ds//10  # we will only grab about 10 samples to compute min and max for envelope
+                # Categorical data (e.g. sleep states): subsample instead of min/max envelope
+                # so discrete values preserved for hypnogram style plot
+                if modality_info['modality_type'] == 'categorical':
+                    subsampled = (data[start:stop:ds, nzmi]@(montage_channel[nzmi].T*dV)).reshape(-1, 1)
+                    enveloped_data.append(subsampled)
+                else:
+                    # Here convert data into a down-sampled array suitable for visualizing.
+                    # Must do this piecewise to limit memory usage.
+                    dss = 1
                     originalds = ds
-                    ds = 10
-                # print('Decimating data in filebuffer by', dss, 'x factor. (original ds:', originalds, ')')
+                    if ds > 10 and no_channels > 10: # so much downsampling that we might as well skip some samples if lots of channels
+                        dss = ds//10  # we will only grab about 10 samples to compute min and max for envelope
+                        originalds = ds
+                        ds = 10
+                    # print('Decimating data in filebuffer by', dss, 'x factor. (original ds:', originalds, ')')
 
-                samples = (1 + (stop - start) // ds)
-                visible_data = np.zeros((samples * 2, 1), dtype=data.dtype)
-                sourcePtr = start
-                targetPtr = 0
-                try:
-                    # read data in chunks of ~1M samples
-                    chunkSize = int((1e6 // ds) * ds)
-                    while sourcePtr < stop - 1:
-                        chunk_data = data[sourcePtr:min(stop, sourcePtr + chunkSize):dss, nzmi]@montage_channel[nzmi].T
-                        sourcePtr += chunkSize
-                        # reshape chunk to be integer multiple of ds
-                        chunk_data = chunk_data[:(len(chunk_data) // ds) * ds].reshape(len(chunk_data) // ds, ds)
-                        mx_inds = np.argmax(chunk_data, axis=1)
-                        mi_inds = np.argmin(chunk_data, axis=1)
-                        row_inds = np.arange(chunk_data.shape[0])
-                        chunkMax_x = chunk_data[row_inds, mx_inds].reshape(len(chunk_data), 1)
-                        chunkMin_x = chunk_data[row_inds, mi_inds].reshape(len(chunk_data), 1)
-                        visible_data[targetPtr:targetPtr + chunk_data.shape[0] * 2:2] = chunkMin_x
-                        visible_data[1 + targetPtr:1 + targetPtr + chunk_data.shape[0] * 2:2] = chunkMax_x
-                        targetPtr += chunk_data.shape[0] * 2
+                    samples = (1 + (stop - start) // ds)
+                    visible_data = np.zeros((samples * 2, 1), dtype=data.dtype)
+                    sourcePtr = start
+                    targetPtr = 0
+                    try:
+                        # read data in chunks of ~1M samples
+                        chunkSize = int((1e6 // ds) * ds)
+                        while sourcePtr < stop - 1:
+                            chunk_data = data[sourcePtr:min(stop, sourcePtr + chunkSize):dss, nzmi]@montage_channel[nzmi].T
+                            sourcePtr += chunkSize
+                            # reshape chunk to be integer multiple of ds
+                            chunk_data = chunk_data[:(len(chunk_data) // ds) * ds].reshape(len(chunk_data) // ds, ds)
+                            mx_inds = np.argmax(chunk_data, axis=1)
+                            mi_inds = np.argmin(chunk_data, axis=1)
+                            row_inds = np.arange(chunk_data.shape[0])
+                            chunkMax_x = chunk_data[row_inds, mx_inds].reshape(len(chunk_data), 1)
+                            chunkMin_x = chunk_data[row_inds, mi_inds].reshape(len(chunk_data), 1)
+                            visible_data[targetPtr:targetPtr + chunk_data.shape[0] * 2:2] = chunkMin_x
+                            visible_data[1 + targetPtr:1 + targetPtr + chunk_data.shape[0] * 2:2] = chunkMax_x
+                            targetPtr += chunk_data.shape[0] * 2
 
-                    enveloped_data.append(dV*visible_data[:targetPtr, :].reshape((-1, 1)))
-                except Exception:
-                    logger.error('ERROR in downsampling')
-                    raise
-                    # throw_error()
-                    # return 0
+                        enveloped_data.append(dV*visible_data[:targetPtr, :].reshape((-1, 1)))
+                    except Exception:
+                        logger.error('ERROR in downsampling')
+                        raise
+                        # throw_error()
+                        # return 0
 
             enveloped_time.append(np.linspace(start / fs + self.data_ranges[i][0], (stop-1) / fs + self.data_ranges[i][0],
                                               len(enveloped_data[-1])).reshape(-1, 1))

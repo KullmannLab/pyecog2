@@ -17,6 +17,7 @@ from pyqtgraph.Point import Point
 from timeit import default_timer as timer
 from pyecog2.ProjectClass import intervals_overlap
 from pyecog2.annotations_module import i_spaced_nfold
+from pyecog2.modality_utils import get_modality_info
 
 import logging
 logger = logging.getLogger(__name__)
@@ -237,9 +238,40 @@ class PairedGraphicsView():
             if len(arr.shape) < 2:
                 return
             self.n_channels = arr.shape[1]
-            self.scale = 1 / (8 * np.mean(np.std(arr, axis=0, keepdims=True), axis=1) + 1e-12)
-            self.overview_plot.vb.setYRange(-self.n_channels - 1, + 2)
-            self.insetview_plot.vb.setYRange(-self.n_channels - 1,  + 2)
+
+            # detect modality type for computing scale
+            modality_type = 'voltage'
+            if hasattr(self.main_model.project, 'file_buffer') and self.main_model.project.file_buffer.metadata:
+                modality_info = get_modality_info(self.main_model.project.file_buffer.metadata[0])
+                modality_type = modality_info.get('modality_type', 'voltage')
+
+            if modality_type == 'categorical':
+                # scale 1.0 so values 0-3 map directly to y=0,1,2,3
+                self.scale = 1.0
+            elif modality_type == 'voltage':
+                self.scale = 1 / (8 * np.mean(np.std(arr, axis=0, keepdims=True), axis=1) + 1e-12)
+            else:
+                # for temp and variance
+                self.scale = 1.0
+
+            # clearing any y-limits left by a previously viewed files in pyecog to avoid a bug when viewing other files after
+            # calling setYRange or PyQtGraph will set the new range to the other files limit
+            self.overview_plot.vb.setLimits(yMin=None, yMax=None)
+            self.insetview_plot.vb.setLimits(yMin=None, yMax=None)
+            if modality_type == 'categorical':
+                # wider y-value range to fit values 0-3
+                self.overview_plot.vb.setYRange(-1, 4)
+                self.insetview_plot.vb.setYRange(-1, 4)
+            elif modality_type == 'voltage':
+                self.overview_plot.vb.setYRange(-self.n_channels - 1, + 2)
+                self.insetview_plot.vb.setYRange(-self.n_channels - 1,  + 2)
+            else:
+                # using percentiles so outliers dont cause plots for emg to be extremely zoomed out due to outliers
+                data_min = float(np.percentile(arr, 2))
+                data_max = float(np.percentile(arr, 98))
+                margin = (data_max - data_min) * 0.1 + 1e-12
+                self.overview_plot.vb.setYRange(data_min - margin, data_max + margin)
+                self.insetview_plot.vb.setYRange(data_min - margin, data_max + margin)
             self.timeline_plot.setTitle('<p style="font-size:large"> Animal: ' + self.animalid + '</b>')
             end_t = timer()
 
@@ -282,7 +314,12 @@ class PairedGraphicsView():
         # self.insetview_plot.vb.setLimits(xMin=0, xMax=arr.shape[0] / fs)
         self.overview_plot.vb.setLimits(maxXRange=3600)
         self.insetview_plot.vb.setLimits(maxXRange=3600)
-        self.overview_plot.vb.setLimits(yMin=-3 -self.n_channels, yMax= + 3)
+        if modality_type not in ('categorical', 'voltage'):
+            pass
+        elif modality_type == 'categorical':
+            self.overview_plot.vb.setLimits(yMin=-3, yMax=self.n_channels + 3) # categories are plotted at positive y
+        else:
+            self.overview_plot.vb.setLimits(yMin=-3 -self.n_channels, yMax= + 3)
         max_range = self.main_model.project.current_animal.get_animal_time_range()
         logger.info(f'Project time range: {max_range}')
         self.overview_plot.vb.setLimits(xMin=max_range[0], xMax=max_range[1])

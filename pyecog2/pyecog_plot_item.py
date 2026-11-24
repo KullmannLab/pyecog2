@@ -236,17 +236,70 @@ class PyecogScaleBar():
             drange0 = (dmax-dmin) + 1e-12 # add a pico volt to avoid underflows
         else:
             return
-        data_range = min(drange0, 6*np.std(self.curve_item.visible_data) + 1e-12)  # decreases the effect of massive spikes in data
-        data_range10 = 10**np.floor(np.log10(data_range))
-        data_range = int(drange0/data_range10)*data_range10  # keep just one significant digit
-        dmax, dmin = (dmax*data_range/drange0,  dmin*data_range/drange0)
+        curve_modality = getattr(self.curve_item, 'modality_type', 'voltage')
+        is_categorical = curve_modality == 'categorical'
+        is_physical = curve_modality not in ('voltage', 'categorical')
+        if is_categorical or is_physical:
+            # for temp keeping actual dmin/dmax so bar.yrange maps to real y-axis
+            data_range = drange0
+        else:
+            data_range = min(drange0, 6*np.std(self.curve_item.visible_data) + 1e-12)  # decreases effect of massive spikes in data
+            data_range10 = 10**np.floor(np.log10(data_range))
+            data_range = int(drange0/data_range10)*data_range10  # keep just one significant digit
+            dmax, dmin = (dmax*data_range/drange0,  dmin*data_range/drange0)
         (p, pref) = siScale(data_range)
         self.curve_item.visible_time = self.curve_item.visible_time.ravel()  # there is some sort of inconsistency in visible_time shape
         self.bar.setPos((self.curve_item.visible_time[0]*.975 + 0.025*self.curve_item.visible_time[-1]))
         self.bar_length = data_range
         self.bar.yrange = [dmin, dmax]
         self.bar._computeBoundingRect()
-        label = f'{int(self.bar_length*p)}{pref}V'
+
+        # for multi-modal data support
+        # change label based on modality type from modality_info
+        try:
+            # Access file buffer through project (curve_item -> project -> file_buffer)
+            file_buffer = None
+            if hasattr(self.curve_item, 'project') and self.curve_item.project is not None:
+                if hasattr(self.curve_item.project, 'file_buffer'):
+                    file_buffer = self.curve_item.project.file_buffer
+
+            if file_buffer is not None and file_buffer.metadata:
+                metadata = file_buffer.metadata[0]  # first file's metadata
+                modality_info = get_modality_info(metadata)
+                modality_type = modality_info.get('modality_type', 'voltage')
+                unit = modality_info.get('unit', 'V')
+            else:
+                # no file buffer or metadata, default to voltage
+                modality_type = 'voltage'
+                unit = 'V'
+
+            # Format label based on modality type
+            if modality_type == 'voltage':
+                # existing voltage formatting
+                label = f'{int(self.bar_length*p)}{pref}V'
+            elif modality_type == 'variance':
+                # variance uses basic scientific notation
+                label = f'{self.bar_length:.2e} var'
+            elif modality_type == 'temperature':
+                # temp in Celsius
+                label = f'{self.bar_length:.1f}°C'
+            elif modality_type == 'categorical':
+                # show category mapping from .meta, e.g. "0:? 1:W 2:N 3:R"
+                # could change to be dynamic to work with other categorical data?
+                categories = modality_info.get('categories', {})
+                if categories:
+                    sorted_cats = sorted(categories.items(), key=lambda x: x[1])
+                    label = ' '.join(f'{v}:{k[0]}' for k, v in sorted_cats)
+                else:
+                    label = 'categorical'
+            else:
+                # if modality is unknown show unit from metadata
+                label = f'{self.bar_length:.2e} {unit}'
+
+        except Exception:
+            # fallback to voltage if there's any issues
+            label = f'{int(self.bar_length*p)}{pref}V'
+
         self.label_text.setText(label)
         self.label_text.setPos(dmin,0)
         # print(f'Scale bar:{data_range},{p},{self.bar_length},{label}')

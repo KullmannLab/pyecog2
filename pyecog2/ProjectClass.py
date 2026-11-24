@@ -46,7 +46,10 @@ def create_metafile_from_h5(file,duration = 3600):
                            start_timestamp_unix=int(os.path.split(file)[-1].split('_')[0][1:]),
                            duration=duration,  # assume all h5 files have 1hr duration
                            channel_labels=[str(label) for label in h5_file.attributes['t_ids']],
-                           experiment_metadata_str='')
+                           experiment_metadata_str='',
+                           modality_info={'modality_type': 'voltage', # added for multi-modal data support
+                                          'unit': 'V',
+                                          'scale_factor': 1e-6})
     metafile = file[:-2] + 'meta'
     with open(metafile, 'w') as json_file:
         json.dump(metadata, json_file, indent=2, sort_keys=True)
@@ -58,15 +61,19 @@ def create_metafile_from_edf(file):
         fsv = edf_file.getSampleFrequencies()
         assert all([f == fsv[0] for f in fsv]) #check all channels have the same sampling frequency
         dimension_dict = {'V': 1, 'mV': 1e-3, 'uV': 1e-6, 'nV': 1e-9}
+        volts_per_bit = dimension_dict[edf_file.getPhysicalDimension(0)]
         metadata = OrderedDict(fs=fsv[0],
                                no_channels=len(fsv),
                                data_format='edf',
-                               volts_per_bit=dimension_dict[edf_file.getPhysicalDimension(0)],
+                               volts_per_bit=volts_per_bit,
                                transmitter_id=edf_file.getSignalHeader(0)['label'],
                                start_timestamp_unix=int(edf_file.getStartdatetime().timestamp()),
                                duration=int(edf_file.getFileDuration()),  # assume all h5 files have 1hr duration
                                channel_labels=[edf_file.getSignalHeader(ch)['label'] for ch in range(len(fsv))],
-                               experiment_metadata_str=edf_file.getRecordingAdditional())
+                               experiment_metadata_str=edf_file.getRecordingAdditional(),
+                               modality_info={'modality_type': 'voltage', # added for multi-modal data support
+                                              'unit': 'V',
+                                              'scale_factor': volts_per_bit})
         metafile = file[:-3] + 'meta'
     with open(metafile, 'w') as json_file:
         json.dump(metadata, json_file, indent=2, sort_keys=True)
@@ -88,6 +95,56 @@ def edf_chinfo_from_metadata(metafile_name):
             'prefilter': ''
         }
         ch_info_list.append(channel_info)
+
+def create_metafile_for_modality(binary_file, fs, no_channels, data_format, start_timestamp_unix,
+    duration, modality_type='voltage', unit='V', scale_factor=1.0, channel_labels=None, categories=None, transmitter_id='000',
+    experiment_metadata=''):
+    """
+    creates meta files for multi-modal data where EEG, EMG, Temperature, etc are stored in separate files
+    Returns path to metadata file
+    """
+    # generate default channel labels if theres none
+    if channel_labels is None:
+        channel_labels = [f'channel_{i}' for i in range(no_channels)]
+
+    modality_info = {
+        'modality_type': modality_type,
+        'unit': unit,
+        'scale_factor': scale_factor
+    }
+
+    # adding categories for categorical data
+    if modality_type == 'categorical' and categories is not None:
+        modality_info['categories'] = categories
+
+    metadata = OrderedDict(
+        binaryfilename=os.path.abspath(binary_file),
+        channel_labels=channel_labels,
+        data_format=data_format,
+        duration=duration,
+        experiment_metadata_str=experiment_metadata,
+        fs=fs,
+        modality_info=modality_info,
+        no_channels=no_channels,
+        start_timestamp_unix=start_timestamp_unix,
+        transmitter_id=transmitter_id,
+        # kept volts per bit for backwards compatibility
+        volts_per_bit=scale_factor if modality_type == 'voltage' else 1.0
+    )
+
+    if binary_file.endswith('.bin'):
+        metafile = binary_file[:-4] + '.meta'
+    elif binary_file.endswith('.eeg'):
+        metafile = binary_file[:-4] + '.meta'
+    else:
+        metafile = binary_file + '.meta'
+
+    # Write metadata to JSON file
+    with open(metafile, 'w') as json_file:
+        json.dump(metadata, json_file, indent=2, sort_keys=True)
+
+    logger.info(f"Created metadata file: {metafile} (modality: {modality_type}, sample frequency: {fs} Hz)")
+    return metafile
 
 
 def read_neuropixels_metadata(fname):

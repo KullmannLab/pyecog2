@@ -56,14 +56,14 @@ def readbinary_EEG(file):
 
 def encode_sleep_states(sleep_scores):
     """
-    Clean epochs:'w' -> 1, 'n' -> 2, 'r' -> 3
-    artefact codes map to 0  (remapped to state in post-conversion notebook)
+    'w' -> 1 (wake), 'n' -> 2 (NREM), 'r' -> 3 (REM)
+    artefact-flagged epochs keep their state: '1' -> 1, '2' -> 2, '3' -> 3
     unknown characters map to 0
     """
     score_map = np.zeros(256, dtype=np.uint8)
-    score_map[ord('w')] = 1
-    score_map[ord('n')] = 2
-    score_map[ord('r')] = 3
+    for chars, code in (('w1', 1), ('n2', 2), ('r3', 3)):
+        for c in chars:
+            score_map[ord(c)] = code
     return score_map[np.frombuffer(sleep_scores.encode(), dtype=np.uint8)]
 
 

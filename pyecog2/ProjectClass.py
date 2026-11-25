@@ -12,6 +12,7 @@ from PySide6 import QtCore
 import pyqtgraph as pg
 from timeit import default_timer as timer
 from pyedflib import EdfReader
+from pyecog2.modality_utils import get_modality_info
 import re
 
 import logging
@@ -506,7 +507,6 @@ class FileBuffer():  # Consider translating this to cython
             no_channels = self.metadata[i]['no_channels']
 
             # Multi-modal support: handle different modality types for scaling
-            from pyecog2.modality_utils import get_modality_info
             modality_info = get_modality_info(self.metadata[i])
 
             if modality_info['modality_type'] == 'categorical':

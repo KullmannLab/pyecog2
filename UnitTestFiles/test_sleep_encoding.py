@@ -3,7 +3,7 @@ Unit tests for encoding sleep states in convert_figshare_sleep_data.py
 
 Covers:
 Correct uint8 codes for w, n, r
-Artefact-flagged characters ('1'/'2'/'3') map to 0 before post-conversion remapping
+Artefact-flagged characters ('1'/'2'/'3') map to their state
 Unknown characters map to 0
 dtype, length, and behaviour on realistic inputs
 """
@@ -27,14 +27,14 @@ class TestEncodeSleepStates(unittest.TestCase):
     def test_rem_maps_to_3(self):
         self.assertEqual(encode_sleep_states('r')[0], 3)
 
-    def test_artefact_wake_maps_to_zero(self):
-        self.assertEqual(encode_sleep_states('1')[0], 0)
+    def test_artefact_wake_maps_to_state(self):
+        self.assertEqual(encode_sleep_states('1')[0], 1)
 
-    def test_artefact_nrem_maps_to_zero(self):
-        self.assertEqual(encode_sleep_states('2')[0], 0)
+    def test_artefact_nrem_maps_to_state(self):
+        self.assertEqual(encode_sleep_states('2')[0], 2)
 
-    def test_artefact_rem_maps_to_zero(self):
-        self.assertEqual(encode_sleep_states('3')[0], 0)
+    def test_artefact_rem_maps_to_state(self):
+        self.assertEqual(encode_sleep_states('3')[0], 3)
 
     def test_unknown_character_maps_to_zero(self):
         self.assertEqual(encode_sleep_states('x')[0], 0)
@@ -53,7 +53,7 @@ class TestEncodeSleepStates(unittest.TestCase):
 
     def test_sequence_with_artefact_codes(self):
         # Artefact characters alongside clean states
-        np.testing.assert_array_equal(encode_sleep_states('w1n2r3'), [1, 0, 2, 0, 3, 0])
+        np.testing.assert_array_equal(encode_sleep_states('w1n2r3'), [1, 1, 2, 2, 3, 3])
 
     def test_all_wake_recording(self):
         scores = 'w' * 86400 #96 hour recording with 4s epochs

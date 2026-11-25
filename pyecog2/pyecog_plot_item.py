@@ -161,10 +161,11 @@ class PyecogPlotCurveItem(pg.PlotCurveItem):
             # print(f'clipping at :{self.transform(),self.transform().m22()}')
             visible_data = np.clip(visible_data,-0.5/self.transform().m22(),0.5/self.transform().m22())
         # categorical data plotted as a hypnogram
-        #changed to stepMode from center to left to fix issue of sleepscore plot showing as empty
+        # stepMode='right' holds each epoch's value from its timestamp until the next sample
+        # ('left' draws every state one epoch early, 'center' needs len(x) == len(y) + 1 and plots nothing)
         if getattr(self, 'modality_type', 'voltage') == 'categorical':
             self.setData(y=visible_data.ravel(), x=self.visible_time.ravel(),
-                         pen=self.pen, stepMode='left')
+                         pen=self.pen, stepMode='right')
         else:
             self.setData(y=visible_data.ravel(), x=self.visible_time.ravel(), pen=self.pen)
         # self.resetTransform()

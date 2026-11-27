@@ -81,7 +81,7 @@ class VideoWindow(QWidget):
         # self.mediaPlayer.setNotifyInterval(40) # 25 fps - This was used with PySide2 - checking if still needed with Pyside6
 
         self.timer = QTimer()
-        self.timer.timeout.connect(self.positionChanged(self.mediaPlayer.position()))
+        self.timer.timeout.connect(lambda: self.positionChanged(self.mediaPlayer.position()))
 
         # Connect main model time changes to videa seek
         if self.main_model is not None:

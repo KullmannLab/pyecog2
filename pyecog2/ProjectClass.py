@@ -12,6 +12,7 @@ from PySide6 import QtCore
 import pyqtgraph as pg
 from timeit import default_timer as timer
 from pyedflib import EdfReader
+from pyecog2.modality_utils import get_modality_info
 import re
 
 import logging
@@ -46,7 +47,10 @@ def create_metafile_from_h5(file,duration = 3600):
                            start_timestamp_unix=int(os.path.split(file)[-1].split('_')[0][1:]),
                            duration=duration,  # assume all h5 files have 1hr duration
                            channel_labels=[str(label) for label in h5_file.attributes['t_ids']],
-                           experiment_metadata_str='')
+                           experiment_metadata_str='',
+                           modality_info={'modality_type': 'voltage', # added for multi-modal data support
+                                          'unit': 'V',
+                                          'scale_factor': 1e-6})
     metafile = file[:-2] + 'meta'
     with open(metafile, 'w') as json_file:
         json.dump(metadata, json_file, indent=2, sort_keys=True)
@@ -58,15 +62,19 @@ def create_metafile_from_edf(file):
         fsv = edf_file.getSampleFrequencies()
         assert all([f == fsv[0] for f in fsv]) #check all channels have the same sampling frequency
         dimension_dict = {'V': 1, 'mV': 1e-3, 'uV': 1e-6, 'nV': 1e-9}
+        volts_per_bit = dimension_dict[edf_file.getPhysicalDimension(0)]
         metadata = OrderedDict(fs=fsv[0],
                                no_channels=len(fsv),
                                data_format='edf',
-                               volts_per_bit=dimension_dict[edf_file.getPhysicalDimension(0)],
+                               volts_per_bit=volts_per_bit,
                                transmitter_id=edf_file.getSignalHeader(0)['label'],
                                start_timestamp_unix=int(edf_file.getStartdatetime().timestamp()),
                                duration=int(edf_file.getFileDuration()),  # assume all h5 files have 1hr duration
                                channel_labels=[edf_file.getSignalHeader(ch)['label'] for ch in range(len(fsv))],
-                               experiment_metadata_str=edf_file.getRecordingAdditional())
+                               experiment_metadata_str=edf_file.getRecordingAdditional(),
+                               modality_info={'modality_type': 'voltage', # added for multi-modal data support
+                                              'unit': 'V',
+                                              'scale_factor': volts_per_bit})
         metafile = file[:-3] + 'meta'
     with open(metafile, 'w') as json_file:
         json.dump(metadata, json_file, indent=2, sort_keys=True)
@@ -88,6 +96,56 @@ def edf_chinfo_from_metadata(metafile_name):
             'prefilter': ''
         }
         ch_info_list.append(channel_info)
+
+def create_metafile_for_modality(binary_file, fs, no_channels, data_format, start_timestamp_unix,
+    duration, modality_type='voltage', unit='V', scale_factor=1.0, channel_labels=None, categories=None, transmitter_id='000',
+    experiment_metadata=''):
+    """
+    creates meta files for multi-modal data where EEG, EMG, Temperature, etc are stored in separate files
+    Returns path to metadata file
+    """
+    # generate default channel labels if theres none
+    if channel_labels is None:
+        channel_labels = [f'channel_{i}' for i in range(no_channels)]
+
+    modality_info = {
+        'modality_type': modality_type,
+        'unit': unit,
+        'scale_factor': scale_factor
+    }
+
+    # adding categories for categorical data
+    if modality_type == 'categorical' and categories is not None:
+        modality_info['categories'] = categories
+
+    metadata = OrderedDict(
+        binaryfilename=os.path.abspath(binary_file),
+        channel_labels=channel_labels,
+        data_format=data_format,
+        duration=duration,
+        experiment_metadata_str=experiment_metadata,
+        fs=fs,
+        modality_info=modality_info,
+        no_channels=no_channels,
+        start_timestamp_unix=start_timestamp_unix,
+        transmitter_id=transmitter_id,
+        # kept volts per bit for backwards compatibility
+        volts_per_bit=scale_factor if modality_type == 'voltage' else 1.0
+    )
+
+    if binary_file.endswith('.bin'):
+        metafile = binary_file[:-4] + '.meta'
+    elif binary_file.endswith('.eeg'):
+        metafile = binary_file[:-4] + '.meta'
+    else:
+        metafile = binary_file + '.meta'
+
+    # Write metadata to JSON file
+    with open(metafile, 'w') as json_file:
+        json.dump(metadata, json_file, indent=2, sort_keys=True)
+
+    logger.info(f"Created metadata file: {metafile} (modality: {modality_type}, sample frequency: {fs} Hz)")
+    return metafile
 
 
 def read_neuropixels_metadata(fname):
@@ -447,7 +505,15 @@ class FileBuffer():  # Consider translating this to cython
             stop = sample_ranges[i][1]
             fs = self.metadata[i]['fs']
             no_channels = self.metadata[i]['no_channels']
-            dV = self.metadata[i]['volts_per_bit'] if self.metadata[i]['volts_per_bit'] != 0 else 1
+
+            # Multi-modal support: handle different modality types for scaling
+            modality_info = get_modality_info(self.metadata[i])
+
+            if modality_info['modality_type'] == 'categorical':
+                dV = 1.0
+            else:
+                dV = self.metadata[i]['volts_per_bit'] if self.metadata[i]['volts_per_bit'] != 0 else 1
+
             # Decide by how much we should downsample
             ds = int((stop - start) / file_envlopes[i]) + 1
             # print('Downsampling ratio:', ds,file_envlopes,sample_ranges)
@@ -479,43 +545,49 @@ class FileBuffer():  # Consider translating this to cython
                     montage_channel = np.zeros(data.shape[1])  # no montage is applied
                     montage_channel[channel] = 1
                     nzmi = np.array([channel])
-                # Here convert data into a down-sampled array suitable for visualizing.
-                # Must do this piecewise to limit memory usage.
-                dss = 1
-                originalds = ds
-                if ds > 10 and no_channels > 10: # so much downsampling that we might as well skip some samples if lots of channels
-                    dss = ds//10  # we will only grab about 10 samples to compute min and max for envelope
+                # Categorical data (e.g. sleep states): subsample instead of min/max envelope
+                # so discrete values preserved for hypnogram style plot
+                if modality_info['modality_type'] == 'categorical':
+                    subsampled = (data[start:stop:ds, nzmi]@(montage_channel[nzmi].T*dV)).reshape(-1, 1)
+                    enveloped_data.append(subsampled)
+                else:
+                    # Here convert data into a down-sampled array suitable for visualizing.
+                    # Must do this piecewise to limit memory usage.
+                    dss = 1
                     originalds = ds
-                    ds = 10
-                # print('Decimating data in filebuffer by', dss, 'x factor. (original ds:', originalds, ')')
+                    if ds > 10 and no_channels > 10: # so much downsampling that we might as well skip some samples if lots of channels
+                        dss = ds//10  # we will only grab about 10 samples to compute min and max for envelope
+                        originalds = ds
+                        ds = 10
+                    # print('Decimating data in filebuffer by', dss, 'x factor. (original ds:', originalds, ')')
 
-                samples = (1 + (stop - start) // ds)
-                visible_data = np.zeros((samples * 2, 1), dtype=data.dtype)
-                sourcePtr = start
-                targetPtr = 0
-                try:
-                    # read data in chunks of ~1M samples
-                    chunkSize = int((1e6 // ds) * ds)
-                    while sourcePtr < stop - 1:
-                        chunk_data = data[sourcePtr:min(stop, sourcePtr + chunkSize):dss, nzmi]@montage_channel[nzmi].T
-                        sourcePtr += chunkSize
-                        # reshape chunk to be integer multiple of ds
-                        chunk_data = chunk_data[:(len(chunk_data) // ds) * ds].reshape(len(chunk_data) // ds, ds)
-                        mx_inds = np.argmax(chunk_data, axis=1)
-                        mi_inds = np.argmin(chunk_data, axis=1)
-                        row_inds = np.arange(chunk_data.shape[0])
-                        chunkMax_x = chunk_data[row_inds, mx_inds].reshape(len(chunk_data), 1)
-                        chunkMin_x = chunk_data[row_inds, mi_inds].reshape(len(chunk_data), 1)
-                        visible_data[targetPtr:targetPtr + chunk_data.shape[0] * 2:2] = chunkMin_x
-                        visible_data[1 + targetPtr:1 + targetPtr + chunk_data.shape[0] * 2:2] = chunkMax_x
-                        targetPtr += chunk_data.shape[0] * 2
+                    samples = (1 + (stop - start) // ds)
+                    visible_data = np.zeros((samples * 2, 1), dtype=data.dtype)
+                    sourcePtr = start
+                    targetPtr = 0
+                    try:
+                        # read data in chunks of ~1M samples
+                        chunkSize = int((1e6 // ds) * ds)
+                        while sourcePtr < stop - 1:
+                            chunk_data = data[sourcePtr:min(stop, sourcePtr + chunkSize):dss, nzmi]@montage_channel[nzmi].T
+                            sourcePtr += chunkSize
+                            # reshape chunk to be integer multiple of ds
+                            chunk_data = chunk_data[:(len(chunk_data) // ds) * ds].reshape(len(chunk_data) // ds, ds)
+                            mx_inds = np.argmax(chunk_data, axis=1)
+                            mi_inds = np.argmin(chunk_data, axis=1)
+                            row_inds = np.arange(chunk_data.shape[0])
+                            chunkMax_x = chunk_data[row_inds, mx_inds].reshape(len(chunk_data), 1)
+                            chunkMin_x = chunk_data[row_inds, mi_inds].reshape(len(chunk_data), 1)
+                            visible_data[targetPtr:targetPtr + chunk_data.shape[0] * 2:2] = chunkMin_x
+                            visible_data[1 + targetPtr:1 + targetPtr + chunk_data.shape[0] * 2:2] = chunkMax_x
+                            targetPtr += chunk_data.shape[0] * 2
 
-                    enveloped_data.append(dV*visible_data[:targetPtr, :].reshape((-1, 1)))
-                except Exception:
-                    logger.error('ERROR in downsampling')
-                    raise
-                    # throw_error()
-                    # return 0
+                        enveloped_data.append(dV*visible_data[:targetPtr, :].reshape((-1, 1)))
+                    except Exception:
+                        logger.error('ERROR in downsampling')
+                        raise
+                        # throw_error()
+                        # return 0
 
             enveloped_time.append(np.linspace(start / fs + self.data_ranges[i][0], (stop-1) / fs + self.data_ranges[i][0],
                                               len(enveloped_data[-1])).reshape(-1, 1))
@@ -543,7 +615,9 @@ class FileBuffer():  # Consider translating this to cython
         if len(enveloped_data) > 0:
             data = np.vstack(enveloped_data)
             time = np.vstack(enveloped_time)
-            if for_plot and filter_settings[0]: # apply LP filter only for plots
+            # only filter voltage: filtering sleep states or temperature gives meaningless values
+            all_voltage = all(get_modality_info(m).get('modality_type', 'voltage') == 'voltage' for m in self.metadata)
+            if for_plot and filter_settings[0] and all_voltage: # apply LP filter only for plots
                 fs = 2/(time[2]-time[0])
                 nyq = 0.5 * fs[0]
                 hpcutoff = min(max(filter_settings[1] / nyq, 0.001), .5)

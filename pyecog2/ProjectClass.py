@@ -615,7 +615,9 @@ class FileBuffer():  # Consider translating this to cython
         if len(enveloped_data) > 0:
             data = np.vstack(enveloped_data)
             time = np.vstack(enveloped_time)
-            if for_plot and filter_settings[0]: # apply LP filter only for plots
+            # only filter voltage: filtering sleep states or temperature gives meaningless values
+            all_voltage = all(get_modality_info(m).get('modality_type', 'voltage') == 'voltage' for m in self.metadata)
+            if for_plot and filter_settings[0] and all_voltage: # apply LP filter only for plots
                 fs = 2/(time[2]-time[0])
                 nyq = 0.5 * fs[0]
                 hpcutoff = min(max(filter_settings[1] / nyq, 0.001), .5)
